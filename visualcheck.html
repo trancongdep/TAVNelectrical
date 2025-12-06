@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phiếu Kiểm tra Bằng Mắt Hằng tuần</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        // Chú ý: Đã cập nhật SDK version từ 11.6.1 lên 12.6.0
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+        let db;
+        let auth;
+        let userId = null;
+        
+        // ===================================================================
+        // CẤU HÌNH FIREBASE CỦA BẠN (Dùng cấu hình này trong mọi trường hợp local)
+        // ===================================================================
+        const LOCAL_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDlm28JgaCe5mxUNCl5yFMWFiGu_8iyyns", 
+            authDomain: "tavnelectrical.firebaseapp.com",
+            projectId: "tavnelectrical",
+            storageBucket: "tavnelectrical.firebasestorage.app",
+            messagingSenderId: "12797987712",
+            appId: "1:12797987712:web:8fb01d26dba96b83044f65" 
+        };
+        // ===================================================================
+
+        // Global variables provided by the Canvas/Workspace environment
+        const canvasAppId = typeof __app_id !== 'undefined' ? __app_id : LOCAL_FIREBASE_CONFIG.projectId;
+        const canvasFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Ưu tiên Canvas Config. Nếu không có (chạy local), sử dụng Local Config.
+        const firebaseConfig = canvasFirebaseConfig || LOCAL_FIREBASE_CONFIG;
+        const appId = canvasAppId;
+
+        /**
+         * Hàm khởi tạo Firebase và thiết lập listener xác thực
+         */
+        async function initFirebase() {
+            // Kiểm tra cấu hình tối thiểu
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                console.error("Firebase config is critically missing.");
+                document.getElementById('status-message').textContent = "Lỗi: Không tìm thấy cấu hình Firebase.";
+                return;
+            }
+
+            try {
+                // Khởi tạo ứng dụng Firebase
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Sử dụng xác thực Canvas (Custom Token / Anonymous)
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        
+                        document.getElementById('checklist-container').classList.remove('hidden');
+                        document.getElementById('user-info-display').textContent = `Đã kết nối. User ID: ${userId.substring(0, 8)}...`;
+                        
+                        // Mở khóa ô nhập tên và đặt giá trị mặc định
+                        const inspectorNameInput = document.getElementById('inspector-name');
+                        inspectorNameInput.removeAttribute('readonly'); 
+                        if (!inspectorNameInput.value) {
+                             inspectorNameInput.value = 'Kỹ thuật viên TAVN'; 
+                        }
+                        
+                        document.getElementById('status-message').textContent = "Sẵn sàng nhập liệu và lưu trữ.";
+                        updateNonCompliantCount();
+                    } else {
+                         document.getElementById('user-info-display').textContent = `Lỗi xác thực. Vui lòng thử lại.`;
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                // Báo cáo lỗi chi tiết hơn
+                document.getElementById('status-message').textContent = `Lỗi khởi tạo: ${error.message}. Vui lòng kiểm tra lại cấu hình và đảm bảo dịch vụ Auth được bật.`;
+            }
+            
+            // Thêm event listener cho việc đếm tự động
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', updateNonCompliantCount);
+            });
+        }
+
+        /**
+         * HÀM QUAN TRỌNG: Cập nhật số mục "Không Đạt" tự động
+         */
+        function updateNonCompliantCount() {
+            let count = 0;
+            document.querySelectorAll('input[type="radio"][value="Không Đạt"]:checked').forEach(() => {
+                count++;
+            });
+            document.getElementById('non-compliant-count').value = count;
+        }
+
+        /**
+         * Hàm thu thập dữ liệu từ biểu mẫu
+         */
+        function collectChecklistData() {
+            const checklistData = {};
+            
+            // 1. Thu thập thông tin header
+            checklistData.header = {
+                date: document.getElementById('check-date').value,
+                inspector: document.getElementById('inspector-name').value,
+                machine: document.getElementById('machine-area').value,
+                appId: appId,
+                userId: userId,
+                userName: document.getElementById('inspector-name').value || "Unknown",
+                timestamp: new Date().toISOString()
+            };
+
+            // 2. Thu thập dữ liệu kiểm tra chi tiết
+            const sections = ['section1', 'section2', 'section3'];
+            checklistData.checks = {};
+
+            sections.forEach(sectionId => {
+                const table = document.getElementById(sectionId);
+                const rows = table.querySelectorAll('tbody tr');
+                
+                rows.forEach((row) => {
+                    const rowId = row.querySelector('td:first-child').textContent.trim();
+                    
+                    const checkResult = {
+                        status: null,
+                        note: row.querySelector('input[type="text"]').value
+                    };
+
+                    const selectedRadio = row.querySelector(`input[name="check${rowId.replace('.', '_')}"]:checked`);
+                    if (selectedRadio) {
+                        checkResult.status = selectedRadio.value;
+                    }
+
+                    checklistData.checks[rowId] = checkResult;
+                });
+            });
+
+            // 3. Thu thập tóm tắt
+            checklistData.summary = {
+                nonCompliantCount: document.getElementById('non-compliant-count').value,
+                urgentAction: document.getElementById('urgent-action').value 
+            };
+
+            return checklistData;
+        }
+
+        /**
+         * Hàm lưu dữ liệu lên Firestore
+         */
+        async function saveChecklist() {
+            if (!db || !userId) {
+                showToast("Lỗi: Không thể kết nối Firebase để lưu dữ liệu. Vui lòng kiểm tra cấu hình.", 'bg-red-500');
+                return;
+            }
+            
+            if (!document.getElementById('inspector-name').value) {
+                showToast("Lỗi: Vui lòng nhập tên người kiểm tra.", 'bg-yellow-600');
+                document.getElementById('inspector-name').focus();
+                return;
+            }
+
+            const saveButton = document.getElementById('save-button');
+            const originalText = saveButton.textContent;
+            saveButton.disabled = true;
+            saveButton.textContent = "Đang lưu...";
+
+            try {
+                const dataToSave = collectChecklistData();
+                
+                // Đường dẫn lưu trữ private: /artifacts/{appId}/users/{userId}/checklists
+                const collectionPath = `artifacts/${appId}/users/${userId}/checklists`;
+                
+                await addDoc(collection(db, collectionPath), dataToSave);
+
+                showToast("Lưu phiếu kiểm tra thành công!", 'bg-green-500');
+                
+            } catch (e) {
+                console.error("Lỗi khi lưu tài liệu: ", e);
+                showToast(`Lỗi lưu: ${e.message}`, 'bg-red-500');
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+            }
+        }
+
+        /**
+         * Hiển thị thông báo Toast
+         */
+        function showToast(message, colorClass) {
+            const toast = document.getElementById('toast-message');
+            toast.textContent = message;
+            toast.className = `fixed bottom-5 right-5 p-4 rounded-lg text-white shadow-lg z-50 transition-opacity duration-300 ${colorClass}`;
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 5000);
+        }
+
+        window.onload = initFirebase;
+        window.saveChecklist = saveChecklist;
+        window.updateNonCompliantCount = updateNonCompliantCount;
+    </script>
+    
+    <style>
+        /* Custom CSS */
+        .input-text {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .header-info p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .section-title {
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            padding: 8px;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+        .checkbox-cell {
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container bg-white p-8 rounded-xl shadow-2xl mt-10">
+        <h2 class="text-2xl font-bold border-b-4 border-blue-600 pb-2 text-gray-800">
+            📋 PHIẾU KIỂM TRA BẰNG MẮT HẰNG TUẦN
+        </h2>
+        
+        <div class="flex justify-between items-center mb-4">
+            <p id="user-info-display" class="text-sm text-gray-700 font-medium">Đang kiểm tra trạng thái đăng nhập...</p>
+        </div>
+        
+        <p id="status-message" class="text-sm text-blue-600 mb-4 font-medium">Đang kết nối Firestore...</p>
+
+        <div id="auth-section" class="flex flex-col items-center p-8 bg-red-100 border border-red-400 rounded-lg hidden">
+        </div>
+
+        <!-- PHẦN CHECKLIST -->
+        <div id="checklist-container" class="hidden">
+            <div class="header-info grid grid-cols-2 gap-4 mb-6 p-4 border rounded-lg bg-blue-50">
+                <p><strong>Bộ phận:</strong> Kỹ thuật Điện & Bảo trì</p>
+                <p><strong>Ngày kiểm tra:</strong> <input type="date" id="check-date" class="input-text"></p>
+                <p><strong>Người kiểm tra:</strong> <input type="text" id="inspector-name" class="input-text" readonly></p>
+                <p><strong>Khu vực/Máy:</strong> <input type="text" id="machine-area" class="input-text"></p>
+            </div>
+
+            <!-- Bảng 1 -->
+            <div class="section-title">I. TỦ ĐIỆN (HẠ THẾ & ĐIỀU KHIỂN)</div>
+            <table id="section1" class="w-full border-collapse my-4">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="w-[5%]">STT</th>
+                        <th class="w-[50%]">Nội dung Kiểm tra (Visual Check)</th>
+                        <th class="w-[15%] checkbox-cell">Đạt</th>
+                        <th class="w-[15%] checkbox-cell">Không Đạt</th>
+                        <th class="w-[15%]">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.1</td>
+                        <td>Ngoại quan Vỏ tủ: Vỏ tủ không bị móp, méo, gỉ sét.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_1" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_1" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.2</td>
+                        <td>Cấp bảo vệ (IP): Khóa tủ hoạt động tốt, gioăng cửa còn nguyên vẹn, không có dấu hiệu chất lỏng xâm nhập.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_2" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_2" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.3</td>
+                        <td>Vệ sinh: Không có bụi bẩn, côn trùng làm tổ bên trong/bên ngoài tủ.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_3" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_3" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.4</td>
+                        <td>Thông gió: Lưới lọc bụi không bị tắc nghẽn. Quạt thông gió hoạt động.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_4" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_4" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.5</td>
+                        <td>Cáp vào/ra: Cáp được cố định bằng ốc siết cáp, không bị trầy vỏ.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_5" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_5" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>1.6</td>
+                        <td>Nhiệt độ: Không có mùi cháy khét hoặc dấu hiệu đổi màu, biến dạng do quá nhiệt.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_6" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check1_6" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Bảng 2 -->
+            <div class="section-title">II. LẮP ĐẶT DÂY DẪN VÀ THIẾT BỊ</div>
+            <table id="section2" class="w-full border-collapse my-4">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="w-[5%]">STT</th>
+                        <th class="w-[50%]">Nội dung Kiểm tra (Visual Check)</th>
+                        <th class="w-[15%] checkbox-cell">Đạt</th>
+                        <th class="w-[15%] checkbox-cell">Không Đạt</th>
+                        <th class="w-[15%]">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hover:bg-gray-50">
+                        <td>2.1</td>
+                        <td>Thiết bị cố định: Tất cả thiết bị (CB, PLC, Contactor) được gắn chắc chắn (trên Rail/Panel).</td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_1" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_1" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>2.2</td>
+                        <td>Đấu nối: Đầu cốt/cầu đấu không bị bung, lỏng. Nhãn in trên ống lồng quay ra ngoài và dễ đọc.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_2" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_2" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>2.3</td>
+                        <td>Mã màu: Mã màu dây dẫn (AC/DC) được duy trì đồng nhất và chính xác.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_3" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_3" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>2.4</td>
+                        <td>Cáp động lực: Vỏ cáp động cơ không bị mài mòn, nứt, hoặc cọ xát vào khung máy.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_4" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_4" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>2.5</td>
+                        <td>Cách ly mạch: Mạch điều khiển và mạch động lực được giữ cách ly (kiểm tra nhanh).</td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_5" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check2_5" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Bảng 3 -->
+            <div class="section-title">III. HẠ TẦNG VÀ AN TOÀN</div>
+            <table id="section3" class="w-full border-collapse my-4">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="w-[5%]">STT</th>
+                        <th class="w-[50%]">Nội dung Kiểm tra (Visual Check)</th>
+                        <th class="w-[15%] checkbox-cell">Đạt</th>
+                        <th class="w-[15%] checkbox-cell">Không Đạt</th>
+                        <th class="w-[15%]">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hover:bg-gray-50">
+                        <td>3.1</td>
+                        <td>Thang Máng Cáp: Máng/Thang không bị võng, các đoạn nối không bị so le.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_1" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_1" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>3.2</td>
+                        <td>Cáp trên Máng: Cáp được sắp xếp gọn gàng, không chồng chéo.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_2" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_2" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>3.3</td>
+                        <td>Nối đất: Dây nối đất (Xanh lá sọc vàng) trên vỏ tủ/máng cáp còn nguyên vẹn, không bị đứt.</td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_3" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_3" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td>3.4</td>
+                        <td>Thiết bị PCCC: Bình chữa cháy gần tủ điện còn niêm phong, còn hạn sử dụng (kiểm tra nhanh).</td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_4" value="Đạt"></td>
+                        <td class="checkbox-cell"><input type="radio" name="check3_4" value="Không Đạt"></td>
+                        <td><input type="text" class="input-text"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="section-title">TÓM TẮT VÀ HÀNH ĐỘNG KHẨN CẤP</div>
+            <p class="text-red-600 font-semibold mt-3">
+                <strong>Cảnh báo Nhiệt/Cháy:</strong> Nếu phát hiện mùi khét hoặc dấu hiệu cháy, phải **ngắt nguồn điện khẩn cấp** khu vực đó và báo cáo ngay lập tức.
+            </p>
+            <div class="mt-4 p-3 border rounded-lg bg-yellow-50">
+                <p class="font-medium">
+                    Tổng kết: Số mục **Không Đạt** cần khắc phục: 
+                    <input type="text" id="non-compliant-count" class="input-text inline-block w-1/4 bg-white font-bold text-red-600" readonly>
+                </p>
+                <label for="urgent-action" class="font-medium block mt-2">Hành động khẩn cấp (nếu có):</label>
+                <textarea id="urgent-action" class="input-text" rows="2"></textarea>
+            </div>
+
+
+            <div class="flex justify-center mt-8">
+                <button id="save-button" onclick="saveChecklist()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-150 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Lưu Phiếu (Save Checklist)
+                </button>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; justify-content: space-between;" class="mt-12">
+                <div class="text-center w-1/3">
+                    <p class="font-bold">Người Kiểm tra</p>
+                    <p class="mt-20 border-t border-gray-400 pt-1">(Ký và ghi rõ họ tên)</p>
+                </div>
+                <div class="text-center w-1/3">
+                    <p class="font-bold">Quản lý Bảo trì/Kỹ sư Điện</p>
+                    <p class="mt-20 border-t border-gray-400 pt-1">(Ký và ghi rõ họ tên)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Message for status updates -->
+    <div id="toast-message" class="fixed bottom-5 right-5 p-4 rounded-lg text-white shadow-lg z-50 opacity-0 transition-opacity duration-300">
+    </div>
+</body>
+</html>
