@@ -2,276 +2,180 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM (Final)</title>
+    <title>TAVIETNAM Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
-        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .container { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 360px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .form-section { border-bottom: 2px solid #f1f1f1; background: #fff; }
-        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; user-select: none; }
-        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; display: block; }
-        .form-content.hidden { display: none; }
-        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-        .btn-new { background: #3498db; color: white; } .btn-save { background: #27ae60; color: white; } .btn-del { background: #e74c3c; color: white; }
-        .btn-extent { background: #8e44ad; color: white; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; border-radius: 3px; }
-        .device-list { flex: 1; overflow-y: auto; padding: 0; } .device-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .editor-tabs { display: flex; background: #e9ecef; } .tab-btn { padding: 10px 20px; cursor: pointer; border: none; font-weight: bold; color: #666; } .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
-        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; } .editor-content.active { display: block; }
-        #view-sld { overflow: auto; background: #ccc; } 
-        #sld-canvas { width: 4000px; height: 3000px; background-color: white; background-image: radial-gradient(#999 1px, transparent 1px); background-size: 20px 20px; position: relative; }
-        
-        .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-        .admin-node:hover { border-color: #007bff; }
-        .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
-        .admin-node:active { cursor: grabbing; }
-
-        /* MÀU SẮC TRẠNG THÁI */
-        .energized-node { background-color: #ffccbc !important; }
-        /* Quan trọng: !important để đè lên màu mặc định */
-        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; } 
-        .dead-line { background-color: #95a5a6 !important; z-index: 1; } 
-
-        .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        .type-bus { height: 10px !important; background: #333; border: none; width: 150px; }
-        
-        .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.2s; }
-        #map-canvas { width: 100%; height: 100%; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
+        #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
+        #map-panel { width: 50%; height: 100%; }
+        .panel-overlay { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #ddd; }
+        .legend-item { display: flex; align-items: center; margin-top: 5px; font-size: 12px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+        .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .node-box:hover { transform: scale(1.05); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .closed { border-color: #d32f2f !important; color: #d32f2f; }
+        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
+        .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 8px rgba(255, 61, 0, 0.4); }
+        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; box-shadow: 0 0 4px #ff3d00; }
+        .dead-line { background-color: #bdc3c7; z-index: 1; }
+        .sld-line { position: absolute; height: 2px; width: 2px; transition: background-color 0.3s; pointer-events: none; }
+        .type-bus { height: 12px !important; background: #333; border: none; width: 300px; border-radius: 6px; }
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
+        .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
-
-<header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
-    <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
-</header>
-<div class="container">
-    <div class="sidebar">
-        <div class="form-section">
-            <div class="form-header" onclick="toggleForm()"><span><i class="fas fa-edit"></i> Thông tin thiết bị</span><i class="fas fa-chevron-up" id="toggle-icon"></i></div>
-            <div class="form-content" id="form-content">
-                <div class="form-group"><label>ID</label><input type="text" id="inp-id"></div>
-                <div class="form-group"><label>Tên</label><input type="text" id="inp-label"></div>
-                <div class="row">
-                    <div class="col form-group"><label>Loại</label><select id="inp-type"><option value="cb">CB</option><option value="source">Nguồn</option><option value="bus">Busbar</option><option value="load">Tải</option><option value="ds">Dao CL</option><option value="fco">FCO</option></select></div>
-                    <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
-                </div>
-                <div class="row"><div class="col form-group"><label>X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>Y</label><input type="number" id="inp-y"></div></div>
-                <button type="button" class="btn-extent" onclick="zoomExtent()">Gom về khung nhìn</button>
-                <div class="row" style="margin-top:5px"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
-                <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
-            </div>
+    <div id="sld-panel">
+        <div class="panel-overlay">
+            <strong>SƠ ĐỒ NGUYÊN LÝ</strong>
+            <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện (Live)</div>
+            <div class="legend-item"><span class="dot" style="background:#bdc3c7"></span>Mất điện (Dead)</div>
         </div>
-        <div class="list-header">Danh sách</div>
-        <div class="device-list" id="device-list-container"></div>
+        <div id="sld-canvas"></div>
     </div>
-    <div class="main-editor">
-        <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button><button class="tab-btn" onclick="switchTab('map')">Map Editor</button></div>
-        <div id="view-sld" class="editor-content active"><div id="sld-canvas"></div></div>
-        <div id="view-map" class="editor-content"><div id="map-canvas"></div></div>
-    </div>
-</div>
+    <div id="map-panel"><div class="panel-overlay"><strong>BẢN ĐỒ GIS</strong></div><div id="map" style="width:100%; height:100%"></div></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-    const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+        let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
+        const map = L.map('map').setView([10.8231, 106.6297], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let mapMarkers = {}; let mapLines = {};
 
-    let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
-    const map = L.map('map-canvas').setView([10.8231, 106.6297], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
+        onValue(ref(db, 'system_nodes'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                localNodes = Object.values(data);
+                calculatePower();
+                renderSLD(); renderMap();
+            } else { sldCanvas.innerHTML = '<div style="padding:50px;">Chưa có dữ liệu.</div>'; }
+        });
 
-    onValue(ref(db, 'system_nodes'), (snapshot) => {
-        const data = snapshot.val();
-        allDevices = data ? Object.values(data) : [];
-        calculatePower();
-        const listContainer = document.getElementById('device-list-container');
-        const scrollPos = listContainer.scrollTop; 
-        renderTable();
-        listContainer.scrollTop = scrollPos;
-        updateParentSelect();
-        renderSLD();
-        renderMap();
-    });
-
-    function calculatePower() {
-        allDevices.forEach(n => n.isEnergized = false);
-        const sources = allDevices.filter(n => n.type === 'source');
-        sources.forEach(src => { src.isEnergized = true; propagate(src); });
-    }
-    function propagate(parent) {
-        const canPropagate = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-        if (canPropagate) {
-            allDevices.filter(n => n.parent === parent.id).forEach(c => { c.isEnergized = true; propagate(c); });
+        function calculatePower() {
+            localNodes.forEach(n => n.isEnergized = false);
+            localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
         }
-    }
-
-    // UI HELPER
-    window.toggleForm = function() { document.getElementById('form-content').classList.toggle('hidden'); }
-    function renderTable() {
-        const container = document.getElementById('device-list-container'); container.innerHTML = '';
-        allDevices.forEach(d => {
-            const div = document.createElement('div'); div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
-            div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>`;
-            div.onclick = () => selectDevice(d, false); div.ondblclick = () => selectDevice(d, true); 
-            container.appendChild(div);
-        });
-    }
-    function updateParentSelect() {
-        const sel = document.getElementById('inp-parent'); const v = sel.value; sel.innerHTML = '<option value="">-- Gốc --</option>';
-        allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
-        sel.value = v;
-    }
-    window.selectDevice = function(d, z) {
-        selectedId = d.id;
-        document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
-        document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
-        updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
-        document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
-        document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
-        document.getElementById('form-content').classList.remove('hidden');
-        renderTable(); renderSLD();
-        if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 18); }
-    }
-    window.zoomExtent = function() {
-        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
-        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
-        const sX=50-minX, sY=50-minY, u={};
-        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
-        update(ref(db), u).then(()=>{ if(selectedId){const c=allDevices.find(n=>n.id===selectedId);if(c){document.getElementById('inp-x').value=c.sld.x+sX;document.getElementById('inp-y').value=c.sld.y+sY;}}});
-    }
-    window.resetForm = function() {
-        selectedId = null; document.getElementById('inp-id').value=""; document.getElementById('inp-id').disabled=false;
-        document.getElementById('inp-label').value=""; document.getElementById('inp-parent').value="";
-        const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
-        document.getElementById('inp-x').value=100; document.getElementById('inp-y').value=100;
-        renderTable(); renderSLD(); document.getElementById('inp-id').focus();
-    }
-    window.saveDevice = function() {
-        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
-        const nd = {
-            id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value||null, state: "closed",
-            sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
-            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||0, lng: parseFloat(document.getElementById('inp-lng').value)||0 }
-        };
-        set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false)).catch(e=>alert(e.message));
-    }
-    window.deleteDevice = function() {
-        if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
-    }
-
-    // --- SLD RENDER (Fixed Color) ---
-    const sldCanvas = document.getElementById('sld-canvas');
-    function renderSLD() {
-        sldCanvas.innerHTML = '';
-        // 1. VẼ DÂY
-        allDevices.forEach(d => {
-            if(d.parent) {
-                const p = allDevices.find(x => x.id == d.parent);
-                if(p) {
-                    const isLive = p.isEnergized && (p.type==='source'||p.state==='closed');
-                    // GỌI HÀM VẼ DÂY
-                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line');
-                }
-            }
-        });
-        // 2. VẼ NODE
-        allDevices.forEach(d => {
-            const el = document.createElement('div');
-            el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
-            el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
-            else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
-            
-            // THÊM CLASS MÀU SẮC NẾU CÓ ĐIỆN
-            if(d.isEnergized) el.classList.add('energized-node'); 
-
-            el.onmousedown = function(e) {
-                e.preventDefault(); e.stopPropagation();
-                if(d.id!==selectedId) selectDevice(d, false);
-                const startMX = e.clientX, startMY = e.clientY, startNX = d.sld.x, startNY = d.sld.y;
-                function onMM(ev) {
-                    let nx = startNX + (ev.clientX - startMX), ny = startNY + (ev.clientY - startMY);
-                    nx = Math.max(0, Math.round(nx/10)*10); ny = Math.max(0, Math.round(ny/10)*10);
-                    el.style.left=nx+'px'; el.style.top=ny+'px';
-                    document.getElementById('inp-x').value=nx; document.getElementById('inp-y').value=ny;
-                }
-                document.addEventListener('mousemove', onMM);
-                document.onmouseup = function() { document.removeEventListener('mousemove', onMM); el.onmouseup=null; saveDevice(); };
-            };
-            sldCanvas.appendChild(el);
-        });
-    }
-
-    // HÀM VẼ DÂY ĐÃ CHUẨN HÓA TÊN
-    function drawWire(p, c, cls) {
-        let pW = (p.type==='bus') ? 150 : 80; let pH = (p.type==='bus') ? 10 : 50;
-        let cW = (c.type==='bus') ? 150 : 80; let cH = (c.type==='bus') ? 10 : 50;
-        const x1=p.sld.x+pW/2, y1=p.sld.y+pH/2, x2=c.sld.x+cW/2, y2=c.sld.y+cH/2, midY=y1+(y2-y1)/2;
-        createWireSegment(x1,y1,x1,midY,cls); 
-        createWireSegment(x1,midY,x2,midY,cls); 
-        createWireSegment(x2,midY,x2,y2,cls);
-    }
-    
-    function createWireSegment(x1,y1,x2,y2,cls) {
-        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-        const d = document.createElement('div'); 
-        d.className = 'wire ' + cls; // QUAN TRỌNG: CỘNG CLASS MÀU VÀO ĐÂY
-        d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
-        d.style.width=(Math.abs(x2-x1)||3)+'px'; d.style.height=(Math.abs(y2-y1)||3)+'px';
-        sldCanvas.appendChild(d);
-    }
-
-    // --- MAP RENDER ---
-    function renderMap() {
-        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); 
-        mapPolylines.forEach(l=>map.removeLayer(l));
-        mapMarkers={}; mapPolylines=[];
         
-        allDevices.forEach(d => {
-            if(d.parent && d.geo) {
-                const p = allDevices.find(x=>x.id==d.parent);
-                if(p && p.geo) {
-                    const isLive = p.isEnergized && (p.type==='source'||p.state==='closed');
-                    const color = isLive ? '#ff3d00' : '#555'; // Màu đỏ nếu có điện
-                    const w = isLive ? 4 : 2;
-                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w}).addTo(map));
-                }
+        function isConductive(node) {
+            return node.type === 'source' || node.type === 'bus' || node.state === 'closed';
+        }
+
+        function propagate(parent) {
+            if (parent.isEnergized && isConductive(parent)) {
+                localNodes.filter(n => n.parent === parent.id).forEach(child => { child.isEnergized = true; propagate(child); });
             }
-        });
+        }
 
-        allDevices.forEach(d => {
-            if(!d.geo) return;
-            let color = d.isEnergized ? '#ff3d00' : '#666'; 
-            if(d.isEnergized && d.state==='closed') color = '#d32f2f'; 
-            const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
-            const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
-            const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
-            m.on('click', ()=>selectDevice(d,false));
-            m.on('dragend', ()=>{
-                const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
-                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
+        window.toggleDevice = function(id) {
+            const node = localNodes.find(n => n.id === id);
+            if (!node || node.type === 'source' || node.type === 'bus') return;
+            update(ref(db, 'system_nodes/' + id), { state: node.state === 'closed' ? 'open' : 'closed' });
+        };
+
+        function renderSLD() {
+            sldCanvas.innerHTML = '';
+            localNodes.forEach(node => {
+                if (node.parent) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.sld && node.sld) {
+                        const isWireLive = parent.isEnergized && isConductive(parent);
+                        drawWire(parent, node, isWireLive ? 'energized-line' : 'dead-line');
+                    }
+                }
             });
-            mapMarkers[d.id] = m;
-        });
-    }
+            localNodes.forEach(node => {
+                if(!node.sld) return;
+                const el = document.createElement('div');
+                el.className = `node-box ${node.type === 'bus' ? 'type-bus' : ''} ${node.type === 'source' ? 'type-source' : ''}`;
+                el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                if (node.type === 'source') { el.style.backgroundColor = '#e3f2fd'; el.style.borderColor = '#1565c0'; }
+                else if (node.type !== 'bus') { el.classList.add(node.state); }
+                if (node.isEnergized) el.classList.add('energized-node');
+                let statusText = (node.state === 'closed' ? 'ON' : 'OFF');
+                if (node.type === 'bus' || node.type === 'source') statusText = '';
+                el.innerHTML = `<span>${node.label}</span><br><span style="font-size:9px">${statusText}</span>`;
+                el.onclick = () => window.toggleDevice(node.id);
+                sldCanvas.appendChild(el);
+            });
+        }
 
-    window.switchTab = function(t){
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-        document.querySelectorAll('.editor-content').forEach(c=>c.classList.remove('active'));
-        if(t==='sld'){document.querySelector('button[onclick="switchTab(\'sld\')"]').classList.add('active');document.getElementById('view-sld').classList.add('active');}
-        else{document.querySelector('button[onclick="switchTab(\'map\')"]').classList.add('active');document.getElementById('view-map').classList.add('active');window.refreshMap();}
-    }
-</script>
+        function drawWire(p, c, cls) {
+            const pW = (p.type==='bus') ? 300 : (p.type==='source' ? 60 : 80); 
+            const pH = (p.type==='bus') ? 12 : (p.type==='source' ? 60 : 40);
+            const cW = (c.type==='bus') ? 300 : (c.type==='source' ? 60 : 80); 
+            const cH = (c.type==='bus') ? 12 : (c.type==='source' ? 60 : 40);
+
+            let pX = p.sld.x; let pY = p.sld.y;
+            let cX = c.sld.x; let cY = c.sld.y;
+            let x1, y1, x2, y2;
+
+            if (p.type === 'bus') {
+                let idealX = cX + cW/2;
+                x1 = Math.max(pX, Math.min(pX + pW, idealX)); 
+                y1 = pY + pH;
+            } else {
+                x1 = pX + pW/2; y1 = pY + pH;
+            }
+
+            if (c.type === 'bus') {
+                let idealX = x1;
+                x2 = Math.max(cX, Math.min(cX + cW, idealX));
+                y2 = cY;
+            } else {
+                x2 = cX + cW/2; y2 = cY;
+            }
+
+            const midY = y1 + (y2 - y1) / 2;
+            createWireSegment(x1, y1, x1, midY, cls); 
+            createWireSegment(x1, midY, x2, midY, cls); 
+            createWireSegment(x2, midY, x2, y2, cls);
+        }
+        
+        function createWireSegment(x, y, w, h, cls) {
+            const d = document.createElement('div');
+            d.className = 'sld-line ' + cls;
+            d.style.left = (w < 0 ? x + w : x) + 'px';
+            d.style.top = (h < 0 ? y + h : y) + 'px';
+            d.style.width = Math.abs(w) + 'px';
+            d.style.height = Math.abs(h) + 'px';
+            sldCanvas.appendChild(d);
+        }
+
+        function renderMap() {
+            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); for(let id in mapLines) map.removeLayer(mapLines[id]);
+            mapMarkers = {}; mapLines = {};
+            localNodes.forEach(node => {
+                if (node.parent && node.geo) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.geo) {
+                        const isWireLive = parent.isEnergized && isConductive(parent);
+                        const color = isWireLive ? '#ff3d00' : '#bdc3c7';
+                        const w = isWireLive ? 4 : 2;
+                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
+                            { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
+                    }
+                }
+            });
+            localNodes.forEach(node => {
+                if(!node.geo) return;
+                let borderColor = '#666';
+                if (node.isEnergized) {
+                    if (node.state === 'closed') borderColor = '#d32f2f'; else if (node.type === 'source') borderColor = '#1565c0'; else borderColor = '#27ae60';
+                }
+                const bg = node.isEnergized ? '#fff' : '#f0f0f0';
+                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px;">${node.label}</div>`;
+                const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20], iconAnchor: [30, 10] });
+                const marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
+                marker.on('click', () => window.toggleDevice(node.id));
+                mapMarkers[node.id] = marker;
+            });
+        }
+    </script>
 </body>
 </html>
