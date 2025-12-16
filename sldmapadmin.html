@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Fix Dragging</title>
+    <title>Admin Panel - Fix Drag Final</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -392,43 +392,38 @@
             if (d.type === 'bus') content = `<span style="color:white; font-size:9px">${d.id}</span>`;
             el.innerHTML = content;
 
-            // --- DRAG LOGIC MỚI (DÙNG DELTA) ---
+            // --- DRAG LOGIC MỚI (PHƯƠNG PHÁP DELTA) ---
             el.onmousedown = function(e) {
-                e.preventDefault(); // Ngăn chọn text
+                e.preventDefault(); 
                 e.stopPropagation();
 
                 if(d.id !== selectedId) selectDevice(d, false);
                 
-                // 1. Ghi nhận vị trí ban đầu
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const initialLeft = d.sld.x;
-                const initialTop = d.sld.y;
+                // 1. Ghi nhớ tọa độ bắt đầu của CHUỘT và của NODE
+                const startMouseX = e.clientX;
+                const startMouseY = e.clientY;
+                const startNodeX = d.sld.x;
+                const startNodeY = d.sld.y;
 
                 function onMouseMove(moveEvent) {
-                    // 2. Tính khoảng cách di chuyển (Delta)
-                    const deltaX = moveEvent.clientX - startX;
-                    const deltaY = moveEvent.clientY - startY;
+                    // 2. Tính khoảng cách chuột đã đi
+                    const dx = moveEvent.clientX - startMouseX;
+                    const dy = moveEvent.clientY - startMouseY;
 
-                    // 3. Áp dụng vào vị trí gốc
-                    let newLeft = initialLeft + deltaX;
-                    let newTop = initialTop + deltaY;
+                    // 3. Vị trí mới = Vị trí gốc + Khoảng cách
+                    let newX = startNodeX + dx;
+                    let newY = startNodeY + dy;
 
-                    // 4. Giới hạn không cho văng ra vùng âm
-                    newLeft = Math.max(0, newLeft);
-                    newTop = Math.max(0, newTop);
+                    // 4. Giới hạn & Grid Snap
+                    newX = Math.max(0, Math.round(newX / 10) * 10);
+                    newY = Math.max(0, Math.round(newY / 10) * 10);
 
-                    // 5. Grid Snap (10px)
-                    newLeft = Math.round(newLeft / 10) * 10;
-                    newTop = Math.round(newTop / 10) * 10;
-
-                    // 6. Cập nhật UI ngay lập tức
-                    el.style.left = newLeft + 'px';
-                    el.style.top = newTop + 'px';
+                    // 5. Cập nhật giao diện
+                    el.style.left = newX + 'px';
+                    el.style.top = newY + 'px';
                     
-                    // Cập nhật giá trị Input (nhưng chưa lưu DB)
-                    document.getElementById('inp-x').value = newLeft;
-                    document.getElementById('inp-y').value = newTop;
+                    document.getElementById('inp-x').value = newX;
+                    document.getElementById('inp-y').value = newY;
                 }
 
                 document.addEventListener('mousemove', onMouseMove);
@@ -436,8 +431,7 @@
                 document.onmouseup = function() {
                     document.removeEventListener('mousemove', onMouseMove);
                     el.onmouseup = null;
-                    // Chỉ lưu khi thả chuột
-                    saveDevice();
+                    saveDevice(); // Chỉ lưu khi thả chuột
                 };
             };
             
