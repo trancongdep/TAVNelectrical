@@ -60,9 +60,13 @@
             localNodes.forEach(n => n.isEnergized = false);
             localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
         }
+        
+        function isConductive(node) {
+            return node.type === 'source' || node.type === 'bus' || node.state === 'closed';
+        }
+
         function propagate(parent) {
-            const canPropagate = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-            if (canPropagate) {
+            if (parent.isEnergized && isConductive(parent)) {
                 localNodes.filter(n => n.parent === parent.id).forEach(child => { child.isEnergized = true; propagate(child); });
             }
         }
@@ -80,9 +84,8 @@
                 if (node.parent) {
                     const parent = localNodes.find(n => n.id === node.parent);
                     if (parent && parent.sld && node.sld) {
-                        const isWireLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-                        // GỌI HÀM VẼ DÂY VỚI CLASS MÀU
-                        drawWire(parent, node, isWireLive ? 'energized-line' : 'dead-line');
+                        const isWireLive = parent.isEnergized && isConductive(parent);
+                        drawManhattanLine(parent, node, isWireLive ? 'energized-line' : 'dead-line');
                     }
                 }
             });
@@ -103,24 +106,18 @@
             });
         }
 
-        function drawWire(p, c, cls) {
+        function drawManhattanLine(p, c, cls) {
             const pW = (p.type==='bus') ? 140 : 80; const pH = (p.type==='bus') ? 8 : 40;
             const cW = (c.type==='bus') ? 140 : 80; const cH = (c.type==='bus') ? 8 : 40;
             const x1 = p.sld.x + pW/2; const y1 = p.sld.y + pH/2; 
             const x2 = c.sld.x + cW/2; const y2 = c.sld.y + cH/2;
             const midY = y1 + (y2 - y1) / 2;
-            createWireSegment(x1, y1, 2, midY - y1, cls); 
-            createWireSegment(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); 
-            createWireSegment(x2, midY, 2, y2 - midY, cls);
+            createDiv(x1, y1, 2, midY - y1, cls); createDiv(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); createDiv(x2, midY, 2, y2 - midY, cls);
         }
-        
-        function createWireSegment(x, y, w, h, cls) {
-            const d = document.createElement('div');
-            d.className = 'sld-line ' + cls;
-            d.style.left = (w < 0 ? x + w : x) + 'px';
-            d.style.top = (h < 0 ? y + h : y) + 'px';
-            d.style.width = Math.abs(w) + 'px';
-            d.style.height = Math.abs(h) + 'px';
+        function createDiv(x, y, w, h, cls) {
+            const d = document.createElement('div'); d.className = 'sld-line ' + cls;
+            d.style.left = (w < 0 ? x + w : x) + 'px'; d.style.top = (h < 0 ? y + h : y) + 'px';
+            d.style.width = Math.abs(w) + 'px'; d.style.height = Math.abs(h) + 'px';
             sldCanvas.appendChild(d);
         }
 
@@ -131,11 +128,10 @@
                 if (node.parent && node.geo) {
                     const parent = localNodes.find(n => n.id === node.parent);
                     if (parent && parent.geo) {
-                        const isWireLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
+                        const isWireLive = parent.isEnergized && isConductive(parent);
                         const color = isWireLive ? '#ff3d00' : '#bdc3c7';
-                        const w = isLive ? 4 : 2;
-                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
-                            { color: color, weight: w }).addTo(map);
+                        const w = isWireLive ? 4 : 2;
+                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
                     }
                 }
             });
