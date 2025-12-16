@@ -19,8 +19,9 @@
         .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; box-shadow: 0 0 4px #ff3d00; }
         .dead-line { background-color: #bdc3c7; z-index: 1; }
         .sld-line { position: absolute; height: 2px; width: 2px; transition: background-color 0.3s; pointer-events: none; }
-        .type-bus { height: 8px !important; background: #333; border: none; width: 140px; border-radius: 4px; }
+        .type-bus { height: 12px !important; background: #333; border: none; width: 300px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
+        .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -79,21 +80,19 @@
 
         function renderSLD() {
             sldCanvas.innerHTML = '';
-            // Wire
             localNodes.forEach(node => {
                 if (node.parent) {
                     const parent = localNodes.find(n => n.id === node.parent);
                     if (parent && parent.sld && node.sld) {
                         const isWireLive = parent.isEnergized && isConductive(parent);
-                        drawManhattanLine(parent, node, isWireLive ? 'energized-line' : 'dead-line');
+                        drawWire(parent, node, isWireLive ? 'energized-line' : 'dead-line');
                     }
                 }
             });
-            // Node
             localNodes.forEach(node => {
                 if(!node.sld) return;
                 const el = document.createElement('div');
-                el.className = `node-box ${node.type === 'bus' ? 'type-bus' : ''}`;
+                el.className = `node-box ${node.type === 'bus' ? 'type-bus' : ''} ${node.type === 'source' ? 'type-source' : ''}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
                 if (node.type === 'source') { el.style.backgroundColor = '#e3f2fd'; el.style.borderColor = '#1565c0'; }
                 else if (node.type !== 'bus') { el.classList.add(node.state); }
@@ -106,18 +105,45 @@
             });
         }
 
-        function drawManhattanLine(p, c, cls) {
-            const pW = (p.type==='bus') ? 140 : 80; const pH = (p.type==='bus') ? 8 : 40;
-            const cW = (c.type==='bus') ? 140 : 80; const cH = (c.type==='bus') ? 8 : 40;
-            const x1 = p.sld.x + pW/2; const y1 = p.sld.y + pH/2; 
-            const x2 = c.sld.x + cW/2; const y2 = c.sld.y + cH/2;
+        function drawWire(p, c, cls) {
+            const pW = (p.type==='bus') ? 300 : (p.type==='source' ? 60 : 80); 
+            const pH = (p.type==='bus') ? 12 : (p.type==='source' ? 60 : 40);
+            const cW = (c.type==='bus') ? 300 : (c.type==='source' ? 60 : 80); 
+            const cH = (c.type==='bus') ? 12 : (c.type==='source' ? 60 : 40);
+
+            let pX = p.sld.x; let pY = p.sld.y;
+            let cX = c.sld.x; let cY = c.sld.y;
+            let x1, y1, x2, y2;
+
+            if (p.type === 'bus') {
+                let idealX = cX + cW/2;
+                x1 = Math.max(pX, Math.min(pX + pW, idealX)); 
+                y1 = pY + pH;
+            } else {
+                x1 = pX + pW/2; y1 = pY + pH;
+            }
+
+            if (c.type === 'bus') {
+                let idealX = x1;
+                x2 = Math.max(cX, Math.min(cX + cW, idealX));
+                y2 = cY;
+            } else {
+                x2 = cX + cW/2; y2 = cY;
+            }
+
             const midY = y1 + (y2 - y1) / 2;
-            createDiv(x1, y1, 2, midY - y1, cls); createDiv(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); createDiv(x2, midY, 2, y2 - midY, cls);
+            createWireSegment(x1, y1, x1, midY, cls); 
+            createWireSegment(x1, midY, x2, midY, cls); 
+            createWireSegment(x2, midY, x2, y2, cls);
         }
-        function createDiv(x, y, w, h, cls) {
-            const d = document.createElement('div'); d.className = 'sld-line ' + cls;
-            d.style.left = (w < 0 ? x + w : x) + 'px'; d.style.top = (h < 0 ? y + h : y) + 'px';
-            d.style.width = Math.abs(w) + 'px'; d.style.height = Math.abs(h) + 'px';
+        
+        function createWireSegment(x, y, w, h, cls) {
+            const d = document.createElement('div');
+            d.className = 'sld-line ' + cls;
+            d.style.left = (w < 0 ? x + w : x) + 'px';
+            d.style.top = (h < 0 ? y + h : y) + 'px';
+            d.style.width = Math.abs(w) + 'px';
+            d.style.height = Math.abs(h) + 'px';
             sldCanvas.appendChild(d);
         }
 
@@ -131,7 +157,8 @@
                         const isWireLive = parent.isEnergized && isConductive(parent);
                         const color = isWireLive ? '#ff3d00' : '#bdc3c7';
                         const w = isWireLive ? 4 : 2;
-                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
+                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
+                            { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
                     }
                 }
             });
