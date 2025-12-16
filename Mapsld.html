@@ -1,231 +1,244 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Hệ thống Điện Xưởng 1 trên Bản Đồ (GIS)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TAVIETNAM Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        #map { height: 100vh; width: 100%; }
-
-        /* Style cho các Node (Tủ điện/Máy biến áp) trên bản đồ */
-        .map-node {
-            background: white;
-            border: 2px solid #333;
-            text-align: center;
-            font-size: 10px;
-            font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 4px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
-            transition: all 0.3s;
-        }
-
-        /* Trạng thái ĐÓNG (Có dòng đi qua về mặt cơ khí) */
-        .node-closed { border-color: #d32f2f; color: #d32f2f; }
+        /* --- CẤU HÌNH CHUNG --- */
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
         
-        /* Trạng thái MỞ (Ngắt mạch) */
-        .node-open { border-color: #2e7d32; color: #2e7d32; border-style: dashed; background: #f1f8e9; }
+        /* Layout Mặc định (Desktop): Chia đôi */
+        #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
+        #map-panel { width: 50%; height: 100%; position: relative; }
+        
+        /* Ẩn thanh điều hướng mobile trên desktop */
+        .mobile-nav { display: none; }
 
-        /* Trạng thái CÓ ĐIỆN (Energized) - Nền sáng lên */
-        .node-energized { background-color: #ffccbc !important; box-shadow: 0 0 15px #ff3d00; }
-        .node-dead { background-color: #eee; }
+        /* --- STYLES CHO ĐIỆN THOẠI (Mobile) --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            
+            /* Trên mobile, panel chiếm 100% và ẩn/hiện theo tab */
+            #sld-panel, #map-panel { 
+                width: 100%; 
+                height: calc(100% - 60px); /* Chừa chỗ cho menu đáy */
+                display: none; /* Ẩn mặc định */
+                border: none;
+            }
+            
+            /* Class kích hoạt hiển thị */
+            .active-panel { display: block !important; }
 
-        /* Bảng chú thích */
-        .legend {
-            position: absolute; bottom: 20px; left: 20px;
-            background: white; padding: 10px; z-index: 1000;
-            border: 2px solid #ccc; font-size: 12px;
+            /* Thanh điều hướng đáy */
+            .mobile-nav {
+                display: flex; position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
+                background: white; border-top: 1px solid #ddd; z-index: 9999;
+                justify-content: space-around; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            }
+            
+            .nav-btn {
+                flex: 1; text-align: center; color: #666; font-size: 12px; cursor: pointer; padding: 5px 0;
+            }
+            .nav-btn i { display: block; font-size: 20px; margin-bottom: 3px; }
+            .nav-btn.active { color: #007bff; font-weight: bold; }
         }
+
+        /* --- CÁC THÀNH PHẦN GIAO DIỆN (Overlay, Nodes...) --- */
+        .panel-overlay { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; pointer-events: none; }
+        .legend-item { display: flex; align-items: center; margin-top: 6px; font-size: 13px; font-weight: 500; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+        
+        .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .closed { border-color: #d32f2f !important; color: #d32f2f; }
+        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
+        .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 8px rgba(255, 61, 0, 0.4); }
+        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; box-shadow: 0 0 4px #ff3d00; }
+        .dead-line { background-color: #bdc3c7; z-index: 1; }
+        .sld-line { position: absolute; height: 2px; width: 2px; transition: background-color 0.3s; pointer-events: none; }
+        .type-bus { height: 10px !important; background: #2c3e50; border: none; width: 300px; border-radius: 5px; }
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
+        .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-    
-    <div class="legend">
-        <b>ĐIỀU KHIỂN LƯỚI ĐIỆN</b><br>
-        🔴 Đường đỏ: Có điện<br>
-        ⚫ Đường đen: Mất điện<br>
-        Click vào tủ để Đóng/Cắt
+    <div id="sld-panel" class="active-panel">
+        <div class="panel-overlay">
+            <strong style="font-size:14px; color:#2c3e50">SƠ ĐỒ NGUYÊN LÝ</strong>
+            <div style="height:1px; background:#ddd; margin:5px 0;"></div>
+            <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện</div>
+            <div class="legend-item"><span class="dot" style="background:#bdc3c7"></span>Mất điện</div>
+        </div>
+        <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
     </div>
 
-<script>
-    // =============================================================
-    // 1. KHỞI TẠO BẢN ĐỒ (Leaflet)
-    // =============================================================
-    // Tọa độ ví dụ (Sân bay Tân Sơn Nhất - Giả lập nhà xưởng)
-    const factoryLat = 10.814; 
-    const factoryLng = 106.666;
-    
-    const map = L.map('map').setView([factoryLat, factoryLng], 17);
+    <div id="map-panel">
+        <div class="panel-overlay" style="right: 15px; left: auto; top: 15px;">
+            <strong>BẢN ĐỒ GIS</strong>
+        </div>
+        <div id="map" style="width:100%; height:100%"></div>
+    </div>
 
-    // Thêm lớp nền bản đồ (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    <div class="mobile-nav">
+        <div class="nav-btn active" onclick="switchMobileView('sld', this)">
+            <i class="fas fa-project-diagram"></i> Sơ đồ SLD
+        </div>
+        <div class="nav-btn" onclick="switchMobileView('map', this)">
+            <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+        </div>
+    </div>
 
-    // =============================================================
-    // 2. DỮ LIỆU HỆ THỐNG (Có tọa độ Lat/Lng)
-    // =============================================================
-    // Thay vì x, y (pixel), ta dùng lat, lng (địa lý)
-    
-    const nodes = [
-        // TRẠM BIẾN ÁP (Nguồn) - Góc xưởng
-        { id: 'TR1', type: 'source', lat: 10.816, lng: 106.664, label: 'TRẠM BA\n22kV' },
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // TỦ TỔNG MSB
-        { id: 'MSB', parent: 'TR1', lat: 10.8155, lng: 106.665, label: 'MSB-1' },
+        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-        // DB1-1 (Phân phối khu vực 1)
-        { id: 'DB1_1', parent: 'MSB', lat: 10.815, lng: 106.666, label: 'DB1-1' },
+        let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
+        const map = L.map('map').setView([10.8231, 106.6297], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let mapMarkers = {}; let mapLines = {};
 
-        // TRỤC CHÍNH DB1-1.2 (Line Sơn)
-        { id: 'DB1_1_2', parent: 'DB1_1', lat: 10.8145, lng: 106.667, label: 'Line Sơn\nDB1-1.2' },
+        // --- XỬ LÝ CHUYỂN TAB MOBILE ---
+        window.switchMobileView = function(view, btn) {
+            // Cập nhật nút active
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-            // Các nhánh con rải rác trong xưởng
-            { id: 'PaintA', parent: 'DB1_1_2', lat: 10.814, lng: 106.666, label: 'Paint A' },
-            { id: 'PaintB', parent: 'DB1_1_2', lat: 10.814, lng: 106.668, label: 'Paint B' },
-            { id: 'PaintC', parent: 'DB1_1_2', lat: 10.8135, lng: 106.667, label: 'Paint C' },
-            { id: 'PaintD', parent: 'DB1_1_2', lat: 10.8135, lng: 106.665, label: 'Paint D' },
-
-        // NGUỒN DỰ PHÒNG (Máy phát) - Góc khác
-        { id: 'GEN', type: 'source', lat: 10.813, lng: 106.669, label: 'MÁY PHÁT\nDB9-2' },
-        { id: 'ATS', parent: 'GEN', lat: 10.8135, lng: 106.6685, label: 'Tủ ATS', state: 'open' } // Đang mở
-    ];
-
-    // Khởi tạo trạng thái
-    nodes.forEach(n => {
-        n.state = n.state || 'closed'; // Mặc định đóng
-        n.isEnergized = false;
-        if(n.type === 'source') n.isEnergized = true;
-        
-        // Lưu tham chiếu đến marker/polyline trên bản đồ để update sau
-        n.mapMarker = null; 
-        n.mapLine = null;
-    });
-
-    // =============================================================
-    // 3. HÀM VẼ TRÊN BẢN ĐỒ (RENDER MAP)
-    // =============================================================
-    
-    function drawMapEntities() {
-        nodes.forEach(node => {
-            // A. VẼ DÂY (Polyline) nối với cha
-            if (node.parent) {
-                const parent = nodes.find(n => n.id === node.parent);
-                if (parent) {
-                    // Tạo đường dây
-                    const line = L.polyline(
-                        [[parent.lat, parent.lng], [node.lat, node.lng]], 
-                        { color: 'black', weight: 4, opacity: 0.6 }
-                    ).addTo(map);
-                    
-                    node.mapLine = line; // Lưu tham chiếu
-                }
+            // Ẩn hiện panel
+            if (view === 'sld') {
+                document.getElementById('sld-panel').classList.add('active-panel');
+                document.getElementById('map-panel').classList.remove('active-panel');
+            } else {
+                document.getElementById('sld-panel').classList.remove('active-panel');
+                document.getElementById('map-panel').classList.add('active-panel');
+                setTimeout(() => map.invalidateSize(), 200); // Fix lỗi map bị xám khi hiện lại
             }
+        }
 
-            // B. VẼ TỦ ĐIỆN (Marker)
-            // Dùng DivIcon để tùy biến CSS (hình vuông thay vì cái ghim)
-            const icon = L.divIcon({
-                className: 'custom-pin', // Class ảo, ta sẽ chỉnh style trực tiếp trong hàm update
-                html: `<div id="icon-${node.id}" class="map-node" style="width:60px; height:40px;">${node.label}</div>`,
-                iconSize: [60, 40],
-                iconAnchor: [30, 20]
-            });
-
-            const marker = L.marker([node.lat, node.lng], { icon: icon }).addTo(map);
-            
-            // Sự kiện Click
-            marker.on('click', () => {
-                if (node.type !== 'source') { // Nguồn không cắt được ở đây
-                    toggleNode(node.id);
-                }
-            });
-
-            node.mapMarker = marker;
+        onValue(ref(db, 'system_nodes'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                localNodes = Object.values(data);
+                calculatePower();
+                renderSLD(); renderMap();
+            }
         });
-        
-        updateVisuals(); // Cập nhật màu sắc lần đầu
-    }
 
-    // =============================================================
-    // 4. LOGIC XỬ LÝ (GIỐNG HỆT SLD CŨ)
-    // =============================================================
-
-    function toggleNode(id) {
-        const n = nodes.find(x => x.id === id);
-        if (n) {
-            n.state = n.state === 'closed' ? 'open' : 'closed';
-            recalcPower();
-            updateVisuals();
+        function calculatePower() {
+            localNodes.forEach(n => n.isEnergized = false);
+            localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
         }
-    }
+        function isConductive(node) { return node.type === 'source' || node.type === 'bus' || node.state === 'closed'; }
+        function propagate(parent) {
+            if (parent.isEnergized && isConductive(parent)) {
+                localNodes.filter(n => n.parent === parent.id).forEach(child => { child.isEnergized = true; propagate(child); });
+            }
+        }
 
-    function recalcPower() {
-        // Reset
-        nodes.forEach(n => { if(n.type !== 'source') n.isEnergized = false; });
-        // Lan truyền
-        nodes.filter(n => n.type === 'source').forEach(src => propagate(src));
-    }
+        window.toggleDevice = function(id) {
+            const node = localNodes.find(n => n.id === id);
+            if (!node || node.type === 'source' || node.type === 'bus') return;
+            update(ref(db, 'system_nodes/' + id), { state: node.state === 'closed' ? 'open' : 'closed' });
+        };
 
-    function propagate(p) {
-        // Logic: Cha có điện & (Cha là nguồn HOẶC Cha đang đóng)
-        if (p.isEnergized && (p.type === 'source' || p.state === 'closed')) {
-            const children = nodes.filter(n => n.parent === p.id);
-            children.forEach(c => {
-                c.isEnergized = true;
-                propagate(c);
+        function renderSLD() {
+            sldCanvas.innerHTML = '';
+            localNodes.forEach(node => {
+                if (node.parent) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.sld && node.sld) {
+                        const isWireLive = parent.isEnergized && isConductive(parent);
+                        drawWire(parent, node, isWireLive ? 'energized-line' : 'dead-line');
+                    }
+                }
+            });
+            localNodes.forEach(node => {
+                if(!node.sld) return;
+                const el = document.createElement('div');
+                el.className = `node-box ${node.type === 'bus' ? 'type-bus' : ''} ${node.type === 'source' ? 'type-source' : ''}`;
+                el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                if (node.type === 'source') { el.style.backgroundColor = '#e3f2fd'; el.style.borderColor = '#1565c0'; }
+                else if (node.type !== 'bus') { el.classList.add(node.state); }
+                if (node.isEnergized) el.classList.add('energized-node');
+                let statusText = (node.state === 'closed' ? 'ON' : 'OFF');
+                if (node.type === 'bus' || node.type === 'source') statusText = '';
+                el.innerHTML = `<span>${node.label}</span><br><span style="font-size:9px">${statusText}</span>`;
+                el.onclick = () => window.toggleDevice(node.id);
+                sldCanvas.appendChild(el);
             });
         }
-    }
 
-    // =============================================================
-    // 5. CẬP NHẬT GIAO DIỆN BẢN ĐỒ
-    // =============================================================
-    function updateVisuals() {
-        nodes.forEach(node => {
-            // 1. Cập nhật màu DÂY
-            if (node.mapLine) {
-                // Dây có điện khi: Cha có điện & Cha đóng
-                const parent = nodes.find(n => n.id === node.parent);
-                const isLineLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-                
-                if (isLineLive) {
-                    node.mapLine.setStyle({ color: '#ff3d00', weight: 6, opacity: 1 }); // Đỏ, đậm
-                } else {
-                    node.mapLine.setStyle({ color: '#555', weight: 4, opacity: 0.5 }); // Xám, mờ
+        function drawWire(p, c, cls) {
+            const pW = (p.type==='bus') ? 300 : (p.type==='source' ? 60 : 80); 
+            const pH = (p.type==='bus') ? 10 : (p.type==='source' ? 60 : 40);
+            const cW = (c.type==='bus') ? 300 : (c.type==='source' ? 60 : 80); 
+            const cH = (c.type==='bus') ? 10 : (c.type==='source' ? 60 : 40);
+
+            let x1, y1, x2, y2;
+            if (p.type === 'bus') {
+                let idealX = c.sld.x + cW/2;
+                x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH;
+            } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
+
+            if (c.type === 'bus') {
+                let idealX = x1;
+                x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y;
+            } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+
+            const midY = y1 + (y2 - y1) / 2;
+            createWireSegment(x1, y1, 2, midY - y1, cls); 
+            createWireSegment(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); 
+            createWireSegment(x2, midY, 2, y2 - midY, cls);
+        }
+        
+        function createWireSegment(x, y, w, h, cls) {
+            if(Math.abs(w) < 1 && Math.abs(h) < 1) return;
+            const d = document.createElement('div');
+            d.className = 'sld-line ' + cls;
+            d.style.left = Math.min(x, x+w) + 'px';
+            d.style.top = Math.min(y, y+h) + 'px';
+            d.style.width = Math.abs(w) + 'px';
+            d.style.height = Math.abs(h) + 'px';
+            sldCanvas.appendChild(d);
+        }
+
+        function renderMap() {
+            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); for(let id in mapLines) map.removeLayer(mapLines[id]);
+            mapMarkers = {}; mapLines = {};
+            localNodes.forEach(node => {
+                if (node.parent && node.geo) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.geo) {
+                        const isWireLive = parent.isEnergized && isConductive(parent);
+                        const color = isWireLive ? '#ff3d00' : '#bdc3c7';
+                        const w = isWireLive ? 4 : 2;
+                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
+                            { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
+                    }
                 }
-            }
-
-            // 2. Cập nhật màu TỦ (ICON)
-            // Vì Leaflet render HTML string, ta phải tìm element DOM sau khi render
-            const el = document.getElementById(`icon-${node.id}`);
-            if (el) {
-                // Reset class
-                el.className = 'map-node';
-                
-                // Trạng thái Đóng/Cắt
-                if (node.type !== 'source') {
-                    el.classList.add(node.state === 'closed' ? 'node-closed' : 'node-open');
-                }
-
-                // Trạng thái Có điện
+            });
+            localNodes.forEach(node => {
+                if(!node.geo) return;
+                let borderColor = '#666';
                 if (node.isEnergized) {
-                    el.classList.add('node-energized');
-                } else {
-                    el.classList.add('node-dead');
+                    if (node.state === 'closed') borderColor = '#d32f2f'; else if (node.type === 'source') borderColor = '#1565c0'; else borderColor = '#27ae60';
                 }
-            }
-        });
-    }
-
-    // Khởi chạy
-    recalcPower();
-    drawMapEntities();
-
-</script>
+                const bg = node.isEnergized ? '#fff' : '#f0f0f0';
+                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px;">${node.label}</div>`;
+                const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20], iconAnchor: [30, 10] });
+                const marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
+                marker.on('click', () => window.toggleDevice(node.id));
+                mapMarkers[node.id] = marker;
+            });
+        }
+    </script>
 </body>
 </html>
