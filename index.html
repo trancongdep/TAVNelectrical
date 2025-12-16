@@ -16,22 +16,23 @@
         .status-approved { background-color: #28a745; color: white; }
         .status-rejected { background-color: #dc3545; color: white; }
         
-        /* Form in ấn (giữ nguyên style cũ để in đẹp) */
-        .print-only { display: none; }
+        /* Form in ấn */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
+            input, textarea { border: none !important; background: transparent !important; resize: none; }
+            .form-control-plaintext { padding: 0; margin: 0; }
         }
-        .form-control-plaintext { border-bottom: 1px dotted #000; padding: 0; }
+        .form-control-plaintext { border-bottom: 1px dotted #000; padding: 0; border-radius: 0; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
         <div class="auth-container">
-            <h3 class="text-center mb-4 text-primary"><i class="fas fa-bolt"></i> Lệnh Công Tác</h3>
+            <h3 class="text-center mb-4 text-primary"><i class="fas fa-bolt"></i> TA Vietnam</h3>
             
             <form id="login-form">
                 <h5 class="text-center">Đăng Nhập</h5>
@@ -76,11 +77,18 @@
 
     <div id="app-screen" class="hidden">
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 px-3">
-            <a class="navbar-brand" href="#">Hệ Thống Lệnh Công Tác</a>
+            <a class="navbar-brand" href="#"><i class="fas fa-file-contract"></i> Quản Lý Lệnh Công Tác</a>
             <div class="ms-auto d-flex align-items-center">
-                <span class="text-white me-3" id="user-display">Xin chào, User</span>
-                <button class="btn btn-sm btn-outline-light me-2" onclick="showChangePassword()">Đổi MK</button>
-                <button class="btn btn-sm btn-light" onclick="logout()">Đăng xuất</button>
+                <span class="text-white me-3 fw-bold" id="user-display">Xin chào...</span>
+                <button class="btn btn-sm btn-outline-warning me-2" onclick="openProfileModal()">
+                    <i class="fas fa-user-edit"></i> Sửa tên
+                </button>
+                <button class="btn btn-sm btn-outline-light me-2" onclick="showChangePassword()">
+                    <i class="fas fa-key"></i> Đổi MK
+                </button>
+                <button class="btn btn-sm btn-light" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Thoát
+                </button>
             </div>
         </nav>
 
@@ -155,7 +163,7 @@
                     <div class="col-6">
                         <p><strong>Người ra Lệnh công tác</strong></p>
                         <p id="issuer-status" class="text-muted">(Chưa ký)</p>
-                        <div id="issuer-signature" style="height: 60px;"></div>
+                        <div style="height: 40px;"></div>
                         <input type="text" id="issuerNameInput" class="form-control-plaintext text-center" placeholder="Họ tên" readonly>
                     </div>
                 </div>
@@ -182,28 +190,47 @@
         </div>
     </div>
 
-    <div id="password-modal" class="modal" tabindex="-1">
+    <div id="password-modal" class="modal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Đổi Mật Khẩu</h5></div>
+                <div class="modal-header"><h5 class="modal-title">Đổi Mật Khẩu</h5><button type="button" class="btn-close" onclick="document.getElementById('password-modal').style.display='none'"></button></div>
                 <div class="modal-body">
                     <input type="password" id="new-password" class="form-control" placeholder="Mật khẩu mới">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('password-modal').style.display='none'">Hủy</button>
                     <button type="button" class="btn btn-primary" onclick="confirmChangePassword()">Lưu</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="profile-modal" class="modal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cập Nhật Thông Tin</h5>
+                    <button type="button" class="btn-close" onclick="closeProfileModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tên hiển thị mới:</label>
+                        <input type="text" id="profile-new-name" class="form-control" placeholder="Nhập họ tên mới...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeProfileModal()">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProfileName()">Lưu thay đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
-        // 1. IMPORT FIREBASE
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, setDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // CẤU HÌNH (DÙNG KEY CỦA BẠN)
+        // CẤU HÌNH FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
             authDomain: "tavietnam-78ae8.firebaseapp.com",
@@ -217,24 +244,21 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const USERS_COL = "users";
-        const ORDERS_COL = "work_orders_v2"; // Dùng collection mới cho sạch
+        const ORDERS_COL = "work_orders_v2";
 
         let currentUser = null;
         let currentRole = null;
-        let currentOrderId = null; // ID của lệnh đang xem
+        let currentOrderId = null;
 
-        // --- 2. AUTHENTICATION LOGIC ---
+        // --- 1. AUTHENTICATION ---
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // Đã đăng nhập -> Lấy thông tin Role từ Firestore
                 const userDoc = await getDoc(doc(db, USERS_COL, user.uid));
                 if (userDoc.exists()) {
                     currentUser = user;
                     currentRole = userDoc.data().role;
-                    const userName = userDoc.data().name;
-                    
-                    document.getElementById('user-display').innerText = `${userName} (${getRoleName(currentRole)})`;
+                    updateUIUser(userDoc.data().name);
                     showScreen('app');
                     loadDashboard();
                 } else {
@@ -242,34 +266,29 @@
                     signOut(auth);
                 }
             } else {
-                // Chưa đăng nhập
                 currentUser = null;
-                currentRole = null;
                 showScreen('auth');
             }
         });
 
+        function updateUIUser(name) {
+            document.getElementById('user-display').innerText = `${name} (${getRoleName(currentRole)})`;
+        }
+
         window.toggleAuth = (mode) => {
-            if(mode === 'register') {
-                document.getElementById('login-form').classList.add('hidden');
-                document.getElementById('register-form').classList.remove('hidden');
-            } else {
-                document.getElementById('register-form').classList.add('hidden');
-                document.getElementById('login-form').classList.remove('hidden');
-            }
+            document.getElementById('login-form').classList.toggle('hidden', mode === 'register');
+            document.getElementById('register-form').classList.toggle('hidden', mode === 'login');
         };
 
-        // Xử lý Đăng nhập
+        // Đăng nhập
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-password').value;
             try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (error) { alert("Đăng nhập thất bại: " + error.message); }
+                await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-password').value);
+            } catch (error) { alert("Lỗi đăng nhập: " + error.message); }
         });
 
-        // Xử lý Đăng ký
+        // Đăng ký
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('reg-email').value;
@@ -278,106 +297,102 @@
             const role = document.getElementById('reg-role').value;
 
             try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-                const user = userCredential.user;
-                
-                // Lưu Role vào Firestore
-                await setDoc(doc(db, USERS_COL, user.uid), {
-                    name: name,
-                    email: email,
-                    role: role,
-                    createdAt: new Date()
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await updateProfile(cred.user, { displayName: name });
+                await setDoc(doc(db, USERS_COL, cred.user.uid), {
+                    name: name, email: email, role: role, createdAt: new Date()
                 });
-                alert("Đăng ký thành công! Đang đăng nhập...");
+                alert("Đăng ký thành công!");
             } catch (error) { alert("Lỗi đăng ký: " + error.message); }
         });
 
         window.logout = () => signOut(auth);
 
-        window.showChangePassword = () => {
-            document.getElementById('password-modal').style.display = 'block';
-        }
-        
+        // --- 2. ĐỔI MẬT KHẨU & ĐỔI TÊN ---
+
+        window.showChangePassword = () => document.getElementById('password-modal').style.display = 'block';
         window.confirmChangePassword = async () => {
-            const newPass = document.getElementById('new-password').value;
-            if(!newPass) return;
             try {
-                await updatePassword(currentUser, newPass);
+                await updatePassword(currentUser, document.getElementById('new-password').value);
                 alert("Đổi mật khẩu thành công!");
                 document.getElementById('password-modal').style.display = 'none';
             } catch (e) { alert("Lỗi: " + e.message); }
         }
 
-        // --- 3. DASHBOARD LOGIC ---
-
-        function getRoleName(role) {
-            if(role === 'commander') return 'Chỉ huy';
-            if(role === 'issuer') return 'Người cấp lệnh';
-            if(role === 'supervisor') return 'Giám sát';
-            return role;
+        window.openProfileModal = async () => {
+            const userDoc = await getDoc(doc(db, USERS_COL, currentUser.uid));
+            if (userDoc.exists()) document.getElementById('profile-new-name').value = userDoc.data().name;
+            document.getElementById('profile-modal').style.display = 'block';
         }
 
-        function getStatusBadge(status) {
-            if(status === 'pending_issue') return '<span class="status-badge status-pending">Chờ cấp lệnh</span>';
-            if(status === 'approved') return '<span class="status-badge status-approved">Đã cấp lệnh</span>';
-            if(status === 'rejected') return '<span class="status-badge status-rejected">Từ chối</span>';
-            return status;
+        window.closeProfileModal = () => document.getElementById('profile-modal').style.display = 'none';
+
+        window.saveProfileName = async () => {
+            const newName = document.getElementById('profile-new-name').value.trim();
+            if (!newName) return alert("Vui lòng nhập tên!");
+            
+            const btn = document.querySelector('#profile-modal .btn-primary');
+            btn.innerText = "Đang lưu..."; btn.disabled = true;
+
+            try {
+                await updateProfile(currentUser, { displayName: newName });
+                await updateDoc(doc(db, USERS_COL, currentUser.uid), { name: newName });
+                updateUIUser(newName);
+                alert("Đổi tên thành công!");
+                closeProfileModal();
+            } catch (e) { alert("Lỗi: " + e.message); } 
+            finally { btn.innerText = "Lưu thay đổi"; btn.disabled = false; }
+        }
+
+        // --- 3. DASHBOARD ---
+
+        function getRoleName(role) {
+            return role === 'commander' ? 'Chỉ huy' : (role === 'issuer' ? 'Cấp lệnh' : 'Giám sát');
         }
 
         window.loadDashboard = async () => {
             const tbody = document.getElementById('dashboard-body');
             tbody.innerHTML = '<tr><td colspan="6" class="text-center">Đang tải...</td></tr>';
             
-            // Logic lọc dữ liệu theo quyền
             let q;
             if (currentRole === 'commander') {
-                // Chỉ huy: Xem lệnh do mình tạo
                 q = query(collection(db, ORDERS_COL), where("createdBy", "==", currentUser.uid), orderBy("createdAt", "desc"));
-                // Ẩn nút tạo nếu không phải commander (Tuy nhiên logic UI ở dưới sẽ xử lý)
             } else {
-                // Người cấp lệnh / Giám sát: Xem tất cả (hoặc lọc theo trạng thái chờ duyệt)
-                // Ở đây cho xem tất cả để dễ quản lý
                 q = query(collection(db, ORDERS_COL), orderBy("createdAt", "desc"));
             }
 
             try {
                 const snapshot = await getDocs(q);
                 tbody.innerHTML = '';
-                
-                if (snapshot.empty) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Không có dữ liệu</td></tr>';
-                    return;
-                }
+                if (snapshot.empty) return tbody.innerHTML = '<tr><td colspan="6" class="text-center">Không có dữ liệu</td></tr>';
 
                 snapshot.forEach(doc => {
                     const d = doc.data();
-                    const row = `
-                        <tr>
-                            <td>${new Date(d.createdAt.seconds*1000).toLocaleDateString()}</td>
-                            <td><strong>${d.orderNumber}</strong></td>
-                            <td>${d.content.substring(0, 30)}...</td>
-                            <td>${d.commanderName}</td>
-                            <td>${getStatusBadge(d.status)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary" onclick="openOrder('${doc.id}')">Chi tiết / Duyệt</button>
-                            </td>
-                        </tr>
-                    `;
+                    let statusHtml = d.status === 'approved' ? '<span class="status-badge status-approved">Đã duyệt</span>' : 
+                                     d.status === 'rejected' ? '<span class="status-badge status-rejected">Từ chối</span>' : 
+                                     '<span class="status-badge status-pending">Chờ duyệt</span>';
+                    
+                    const row = `<tr>
+                        <td>${new Date(d.createdAt.seconds*1000).toLocaleDateString()}</td>
+                        <td><strong>${d.orderNumber}</strong></td>
+                        <td>${d.content.substring(0, 30)}...</td>
+                        <td>${d.commanderName}</td>
+                        <td>${statusHtml}</td>
+                        <td><button class="btn btn-sm btn-primary" onclick="openOrder('${doc.id}')">Chi tiết</button></td>
+                    </tr>`;
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
             } catch (e) {
-                console.error(e);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu (Cần tạo Index? Xem console)</td></tr>`;
+                console.error(e); // Quan trọng để xem link tạo Index
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Lỗi tải (Xem Console F12 để tạo Index): ${e.message}</td></tr>`;
             }
-
-            // Ẩn nút tạo mới nếu không phải commander
             document.getElementById('btn-create-new').style.display = (currentRole === 'commander') ? 'inline-block' : 'none';
         };
 
-        // --- 4. FORM & APPROVAL LOGIC ---
+        // --- 4. FORM & LOGIC ---
 
         window.showCreateForm = () => {
-            currentOrderId = null; // Reset ID để hiểu là tạo mới
+            currentOrderId = null;
             resetForm();
             document.getElementById('form-screen').classList.remove('hidden');
             setupActionButtons('create');
@@ -386,7 +401,6 @@
         window.openOrder = async (id) => {
             currentOrderId = id;
             document.getElementById('form-screen').classList.remove('hidden');
-            
             const docRef = await getDoc(doc(db, ORDERS_COL, id));
             if(docRef.exists()) {
                 const data = docRef.data();
@@ -400,26 +414,18 @@
         function setupActionButtons(mode, status = '') {
             const container = document.getElementById('action-buttons');
             container.innerHTML = '';
+            enableInputs(false);
 
             if (mode === 'create') {
                 container.innerHTML = `<button class="btn btn-success" onclick="saveOrder('create')">Gửi duyệt</button>`;
                 enableInputs(true);
             } else {
-                // Chế độ xem: Tùy role mà hiện nút
-                enableInputs(false); // Mặc định khóa input
-
                 if (currentRole === 'issuer' && status === 'pending_issue') {
-                    // Người cấp lệnh thấy lệnh chờ -> Hiện nút Duyệt / Từ chối
-                    container.innerHTML = `
-                        <button class="btn btn-danger me-2" onclick="processOrder('reject')">Từ chối</button>
-                        <button class="btn btn-success" onclick="processOrder('approve_issue')">✅ Ký Cấp Lệnh</button>
-                    `;
+                    container.innerHTML = `<button class="btn btn-danger me-2" onclick="processOrder('reject')">Từ chối</button><button class="btn btn-success" onclick="processOrder('approve_issue')">✅ Ký Cấp Lệnh</button>`;
                 } else if (currentRole === 'commander' && status === 'pending_issue') {
-                    // Người tạo thấy lệnh chưa duyệt -> Có thể sửa
                      container.innerHTML = `<button class="btn btn-warning" onclick="saveOrder('update')">Cập nhật</button>`;
                      enableInputs(true);
                 } else if (currentRole === 'supervisor' && status === 'approved') {
-                     // Giám sát
                      container.innerHTML = `<button class="btn btn-info text-white" onclick="processOrder('supervisor_sign')">✍️ Giám sát ký</button>`;
                 } else {
                      container.innerHTML = `<button class="btn btn-secondary" onclick="window.print()">🖨️ In Phiếu</button>`;
@@ -427,12 +433,13 @@
             }
         }
 
-        // Logic Lưu / Cập nhật Lệnh
         window.saveOrder = async (type) => {
             const data = getFormData();
-            data.status = 'pending_issue'; // Luôn reset về chờ duyệt khi sửa
-            data.commanderName = document.getElementById('user-display').innerText.split('(')[0].trim(); // Tự động lấy tên
-            
+            data.status = 'pending_issue';
+            // Lấy tên hiện tại từ DB để đảm bảo chính xác
+            const userDoc = await getDoc(doc(db, USERS_COL, currentUser.uid));
+            data.commanderName = userDoc.data().name;
+
             try {
                 if (type === 'create') {
                     data.createdAt = new Date();
@@ -441,166 +448,96 @@
                 } else {
                     await updateDoc(doc(db, ORDERS_COL, currentOrderId), data);
                 }
-                alert("Đã lưu thành công!");
-                closeForm();
-                loadDashboard();
-            } catch (e) { alert("Lỗi lưu: " + e.message); }
+                alert("Đã lưu!"); closeForm(); loadDashboard();
+            } catch (e) { alert("Lỗi: " + e.message); }
         };
 
-        // Logic Duyệt (State Machine)
         window.processOrder = async (action) => {
             const userDoc = await getDoc(doc(db, USERS_COL, currentUser.uid));
             const userName = userDoc.data().name;
-
             try {
                 if (action === 'approve_issue') {
                     await updateDoc(doc(db, ORDERS_COL, currentOrderId), {
-                        status: 'approved',
-                        issuerUid: currentUser.uid,
-                        issuerName: userName,
-                        issuedAt: new Date()
+                        status: 'approved', issuerUid: currentUser.uid, issuerName: userName, issuedAt: new Date()
                     });
-                    alert("Đã ký cấp lệnh!");
-                } 
-                else if (action === 'reject') {
-                    if(!confirm("Chắc chắn từ chối?")) return;
+                } else if (action === 'reject') {
                     await updateDoc(doc(db, ORDERS_COL, currentOrderId), { status: 'rejected' });
-                }
-                else if (action === 'supervisor_sign') {
+                } else if (action === 'supervisor_sign') {
                     await updateDoc(doc(db, ORDERS_COL, currentOrderId), {
-                        supervisorUid: currentUser.uid,
-                        supervisorName: userName,
-                        supervisedAt: new Date()
+                        supervisorUid: currentUser.uid, supervisorName: userName, supervisedAt: new Date()
                     });
-                    alert("Đã ký giám sát!");
                 }
-                closeForm();
-                loadDashboard();
-            } catch (e) { alert("Lỗi xử lý: " + e.message); }
+                alert("Xử lý thành công!"); closeForm(); loadDashboard();
+            } catch (e) { alert("Lỗi: " + e.message); }
         };
 
-        // Helper functions
+        // UI HELPERS
         function getFormData() {
-            // Lấy dữ liệu bảng NV
-            const staff = [];
-            document.querySelectorAll('#staff-table tbody tr').forEach(tr => {
-                const inputs = tr.querySelectorAll('input');
-                staff.push({ name: inputs[0].value, rank: inputs[1].value, in: inputs[2].value, out: inputs[3].value });
-            });
-            // Lấy dữ liệu bảng Seq
-            const seq = [];
-            document.querySelectorAll('#seq-table tbody tr').forEach(tr => {
-                const inputs = tr.querySelectorAll('input');
-                seq.push({ step: inputs[0].value, safety: inputs[1].value, start: inputs[2].value, end: inputs[3].value });
-            });
-
+            const staff = []; document.querySelectorAll('#staff-table tbody tr').forEach(tr => { const i = tr.querySelectorAll('input'); staff.push({name:i[0].value, rank:i[1].value, in:i[2].value, out:i[3].value}); });
+            const seq = []; document.querySelectorAll('#seq-table tbody tr').forEach(tr => { const i = tr.querySelectorAll('input'); seq.push({step:i[0].value, safety:i[1].value, start:i[2].value, end:i[3].value}); });
             return {
-                unitName: document.getElementById('unitName').value,
-                orderNumber: document.getElementById('orderNumber').value,
-                commanderRank: document.getElementById('commanderRank').value,
-                location: document.getElementById('location').value,
-                content: document.getElementById('content').value,
-                safety: document.getElementById('safety').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                staffList: staff,
-                sequenceList: seq
+                unitName: document.getElementById('unitName').value, orderNumber: document.getElementById('orderNumber').value,
+                commanderRank: document.getElementById('commanderRank').value, location: document.getElementById('location').value,
+                content: document.getElementById('content').value, safety: document.getElementById('safety').value,
+                startTime: document.getElementById('startTime').value, endTime: document.getElementById('endTime').value,
+                staffList: staff, sequenceList: seq
             };
         }
 
-        function fillForm(data) {
-            document.getElementById('unitName').value = data.unitName || '';
-            document.getElementById('orderNumber').value = data.orderNumber || '';
-            document.getElementById('commanderName').value = data.commanderName || '';
-            document.getElementById('commanderRank').value = data.commanderRank || '';
-            document.getElementById('location').value = data.location || '';
-            document.getElementById('content').value = data.content || '';
-            document.getElementById('safety').value = data.safety || '';
-            document.getElementById('startTime').value = data.startTime || '';
-            document.getElementById('endTime').value = data.endTime || '';
-
-            // Render Signatures
-            if(data.issuerName) {
-                document.getElementById('issuerNameInput').value = data.issuerName;
-                document.getElementById('issuer-status').innerText = "(Đã ký điện tử)";
-                document.getElementById('issuer-status').className = "text-success fw-bold";
-            } else {
-                document.getElementById('issuerNameInput').value = "";
-                document.getElementById('issuer-status').innerText = "(Chưa ký)";
-                document.getElementById('issuer-status').className = "text-muted";
-            }
-
-            if(data.supervisorName) {
-                document.getElementById('supervisorNameInput').value = data.supervisorName;
-                document.getElementById('supervisor-status').innerText = "(Đã ký)";
-                document.getElementById('supervisor-status').className = "text-success fw-bold";
-            }
-
-            // Fill tables (tái tạo lại html cho bảng)
-            const staffBody = document.querySelector('#staff-table tbody');
-            staffBody.innerHTML = '';
-            (data.staffList || []).forEach((s, i) => addStaffRow(s));
-
-            const seqBody = document.querySelector('#seq-table tbody');
-            seqBody.innerHTML = '';
-            (data.sequenceList || []).forEach((s, i) => addSeqRow(s));
+        function fillForm(d) {
+            document.getElementById('unitName').value = d.unitName||''; document.getElementById('orderNumber').value = d.orderNumber||'';
+            document.getElementById('commanderName').value = d.commanderName||''; document.getElementById('commanderRank').value = d.commanderRank||'';
+            document.getElementById('location').value = d.location||''; document.getElementById('content').value = d.content||'';
+            document.getElementById('safety').value = d.safety||''; document.getElementById('startTime').value = d.startTime||'';
+            document.getElementById('endTime').value = d.endTime||'';
             
+            document.getElementById('issuerNameInput').value = d.issuerName||'';
+            document.getElementById('issuer-status').innerText = d.issuerName ? "(Đã ký điện tử)" : "(Chưa ký)";
+            document.getElementById('issuer-status').className = d.issuerName ? "text-success fw-bold" : "text-muted";
+            
+            document.getElementById('supervisorNameInput').value = d.supervisorName||'';
+            document.getElementById('supervisor-status').innerText = d.supervisorName ? "(Đã ký)" : "(Chưa ký)";
+            document.getElementById('supervisor-status').className = d.supervisorName ? "text-success fw-bold" : "text-muted";
+
+            document.querySelector('#staff-table tbody').innerHTML = ''; (d.staffList||[]).forEach(s => addStaffRow(s));
+            document.querySelector('#seq-table tbody').innerHTML = ''; (d.sequenceList||[]).forEach(s => addSeqRow(s));
             updateCount();
         }
 
         function resetForm() {
             document.querySelectorAll('#print-area input, #print-area textarea').forEach(i => i.value = '');
-            document.querySelector('#staff-table tbody').innerHTML = '';
-            document.querySelector('#seq-table tbody').innerHTML = '';
+            document.querySelector('#staff-table tbody').innerHTML = ''; document.querySelector('#seq-table tbody').innerHTML = '';
             document.getElementById('issuer-status').innerText = "(Chưa ký)";
         }
 
         function enableInputs(enable) {
-            const inputs = document.querySelectorAll('#print-area input, #print-area textarea, #btnAddStaff, #btnAddSeq');
-            inputs.forEach(el => {
-                if(el.id.includes('issuer') || el.id.includes('supervisor')) return; // Không bao giờ cho sửa chữ ký bằng tay
-                el.disabled = !enable;
-                if(el.tagName === 'BUTTON') el.style.display = enable ? 'inline-block' : 'none';
+            document.querySelectorAll('#print-area input, #print-area textarea, #btnAddStaff, #btnAddSeq').forEach(el => {
+                if(!el.id.includes('issuer') && !el.id.includes('supervisor')) {
+                    el.disabled = !enable;
+                    if(el.tagName === 'BUTTON') el.style.display = enable ? 'inline-block' : 'none';
+                }
             });
         }
-        
-        // --- UI HELPERS (Global scope) ---
+
         window.showScreen = (id) => {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.add('hidden');
             document.getElementById(id + '-screen').classList.remove('hidden');
         }
 
-        window.addStaffRow = (data = {}) => {
+        window.addStaffRow = (d={}) => {
             const tbody = document.querySelector('#staff-table tbody');
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${tbody.rows.length + 1}</td>
-                <td><input class="form-control-plaintext" value="${data.name||''}"></td>
-                <td><input class="form-control-plaintext" value="${data.rank||''}" style="width:40px;"></td>
-                <td><input class="form-control-plaintext" value="${data.in||''}" placeholder="7h30"></td>
-                <td><input class="form-control-plaintext" value="${data.out||''}"></td>
-            `;
-            tbody.appendChild(tr);
-            updateCount();
+            tr.innerHTML = `<td>${tbody.rows.length+1}</td><td><input class="form-control-plaintext" value="${d.name||''}"></td><td><input class="form-control-plaintext" value="${d.rank||''}" style="width:40px;"></td><td><input class="form-control-plaintext" value="${d.in||''}"></td><td><input class="form-control-plaintext" value="${d.out||''}"></td>`;
+            tbody.appendChild(tr); updateCount();
         }
-
-        window.addSeqRow = (data = {}) => {
+        window.addSeqRow = (d={}) => {
             const tbody = document.querySelector('#seq-table tbody');
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${tbody.rows.length + 1}</td>
-                <td><input class="form-control-plaintext" value="${data.step||''}"></td>
-                <td><input class="form-control-plaintext" value="${data.safety||''}"></td>
-                <td><input class="form-control-plaintext" value="${data.start||''}"></td>
-                <td><input class="form-control-plaintext" value="${data.end||''}"></td>
-            `;
+            tr.innerHTML = `<td>${tbody.rows.length+1}</td><td><input class="form-control-plaintext" value="${d.step||''}"></td><td><input class="form-control-plaintext" value="${d.safety||''}"></td><td><input class="form-control-plaintext" value="${d.start||''}"></td><td><input class="form-control-plaintext" value="${d.end||''}"></td>`;
             tbody.appendChild(tr);
         }
-
-        window.updateCount = () => {
-            document.getElementById('staffCount').innerText = document.querySelector('#staff-table tbody').rows.length;
-        }
+        window.updateCount = () => document.getElementById('staffCount').innerText = document.querySelector('#staff-table tbody').rows.length;
 
     </script>
 </body>
