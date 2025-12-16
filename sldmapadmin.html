@@ -2,11 +2,11 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Fix SLD Drag</title>
+    <title>Admin Panel - Hệ thống Điện (Extent Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* --- GLOBAL STYLES --- */
+        /* GLOBAL STYLES */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
         
         header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -34,8 +34,10 @@
         .btn-new { background: #3498db; color: white; }
         .btn-save { background: #27ae60; color: white; }
         .btn-del { background: #e74c3c; color: white; }
-        /* Nút cứu hộ vị trí */
-        .btn-rescue { background: #f39c12; color: white; font-size: 10px; padding: 4px; margin-top: 5px; width: 100%; border-radius: 3px; cursor: pointer; border: none; }
+        
+        /* NÚT EXTENT MỚI */
+        .btn-extent { background: #8e44ad; color: white; font-size: 11px; padding: 6px; margin-top: 5px; width: 100%; border-radius: 3px; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 5px;}
+        .btn-extent:hover { background: #732d91; }
 
         /* LIST SECTION */
         .list-header { padding: 10px 15px; background: #f8f9fa; font-weight: bold; font-size: 13px; border-bottom: 1px solid #eee; }
@@ -53,11 +55,10 @@
         .editor-content { flex: 1; position: relative; display: none; overflow: hidden; }
         .editor-content.active { display: block; }
 
-        /* SLD CANVAS FIX: Overflow Auto để hiện thanh cuộn nếu văng ra xa */
+        /* SLD CANVAS */
         #view-sld { overflow: auto; background: #ccc; } 
         #sld-canvas { 
-            width: 3000px; /* Canvas cực rộng để chứa thiết bị */
-            height: 2000px; 
+            width: 3000px; height: 2000px; 
             background-color: white;
             background-image: radial-gradient(#999 1px, transparent 1px); 
             background-size: 20px 20px; 
@@ -73,10 +74,11 @@
         }
         .admin-node.selected-node { border: 2px solid #007bff; background: #e3f2fd; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         
-        /* Node Types Styles */
+        /* Node Types */
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
         .type-bus { height: 10px !important; background: #333; border: none; width: 150px; }
         .type-fco { border-top: 4px solid #e74c3c; }
+        .type-load { border-radius: 50%; border: 2px dashed #333; width: 50px; height: 50px; }
 
         .wire { position: absolute; background: #999; z-index: 1; height: 2px; transform-origin: 0 0; pointer-events: none; }
         #map-canvas { width: 100%; height: 100%; }
@@ -140,17 +142,18 @@
                     <div class="col form-group">
                         <label>SLD X</label>
                         <input type="number" id="inp-x">
-                        <button type="button" class="btn-rescue" onclick="rescuePosition()">
-                            <i class="fas fa-compress-arrows-alt"></i> Thu hồi về (50,50)
-                        </button>
                     </div>
                     <div class="col form-group">
                         <label>SLD Y</label>
                         <input type="number" id="inp-y">
                     </div>
                 </div>
+                
+                <button type="button" class="btn-extent" onclick="zoomExtent()">
+                    <i class="fas fa-compress-arrows-alt"></i> Gom tất cả về khung nhìn
+                </button>
 
-                <div class="row">
+                <div class="row" style="margin-top:10px;">
                     <div class="col form-group">
                         <label>Vĩ độ (Lat)</label>
                         <input type="number" id="inp-lat" step="0.000001">
@@ -169,9 +172,7 @@
             </div>
         </div>
 
-        <div class="list-header">
-            Danh sách thiết bị
-        </div>
+        <div class="list-header">Danh sách thiết bị</div>
         <div class="device-list" id="device-list-container"></div>
     </div>
 
@@ -193,7 +194,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove } 
+    import { getDatabase, ref, onValue, set, update, remove } 
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     // --- CONFIG ---
@@ -204,7 +205,7 @@
       storageBucket: "tavietnam-78ae8.firebasestorage.app",
       messagingSenderId: "670121705534",
       appId: "1:670121705534:web:1027ad98550573ad37116f"
-    };;
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -225,7 +226,7 @@
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
         const listContainer = document.getElementById('device-list-container');
-        const scrollPos = listContainer.scrollTop; // Giữ vị trí cuộn
+        const scrollPos = listContainer.scrollTop; 
         renderTable();
         listContainer.scrollTop = scrollPos;
         updateParentSelect();
@@ -259,7 +260,7 @@
             div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div><span class="badge" style="background:${color}">${d.type.toUpperCase()}</span>`;
             
             div.onclick = () => selectDevice(d, false);
-            div.ondblclick = () => selectDevice(d, true); // Zoom on Double Click
+            div.ondblclick = () => selectDevice(d, true); 
             container.appendChild(div);
         });
     }
@@ -304,26 +305,53 @@
             mapMarkers[device.id].openPopup();
             if (forceZoom && device.geo) map.flyTo([device.geo.lat, device.geo.lng], 18);
         }
+    }
+
+    // --- EXTENT / AUTO ARRANGE FUNCTION (TÍNH NĂNG MỚI) ---
+    window.zoomExtent = function() {
+        if (allDevices.length === 0) return alert("Chưa có thiết bị nào!");
+
+        // 1. Tìm giới hạn nhỏ nhất (Min X, Min Y)
+        let minX = Infinity;
+        let minY = Infinity;
+
+        allDevices.forEach(d => {
+            if (d.sld.x < minX) minX = d.sld.x;
+            if (d.sld.y < minY) minY = d.sld.y;
+        });
+
+        // 2. Tính độ lệch để đưa phần tử nhỏ nhất về tọa độ (50, 50)
+        const targetX = 50;
+        const targetY = 50;
+        const shiftX = targetX - minX;
+        const shiftY = targetY - minY;
+
+        // 3. Chuẩn bị object update cho Firebase (Atomic update)
+        const updates = {};
         
-        // Scroll SLD view to element if needed
-        scrollToSLDElement(device);
-    }
+        allDevices.forEach(d => {
+            const newX = d.sld.x + shiftX;
+            const newY = d.sld.y + shiftY;
+            
+            // Cập nhật vào đường dẫn cụ thể
+            updates['system_nodes/' + d.id + '/sld/x'] = newX;
+            updates['system_nodes/' + d.id + '/sld/y'] = newY;
+        });
 
-    // --- RESCUE POSITION FUNCTION (Fix lỗi văng thiết bị) ---
-    window.rescuePosition = function() {
-        document.getElementById('inp-x').value = 50;
-        document.getElementById('inp-y').value = 50;
-        saveDevice();
-        alert("Đã thu hồi thiết bị về tọa độ (50, 50).");
-    }
-
-    // --- AUTO SCROLL SLD ---
-    function scrollToSLDElement(device) {
-        if (!device.sld) return;
-        const view = document.getElementById('view-sld');
-        // Simple Logic: Nếu nó nằm ngoài vùng nhìn thấy, scroll tới đó
-        // (Đây là logic cơ bản, có thể cải tiến smooth scroll)
-        // view.scrollTo({ left: device.sld.x - 100, top: device.sld.y - 100, behavior: 'smooth' });
+        // 4. Gửi lệnh cập nhật 1 lần duy nhất
+        update(ref(db), updates)
+            .then(() => {
+                alert("Đã dịch chuyển toàn bộ thiết bị về khung nhìn!");
+                // Nếu đang chọn thiết bị nào đó, cập nhật lại form hiển thị
+                if (selectedId) {
+                    const current = allDevices.find(d => d.id === selectedId);
+                    if (current) {
+                        document.getElementById('inp-x').value = current.sld.x + shiftX;
+                        document.getElementById('inp-y').value = current.sld.y + shiftY;
+                    }
+                }
+            })
+            .catch(error => alert("Lỗi khi cập nhật: " + error.message));
     }
 
     // --- RESET / NEW ---
@@ -338,7 +366,6 @@
         document.getElementById('inp-lat').value = center.lat.toFixed(6);
         document.getElementById('inp-lng').value = center.lng.toFixed(6);
         
-        // Vị trí mặc định an toàn cho SLD
         document.getElementById('inp-x').value = 100;
         document.getElementById('inp-y').value = 100;
 
@@ -392,7 +419,6 @@
 
     function renderSLD() {
         sldCanvas.innerHTML = '';
-        
         allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x => x.id == d.parent); if(p) drawSLDLine(p, d); } });
 
         allDevices.forEach(d => {
@@ -405,7 +431,6 @@
             if (d.type === 'bus') content = `<span style="color:white; font-size:9px">${d.id}</span>`;
             el.innerHTML = content;
 
-            // DRAG LOGIC (WITH BOUNDS CHECKING)
             el.onmousedown = function(e) {
                 if(d.id !== selectedId) selectDevice(d, false);
                 let shiftX = e.clientX - el.getBoundingClientRect().left;
@@ -414,15 +439,8 @@
                 function moveAt(pageX, pageY) {
                     let newX = pageX - shiftX - sldCanvas.getBoundingClientRect().left + sldCanvas.scrollLeft;
                     let newY = pageY - shiftY - sldCanvas.getBoundingClientRect().top + sldCanvas.scrollTop;
-                    
-                    // BOUNDARIES CHECK (Fix lỗi kéo ra ngoài biên âm)
-                    newX = Math.max(0, newX); 
-                    newY = Math.max(0, newY);
-                    
-                    // SNAP GRID
-                    newX = Math.round(newX/10)*10;
+                    newX = Math.round(newX/10)*10; 
                     newY = Math.round(newY/10)*10;
-
                     el.style.left = newX + 'px'; el.style.top = newY + 'px';
                     document.getElementById('inp-x').value = newX;
                     document.getElementById('inp-y').value = newY;
@@ -464,7 +482,7 @@
         mapPolylines.forEach(l => map.removeLayer(l));
         mapMarkers = {}; mapPolylines = [];
 
-        // 1. Vẽ Dây Map
+        // Dây
         allDevices.forEach(d => {
             if (d.parent && d.geo) {
                 const parent = allDevices.find(p => p.id === d.parent);
@@ -476,7 +494,7 @@
             }
         });
 
-        // 2. Vẽ Markers
+        // Marker
         allDevices.forEach(d => {
             if(!d.geo) return;
             const marker = L.marker([d.geo.lat, d.geo.lng], { draggable: true }).addTo(map);
