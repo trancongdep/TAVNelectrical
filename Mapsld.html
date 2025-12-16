@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ thống Điện Xưởng 1 trên Bản Đồ (GIS)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+
+        /* Style cho các Node (Tủ điện/Máy biến áp) trên bản đồ */
+        .map-node {
+            background: white;
+            border: 2px solid #333;
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 4px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+            transition: all 0.3s;
+        }
+
+        /* Trạng thái ĐÓNG (Có dòng đi qua về mặt cơ khí) */
+        .node-closed { border-color: #d32f2f; color: #d32f2f; }
+        
+        /* Trạng thái MỞ (Ngắt mạch) */
+        .node-open { border-color: #2e7d32; color: #2e7d32; border-style: dashed; background: #f1f8e9; }
+
+        /* Trạng thái CÓ ĐIỆN (Energized) - Nền sáng lên */
+        .node-energized { background-color: #ffccbc !important; box-shadow: 0 0 15px #ff3d00; }
+        .node-dead { background-color: #eee; }
+
+        /* Bảng chú thích */
+        .legend {
+            position: absolute; bottom: 20px; left: 20px;
+            background: white; padding: 10px; z-index: 1000;
+            border: 2px solid #ccc; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    
+    <div class="legend">
+        <b>ĐIỀU KHIỂN LƯỚI ĐIỆN</b><br>
+        🔴 Đường đỏ: Có điện<br>
+        ⚫ Đường đen: Mất điện<br>
+        Click vào tủ để Đóng/Cắt
+    </div>
+
+<script>
+    // =============================================================
+    // 1. KHỞI TẠO BẢN ĐỒ (Leaflet)
+    // =============================================================
+    // Tọa độ ví dụ (Sân bay Tân Sơn Nhất - Giả lập nhà xưởng)
+    const factoryLat = 10.814; 
+    const factoryLng = 106.666;
+    
+    const map = L.map('map').setView([factoryLat, factoryLng], 17);
+
+    // Thêm lớp nền bản đồ (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // =============================================================
+    // 2. DỮ LIỆU HỆ THỐNG (Có tọa độ Lat/Lng)
+    // =============================================================
+    // Thay vì x, y (pixel), ta dùng lat, lng (địa lý)
+    
+    const nodes = [
+        // TRẠM BIẾN ÁP (Nguồn) - Góc xưởng
+        { id: 'TR1', type: 'source', lat: 10.816, lng: 106.664, label: 'TRẠM BA\n22kV' },
+
+        // TỦ TỔNG MSB
+        { id: 'MSB', parent: 'TR1', lat: 10.8155, lng: 106.665, label: 'MSB-1' },
+
+        // DB1-1 (Phân phối khu vực 1)
+        { id: 'DB1_1', parent: 'MSB', lat: 10.815, lng: 106.666, label: 'DB1-1' },
+
+        // TRỤC CHÍNH DB1-1.2 (Line Sơn)
+        { id: 'DB1_1_2', parent: 'DB1_1', lat: 10.8145, lng: 106.667, label: 'Line Sơn\nDB1-1.2' },
+
+            // Các nhánh con rải rác trong xưởng
+            { id: 'PaintA', parent: 'DB1_1_2', lat: 10.814, lng: 106.666, label: 'Paint A' },
+            { id: 'PaintB', parent: 'DB1_1_2', lat: 10.814, lng: 106.668, label: 'Paint B' },
+            { id: 'PaintC', parent: 'DB1_1_2', lat: 10.8135, lng: 106.667, label: 'Paint C' },
+            { id: 'PaintD', parent: 'DB1_1_2', lat: 10.8135, lng: 106.665, label: 'Paint D' },
+
+        // NGUỒN DỰ PHÒNG (Máy phát) - Góc khác
+        { id: 'GEN', type: 'source', lat: 10.813, lng: 106.669, label: 'MÁY PHÁT\nDB9-2' },
+        { id: 'ATS', parent: 'GEN', lat: 10.8135, lng: 106.6685, label: 'Tủ ATS', state: 'open' } // Đang mở
+    ];
+
+    // Khởi tạo trạng thái
+    nodes.forEach(n => {
+        n.state = n.state || 'closed'; // Mặc định đóng
+        n.isEnergized = false;
+        if(n.type === 'source') n.isEnergized = true;
+        
+        // Lưu tham chiếu đến marker/polyline trên bản đồ để update sau
+        n.mapMarker = null; 
+        n.mapLine = null;
+    });
+
+    // =============================================================
+    // 3. HÀM VẼ TRÊN BẢN ĐỒ (RENDER MAP)
+    // =============================================================
+    
+    function drawMapEntities() {
+        nodes.forEach(node => {
+            // A. VẼ DÂY (Polyline) nối với cha
+            if (node.parent) {
+                const parent = nodes.find(n => n.id === node.parent);
+                if (parent) {
+                    // Tạo đường dây
+                    const line = L.polyline(
+                        [[parent.lat, parent.lng], [node.lat, node.lng]], 
+                        { color: 'black', weight: 4, opacity: 0.6 }
+                    ).addTo(map);
+                    
+                    node.mapLine = line; // Lưu tham chiếu
+                }
+            }
+
+            // B. VẼ TỦ ĐIỆN (Marker)
+            // Dùng DivIcon để tùy biến CSS (hình vuông thay vì cái ghim)
+            const icon = L.divIcon({
+                className: 'custom-pin', // Class ảo, ta sẽ chỉnh style trực tiếp trong hàm update
+                html: `<div id="icon-${node.id}" class="map-node" style="width:60px; height:40px;">${node.label}</div>`,
+                iconSize: [60, 40],
+                iconAnchor: [30, 20]
+            });
+
+            const marker = L.marker([node.lat, node.lng], { icon: icon }).addTo(map);
+            
+            // Sự kiện Click
+            marker.on('click', () => {
+                if (node.type !== 'source') { // Nguồn không cắt được ở đây
+                    toggleNode(node.id);
+                }
+            });
+
+            node.mapMarker = marker;
+        });
+        
+        updateVisuals(); // Cập nhật màu sắc lần đầu
+    }
+
+    // =============================================================
+    // 4. LOGIC XỬ LÝ (GIỐNG HỆT SLD CŨ)
+    // =============================================================
+
+    function toggleNode(id) {
+        const n = nodes.find(x => x.id === id);
+        if (n) {
+            n.state = n.state === 'closed' ? 'open' : 'closed';
+            recalcPower();
+            updateVisuals();
+        }
+    }
+
+    function recalcPower() {
+        // Reset
+        nodes.forEach(n => { if(n.type !== 'source') n.isEnergized = false; });
+        // Lan truyền
+        nodes.filter(n => n.type === 'source').forEach(src => propagate(src));
+    }
+
+    function propagate(p) {
+        // Logic: Cha có điện & (Cha là nguồn HOẶC Cha đang đóng)
+        if (p.isEnergized && (p.type === 'source' || p.state === 'closed')) {
+            const children = nodes.filter(n => n.parent === p.id);
+            children.forEach(c => {
+                c.isEnergized = true;
+                propagate(c);
+            });
+        }
+    }
+
+    // =============================================================
+    // 5. CẬP NHẬT GIAO DIỆN BẢN ĐỒ
+    // =============================================================
+    function updateVisuals() {
+        nodes.forEach(node => {
+            // 1. Cập nhật màu DÂY
+            if (node.mapLine) {
+                // Dây có điện khi: Cha có điện & Cha đóng
+                const parent = nodes.find(n => n.id === node.parent);
+                const isLineLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
+                
+                if (isLineLive) {
+                    node.mapLine.setStyle({ color: '#ff3d00', weight: 6, opacity: 1 }); // Đỏ, đậm
+                } else {
+                    node.mapLine.setStyle({ color: '#555', weight: 4, opacity: 0.5 }); // Xám, mờ
+                }
+            }
+
+            // 2. Cập nhật màu TỦ (ICON)
+            // Vì Leaflet render HTML string, ta phải tìm element DOM sau khi render
+            const el = document.getElementById(`icon-${node.id}`);
+            if (el) {
+                // Reset class
+                el.className = 'map-node';
+                
+                // Trạng thái Đóng/Cắt
+                if (node.type !== 'source') {
+                    el.classList.add(node.state === 'closed' ? 'node-closed' : 'node-open');
+                }
+
+                // Trạng thái Có điện
+                if (node.isEnergized) {
+                    el.classList.add('node-energized');
+                } else {
+                    el.classList.add('node-dead');
+                }
+            }
+        });
+    }
+
+    // Khởi chạy
+    recalcPower();
+    drawMapEntities();
+
+</script>
+</body>
+</html>
