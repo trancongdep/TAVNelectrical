@@ -2,153 +2,194 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>SLD Xưởng 1 - Cập nhật Graphviz</title>
+    <title>Sơ đồ Trạm Biến Áp & Xưởng 1 (Full Option)</title>
     <style>
-        body { font-family: 'Segoe UI', monospace; background-color: #f4f4f4; margin: 0; padding: 20px; overflow: auto; }
+        body { font-family: 'Segoe UI', monospace; background-color: #f4f4f9; margin: 0; padding: 20px; }
         
         #drawing-board {
             position: relative;
-            width: 1800px; height: 1200px; /* Tăng kích thước để chứa đủ */
+            width: 1800px; height: 1400px; /* Tăng chiều cao để chứa trạm biến áp */
             background-color: white;
-            border: 1px solid #999;
+            border: 2px solid #333;
             margin: 0 auto;
             background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px);
-            background-size: 40px 40px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            background-size: 50px 50px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
-        /* TỦ ĐIỆN & NÚT */
+        /* --- CÁC LOẠI NODE (THIẾT BỊ) --- */
         .node {
             position: absolute; z-index: 10;
-            background: white; border: 2px solid #333;
-            width: 100px; padding: 5px;
-            text-align: center; cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            user-select: none;
-            font-size: 11px;
+            cursor: pointer; text-align: center;
+            transition: all 0.2s; user-select: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .node:hover { transform: scale(1.05); z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.2); }
-        .node-label { font-weight: bold; color: #222; margin-bottom: 2px; }
-        .node-cable { font-size: 9px; color: #666; font-style: italic; }
-        .status-badge { display: inline-block; margin-top: 3px; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: bold; }
+        .node:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .label { font-size: 10px; font-weight: bold; color: #333; background: rgba(255,255,255,0.8); padding: 1px 3px; border-radius: 3px; white-space: nowrap; margin-top: 5px; }
 
-        /* TRẠNG THÁI */
-        .closed { border-color: #d32f2f; } /* Đóng - Đỏ */
-        .open { border-color: #2e7d32; border-style: dashed; opacity: 0.8; } /* Mở - Xanh */
+        /* 1. Nguồn Lưới (GRID) */
+        .grid-node {
+            width: 60px; height: 40px; border: 2px solid #1565c0; background: #e3f2fd;
+            border-radius: 50% 50% 0 0; /* Hình bán nguyệt */
+        }
         
-        .energized-node { background-color: #ffebee; } /* Có điện - Nền hồng */
-        .source-node { background-color: #e3f2fd !important; border-color: #1565c0 !important; }
-
-        /* DÂY DẪN */
-        .line {
-            position: absolute; z-index: 1;
-            background-color: #bdbdbd; /* Màu xám chết */
-            transition: background-color 0.3s;
+        /* 2. Dao Cách Ly (DS) - Disconnector */
+        .ds-node {
+            width: 40px; height: 40px; border: 2px solid #fbc02d; background: #fff9c4;
+            border-radius: 50%; /* Hình tròn */
         }
-        .energized-line { background-color: #ff3d00 !important; z-index: 5; } /* Đỏ rực khi có điện */
+        .ds-node::after { content: "/"; font-weight: bold; font-size: 20px; color: #f9a825; }
 
-        /* TOOLTIP & LEGEND */
-        .legend { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border: 1px solid #ccc; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        /* 3. Máy Cắt (CB: VCB, ACB, MCCB) */
+        .cb-node {
+            width: 40px; height: 40px; border: 2px solid #455a64; background: white;
+            border-radius: 0; /* Hình vuông */
+        }
+        .cb-node::after { content: "X"; font-weight: bold; font-size: 18px; color: #455a64; }
+
+        /* 4. Máy Biến Áp (TR) */
+        .tr-node {
+            width: 50px; height: 80px; background: transparent; border: none;
+        }
+        .tr-circle {
+            width: 46px; height: 46px; border: 2px solid #2e7d32; background: #e8f5e9;
+            border-radius: 50%; position: absolute; left: 0;
+        }
+        .tr-top { top: 0; z-index: 2; }
+        .tr-bottom { bottom: 0; z-index: 1; margin-top: -10px; }
+
+        /* 5. Thanh Cái (Busbar) */
+        .busbar-node {
+            height: 10px; background: #424242; border: 1px solid black; border-radius: 5px;
+            width: 100px; /* Sẽ được override trong JS */
+        }
+
+        /* 6. Tủ DB (Distribution Board) */
+        .db-node {
+            width: 80px; height: 50px; border: 2px solid #333; background: white;
+        }
+
+        /* --- TRẠNG THÁI (State Styles) --- */
+        /* CB Đóng/Cắt */
+        .closed { border-color: #d32f2f !important; } .closed::after { color: #d32f2f; }
+        .open { border-color: #388e3c !important; border-style: dashed !important; opacity: 0.7; } .open::after { color: #388e3c; }
+
+        /* Có điện (Energized) */
+        .energized-device { background-color: #ffccbc !important; }
+        .energized-bus { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
+        .tr-circle.energized-device { background-color: #ffccbc !important; }
+
+        /* Dây dẫn */
+        .line { position: absolute; z-index: 1; background-color: #9e9e9e; transition: background 0.3s; }
+        .energized-line { background-color: #ff3d00 !important; z-index: 5; }
+
+        /* --- LEGEND --- */
+        .legend { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border: 1px solid #999; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
     <div class="legend">
-        <strong>CHÚ THÍCH</strong><br>
-        <div style="margin-top:5px"><span style="color:#ff3d00; font-size:18px">■</span> Dây có điện</div>
-        <div><span style="color:#bdbdbd; font-size:18px">■</span> Dây mất điện</div>
-        <div style="margin-top:5px; border:1px solid #d32f2f; color:#d32f2f; padding:2px; text-align:center">CB ĐÓNG (ON)</div>
-        <div style="margin-top:5px; border:1px dashed #2e7d32; color:#2e7d32; padding:2px; text-align:center">CB CẮT (OFF)</div>
+        <strong>CHÚ GIẢI KÝ HIỆU</strong>
+        <div style="margin-top:5px">⚡ <span style="color:#ff3d00">Màu Đỏ</span>: Có điện (Live)</div>
+        <div>⚪ <span style="color:#999">Màu Xám</span>: Mất điện (Dead)</div>
+        <hr>
+        <div>🔲 <b>CB</b>: Máy cắt (Click để Đóng/Cắt)</div>
+        <div>🟡 <b>DS</b>: Dao cách ly</div>
+        <div>♾️ <b>TR</b>: Máy biến áp</div>
+        <div>➖ <b>Busbar</b>: Thanh cái</div>
     </div>
 
     <div id="drawing-board"></div>
 
 <script>
     // =========================================================================
-    // 1. CẤU TRÚC DỮ LIỆU (Mapping từ mã Graphviz sang tọa độ Canvas)
+    // 1. CẤU HÌNH DỮ LIỆU (TOPOLOGY)
     // =========================================================================
-    // Logic tọa độ: 
-    // - Nguồn MSB bên trái trên cao.
-    // - DB1-1.2 là trục chính nằm giữa.
-    // - Các nhánh con tỏa ra xung quanh.
+    // Tọa độ (x, y) được căn chỉnh để MSB nằm trên, DB phân phối nằm dưới
     
     const nodes = [
-        // --- CỤM NGUỒN CHÍNH (MSB1-1) ---
-        { id: 'MSB1-1', type: 'source', x: 200, y: 50, label: 'Nguon MSB1-1\n(Tu Chinh)' },
-        { id: 'DB1-1', parent: 'MSB1-1', x: 200, y: 150, label: 'DB1-1\n(Tu Tong)', cable: '4x300mm+N+PE' },
+        // --- CỤM CAO THẾ & TRẠM BIẾN ÁP (UPSTREAM) ---
+        { id: 'GRID', type: 'grid', x: 850, y: 20, label: 'Lưới 22kV' },
+        
+        { id: 'DS_HV', type: 'ds', parent: 'GRID', x: 850, y: 100, label: 'DS-01 (Dao CL)', state: 'closed' },
+        
+        { id: 'VCB', type: 'cb', parent: 'DS_HV', x: 850, y: 180, label: 'VCB (Cao Thế)', state: 'closed' },
+        
+        { id: 'TR1', type: 'tr', parent: 'VCB', x: 850, y: 260, label: 'MBA 2000kVA' },
 
-            // Nhánh phụ từ DB1-1
-            { id: 'DB1-1.3', parent: 'DB1-1', x: 450, y: 150, label: 'DB1-1.3\n(Xu Ly CD)' },
-                { id: 'DB1-1.3.1', parent: 'DB1-1.3', x: 450, y: 250, label: 'DB1-1.3.1', cable: '4x80mm+N+PE' },
+        { id: 'ACB_MAIN', type: 'cb', parent: 'TR1', x: 850, y: 380, label: 'ACB Tổng', state: 'closed' },
+
+        // --- BUSBAR TỔNG (MSB) ---
+        // Thanh cái dài ngang để phân phối đi các nhánh
+        { id: 'BUS_MSB', type: 'bus', parent: 'ACB_MAIN', x: 850, y: 450, w: 800, label: 'Busbar MSB 0.4kV' },
+
+
+        // --- CÁC NHÁNH TỪ BUSBAR TỔNG ---
+        
+        // 1. Nhánh Tủ DB1-1 (Theo bản vẽ cũ) -> Đi sang phải
+        { id: 'MCCB_DB1_1', type: 'cb', parent: 'BUS_MSB', x: 1300, y: 550, label: 'MCCB Cấp DB1-1', state: 'closed' },
+        { id: 'DB1_1', type: 'db', parent: 'MCCB_DB1_1', x: 1300, y: 650, label: 'Tủ DB1-1' },
             
-            { id: 'DB1-1.1', parent: 'DB1-1', x: 600, y: 150, label: 'DB1-1.1' },
+            // Con của DB1-1
+            { id: 'DB1_1_3', type: 'db', parent: 'DB1_1', x: 1150, y: 750, label: 'DB1-1.3\n(Xử lý CD)' },
+            { id: 'DB1_1_1', type: 'db', parent: 'DB1_1', x: 1450, y: 750, label: 'DB1-1.1' },
 
-        // --- TRỤC PHÂN PHỐI CHÍNH (DB1-1.2) ---
-        // Nằm thẳng dưới DB1-1
-        { id: 'DB1-1.2', parent: 'DB1-1', x: 200, y: 300, label: 'DB1-1.2\n(Phan Phoi Chinh)', cable: '4x300mm+N+PE' },
+        // 2. Nhánh TRỤC CHÍNH DB1-1.2 (Giữa)
+        { id: 'MCCB_1_2', type: 'cb', parent: 'BUS_MSB', x: 850, y: 550, label: 'MCCB Cấp 1.2', state: 'closed' },
+        { id: 'DB1_1_2', type: 'db', parent: 'MCCB_1_2', x: 850, y: 650, label: 'Phân Phối\nDB1-1.2' },
+        
+        // --- CÁC LINE SƠN TỪ DB1-1.2 (Xòe ra hình quạt) ---
+        
+            // Paint B (Trái)
+            { id: 'CB_PB1', type: 'cb', parent: 'DB1_1_2', x: 200, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PB1', type: 'db', parent: 'CB_PB1', x: 200, y: 900, label: 'Paint B\n1.2.1' },
 
-            // === CÁC NHÁNH CON TỪ DB1-1.2 ===
-            
-            // 1. Nhánh Paint D & CD Area (Bên Phải)
-            { id: 'DB1-1.2.3', parent: 'DB1-1.2', x: 400, y: 400, label: 'DB1-1.2.3', cable: '4x30mm+N+PE' },
-                { id: 'DB1-1.2.3.1', parent: 'DB1-1.2.3', x: 400, y: 500, label: 'DB1-1.2.3.1', cable: '4x10mm+N+PE' },
+            { id: 'CB_PB2', type: 'cb', parent: 'DB1_1_2', x: 350, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PB2', type: 'db', parent: 'CB_PB2', x: 350, y: 900, label: 'Paint B\n1.2.2' },
 
-            { id: 'DB1-1.2.4', parent: 'DB1-1.2', x: 550, y: 400, label: 'DB1-1.2.4', cable: '4x80mm+N+PE' },
+            // Paint A & D (Giữa)
+            { id: 'CB_PA', type: 'cb', parent: 'DB1_1_2', x: 500, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PA', type: 'db', parent: 'CB_PA', x: 500, y: 900, label: 'Paint A\n1.2.8' },
 
-            { id: 'DB1-1.2.5', parent: 'DB1-1.2', x: 700, y: 400, label: 'DB1-1.2.5', cable: '4x50mm+N+PE' },
-                { id: 'DB1-1.2.5.1', parent: 'DB1-1.2.5', x: 700, y: 500, label: 'DB1-1.2.5.1', cable: '4x10mm+N+PE' },
+            { id: 'CB_PD3', type: 'cb', parent: 'DB1_1_2', x: 650, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PD3', type: 'db', parent: 'CB_PD3', x: 650, y: 900, label: 'Paint D\n1.2.3' },
 
-            { id: 'DB1-1.2.6A', parent: 'DB1-1.2', x: 850, y: 400, label: 'DB1-1.2.6\n(Tren)', cable: '4x10mm+N+PE' },
+            { id: 'CB_PD4', type: 'cb', parent: 'DB1_1_2', x: 800, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PD4', type: 'db', parent: 'CB_PD4', x: 800, y: 900, label: 'Paint D\n1.2.4' },
 
-            // 2. Nhánh Paint B (Bên Trái)
-            { id: 'DB1-1.2.1', parent: 'DB1-1.2', x: 50, y: 400, label: 'DB1-1.2.1', cable: '4x70mm+N+PE' },
+            // Paint C (Phải)
+            { id: 'CB_PC6', type: 'cb', parent: 'DB1_1_2', x: 950, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PC6', type: 'db', parent: 'CB_PC6', x: 950, y: 900, label: 'Paint C\n1.2.6' },
 
-            { id: 'DB1-1.2.2', parent: 'DB1-1.2', x: -100, y: 400, label: 'DB1-1.2.2', cable: '4x70mm+N+PE' }, // Tọa độ âm sẽ được offset khi vẽ
-                { id: 'DB1-1.2.2.1', parent: 'DB1-1.2.2', x: -150, y: 500, label: 'DB1-1.2.2.1', cable: '2x6mm+N+PE' },
-                { id: 'DB1-1.2.2.2', parent: 'DB1-1.2.2', x: -50, y: 500, label: 'DB1-1.2.2.2', cable: '2x6mm+N+PE' },
+            { id: 'CB_PC7', type: 'cb', parent: 'DB1_1_2', x: 1100, y: 800, label: 'CB', state: 'closed' },
+            { id: 'DB_PC7', type: 'db', parent: 'CB_PC7', x: 1100, y: 900, label: 'Paint C\n1.2.7' },
 
-            // 3. Nhánh Paint A (Giữa Trái)
-            { id: 'DB1-1.2.8', parent: 'DB1-1.2', x: 200, y: 600, label: 'DB1-1.2.8', cable: '4x70mm+N+PE' }, // Xuống sâu hơn
-                { id: 'DB1-1.2.8.1', parent: 'DB1-1.2.8', x: 200, y: 700, label: 'DB1-1.2.8.1', cable: '4mm' },
+        // --- CỤM NGUỒN PHỤ (DB9-2) - BÊN TRÁI ---
+        { id: 'GEN_2', type: 'grid', x: 100, y: 20, label: 'Máy Phát/Nguồn 2' },
+        { id: 'DS_2', type: 'ds', parent: 'GEN_2', x: 100, y: 100, label: 'DS-02', state: 'open' }, // Đang mở
+        { id: 'CB_2', type: 'cb', parent: 'DS_2', x: 100, y: 180, label: 'CB Nguồn 2', state: 'closed' },
+        { id: 'DB9_2', type: 'db', parent: 'CB_2', x: 100, y: 300, label: 'Tủ DB9-2' },
 
-            // 4. Nhánh Paint C (Bên Phải Xa)
-            { id: 'DB1-1.2.6B', parent: 'DB1-1.2', x: 1000, y: 400, label: 'DB1-1.2.6\n(Duoi)', cable: '4x70mm+N+PE' },
-                { id: 'DB1-1.2.7.1', parent: 'DB1-1.2.6B', x: 1000, y: 500, label: 'DB1-1.2.7.1' },
-
-            { id: 'DB1-1.2.7', parent: 'DB1-1.2', x: 1150, y: 400, label: 'DB1-1.2.7', cable: '4x70mm+N+PE' },
-                { id: 'DB1-1.2.7.3', parent: 'DB1-1.2.7', x: 1100, y: 500, label: 'DB1-1.2.7.3' },
-                { id: 'DB1-1.2.7.2', parent: 'DB1-1.2.7', x: 1200, y: 500, label: 'DB1-1.2.7.2', cable: '4x4mm+N+PE' },
-
-            // 5. Tải Khác
-            { id: 'DB-1.2.1_Load', parent: 'DB1-1.2', x: 50, y: 600, label: 'DB-1.2.1', cable: '4x35mm+N+PE' },
-            { id: 'DB1-1.2.10', parent: 'DB1-1.2', x: 350, y: 600, label: 'DB1-1.2.10' },
-
-        // --- CỤM NGUỒN 2 (ĐỘC LẬP - DB9-2) ---
-        { id: 'DB9-2', type: 'source', x: 1400, y: 50, label: 'Nguon DB9-2' },
-        { id: 'DB9-2.1', parent: 'DB9-2', x: 1400, y: 150, label: 'DB9-2.1', cable: '4x120mm+N+PE' },
     ];
 
-    // Offset để căn giữa các node có tọa độ âm hoặc quá lệch
-    const OFFSET_X = 250; 
-    const OFFSET_Y = 50;
-
-    // Khởi tạo trạng thái
+    // =========================================================================
+    // 2. ENGINE VẼ (RENDERER)
+    // =========================================================================
+    
+    // Khởi tạo trạng thái mặc định
     nodes.forEach(n => {
-        n.state = 'closed';
         n.isEnergized = false;
-        if(n.type === 'source') n.isEnergized = true;
+        if(n.type === 'grid') n.isEnergized = true; // Nguồn luôn có điện
     });
 
     const board = document.getElementById('drawing-board');
 
-    // =========================================================================
-    // 2. ENGINE VẼ & TÍNH TOÁN
-    // =========================================================================
-    
     function draw() {
-        board.innerHTML = ''; // Clear canvas
+        board.innerHTML = ''; // Xóa cũ
         
-        // Vẽ DÂY trước (Lớp dưới)
+        // 1. Vẽ Dây (Lớp dưới)
         nodes.forEach(node => {
             if (node.parent) {
                 const parent = nodes.find(n => n.id === node.parent);
@@ -156,37 +197,48 @@
             }
         });
 
-        // Vẽ TỦ/NÚT sau (Lớp trên)
+        // 2. Vẽ Thiết Bị (Lớp trên)
         nodes.forEach(node => {
             const el = document.createElement('div');
             el.className = 'node';
-            if (node.type === 'source') el.classList.add('source-node');
-            else el.classList.add(node.state); // open/closed
+            el.id = node.id;
+            
+            // Set tọa độ (center)
+            let w = 40, h = 40; // Default
+            if (node.type === 'grid') { w=60; h=40; el.classList.add('grid-node'); }
+            else if (node.type === 'ds') { el.classList.add('ds-node'); }
+            else if (node.type === 'cb') { el.classList.add('cb-node'); }
+            else if (node.type === 'tr') { w=50; h=80; el.classList.add('tr-node'); }
+            else if (node.type === 'bus') { w=node.w || 100; h=10; el.classList.add('busbar-node'); }
+            else if (node.type === 'db') { w=80; h=50; el.classList.add('db-node'); }
 
-            // Màu sắc nếu có điện
-            if (node.isEnergized) el.classList.add('energized-node');
+            el.style.left = (node.x - w/2) + 'px';
+            el.style.top = (node.y - h/2) + 'px';
+            el.style.width = w + 'px';
+            el.style.height = h + 'px';
 
-            // Vị trí
-            el.style.left = (node.x + OFFSET_X) + 'px';
-            el.style.top = (node.y + OFFSET_Y) + 'px';
-
-            // Nội dung
-            let statusHtml = '';
-            if (node.type !== 'source') {
-                const txt = node.state === 'closed' ? 'ON' : 'OFF';
-                const color = node.state === 'closed' ? '#d32f2f' : '#2e7d32';
-                statusHtml = `<div class="status-badge" style="color:${color}; border:1px solid ${color}">${txt}</div>`;
+            // Nội dung đặc biệt cho TR (2 vòng tròn)
+            if (node.type === 'tr') {
+                el.innerHTML = `
+                    <div class="tr-circle tr-top ${node.isEnergized ? 'energized-device' : ''}"></div>
+                    <div class="tr-circle tr-bottom ${node.isEnergized ? 'energized-device' : ''}"></div>
+                    <div style="position:absolute; bottom:-20px" class="label">${node.label}</div>
+                `;
+            } else {
+                // Label chung
+                el.innerHTML += `<div style="position:absolute; bottom:-25px" class="label">${node.label}</div>`;
             }
 
-            el.innerHTML = `
-                <div class="node-label">${node.label.replace(/\n/g, '<br>')}</div>
-                <div class="node-cable">${node.cable || ''}</div>
-                ${statusHtml}
-            `;
-
-            // Click Event
-            if (node.type !== 'source') {
+            // Apply style trạng thái
+            if (node.type === 'cb' || node.type === 'ds') {
+                el.classList.add(node.state); // open/closed class
                 el.onclick = () => toggle(node.id);
+            }
+            
+            // Màu sắc năng lượng
+            if (node.isEnergized) {
+                if(node.type === 'bus') el.classList.add('energized-bus');
+                else if(node.type !== 'tr') el.classList.add('energized-device');
             }
 
             board.appendChild(el);
@@ -194,45 +246,37 @@
     }
 
     function drawLine(p, c) {
-        // Tọa độ thực sau offset
-        const x1 = p.x + OFFSET_X + 50; // +50 vì width node = 100, lấy tâm
-        const y1 = p.y + OFFSET_Y + 50; // lấy mép dưới
-        const x2 = c.x + OFFSET_X + 50;
-        const y2 = c.y + OFFSET_Y;      // lấy mép trên
+        // Màu sắc dây: Phụ thuộc vào Cha (Có điện & Đóng mạch)
+        let isLive = p.isEnergized;
+        
+        // Nếu cha là thiết bị đóng cắt (CB, DS), phải kiểm tra trạng thái đóng
+        if ((p.type === 'cb' || p.type === 'ds') && p.state !== 'closed') {
+            isLive = false;
+        }
 
-        // Trạng thái dây: Cha có điện VÀ Cha đóng
-        const isLive = p.isEnergized && (p.type === 'source' || p.state === 'closed');
-        const colorClass = isLive ? 'energized-line' : '';
+        const cls = isLive ? 'energized-line' : '';
+        const x1 = p.x, y1 = p.y + (p.type==='tr'?40:20); // Điểm dưới cha
+        const x2 = c.x, y2 = c.y - (c.type==='tr'?40:20); // Điểm trên con
 
-        // Vẽ kiểu Manhattan (Vuông góc)
+        // Vẽ dây vuông góc (Manhattan)
         const midY = y1 + (y2 - y1) / 2;
-
-        // 1. Dọc xuống
-        createSegment(x1, y1, x1, midY, colorClass);
-        // 2. Ngang qua
-        createSegment(x1, midY, x2, midY, colorClass);
-        // 3. Dọc tới đích
-        createSegment(x2, midY, x2, y2, colorClass);
+        createSeg(x1, y1, x1, midY, cls); // Dọc 1
+        createSeg(x1, midY, x2, midY, cls); // Ngang
+        createSeg(x2, midY, x2, y2, cls); // Dọc 2
     }
 
-    function createSegment(x1, y1, x2, y2, cls) {
-        if (x1 === x2 && y1 === y2) return;
-        const seg = document.createElement('div');
-        seg.className = 'line ' + cls;
-        
-        const w = Math.abs(x2 - x1) || 2;
-        const h = Math.abs(y2 - y1) || 2;
-        
-        seg.style.width = w + 'px';
-        seg.style.height = h + 'px';
-        seg.style.left = Math.min(x1, x2) + 'px';
-        seg.style.top = Math.min(y1, y2) + 'px';
-        
-        board.appendChild(seg);
+    function createSeg(x1, y1, x2, y2, cls) {
+        if (x1===x2 && y1===y2) return;
+        const l = document.createElement('div');
+        l.className = 'line ' + cls;
+        const w = Math.abs(x2-x1)||2, h = Math.abs(y2-y1)||2;
+        l.style.width = w+'px'; l.style.height = h+'px';
+        l.style.left = Math.min(x1,x2)+'px'; l.style.top = Math.min(y1,y2)+'px';
+        board.appendChild(l);
     }
 
     // =========================================================================
-    // 3. LOGIC LAN TRUYỀN ĐIỆN
+    // 3. LOGIC LAN TRUYỀN (POWER PROPAGATION)
     // =========================================================================
     function toggle(id) {
         const n = nodes.find(x => x.id === id);
@@ -244,18 +288,16 @@
     }
 
     function recalc() {
-        // Reset
-        nodes.forEach(n => {
-            if (n.type !== 'source') n.isEnergized = false;
-        });
-
-        // Propagate from sources
-        nodes.filter(n => n.type === 'source').forEach(src => propagate(src));
+        nodes.forEach(n => { if(n.type !== 'grid') n.isEnergized = false; });
+        nodes.filter(n => n.type === 'grid').forEach(src => propagate(src));
     }
 
     function propagate(p) {
-        // Điều kiện truyền: Cha có điện & (Là nguồn HOẶC Cha đang đóng)
-        if (p.isEnergized && (p.type === 'source' || p.state === 'closed')) {
+        // Logic truyền điện: Cha phải có điện. Nếu cha là Switch, cha phải Closed.
+        let canPropagate = p.isEnergized;
+        if ((p.type === 'cb' || p.type === 'ds') && p.state !== 'closed') canPropagate = false;
+
+        if (canPropagate) {
             const children = nodes.filter(n => n.parent === p.id);
             children.forEach(c => {
                 c.isEnergized = true;
