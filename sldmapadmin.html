@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Hệ thống Điện (Nâng cao)</title>
+    <title>Admin Panel - Hệ thống Điện (Final Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,35 +11,32 @@
         
         header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .header-title h2 { margin: 0; font-size: 18px; }
-        .header-title span { font-size: 11px; opacity: 0.7; }
 
         .container { display: flex; flex: 1; overflow: hidden; }
 
         /* SIDEBAR */
-        .sidebar { width: 360px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: width 0.3s; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+        .sidebar { width: 360px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         
-        /* FORM SECTION (COLLAPSIBLE) */
+        /* FORM SECTION */
         .form-section { border-bottom: 2px solid #f1f1f1; background: #fff; }
-        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; }
+        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; user-select: none; }
         .form-header:hover { background: #e9ecef; }
         
-        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; transition: all 0.3s; }
-        .form-content.collapsed { display: none; }
+        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; transition: all 0.3s ease; display: block; }
+        .form-content.hidden { display: none; } /* Class ẩn nội dung */
 
         .form-group { margin-bottom: 8px; }
         .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; box-sizing: border-box; }
-        .form-group input:focus { border-color: #007bff; outline: none; }
-
         .row { display: flex; gap: 10px; }
         .col { flex: 1; }
 
         /* BUTTONS */
         .btn-group { display: flex; gap: 5px; margin-top: 15px; }
         button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .btn-new { background: #3498db; color: white; } .btn-new:hover { background: #2980b9; }
-        .btn-save { background: #27ae60; color: white; } .btn-save:hover { background: #219150; }
-        .btn-del { background: #e74c3c; color: white; } .btn-del:hover { background: #c0392b; }
+        .btn-new { background: #3498db; color: white; }
+        .btn-save { background: #27ae60; color: white; }
+        .btn-del { background: #e74c3c; color: white; }
 
         /* LIST SECTION */
         .list-header { padding: 10px 15px; background: #f8f9fa; font-weight: bold; font-size: 13px; border-bottom: 1px solid #eee; }
@@ -57,7 +54,7 @@
         .editor-content { flex: 1; position: relative; display: none; }
         .editor-content.active { display: block; }
 
-        /* SLD CANVAS & NODES */
+        /* SLD CANVAS */
         #sld-canvas { width: 100%; height: 100%; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; position: relative; overflow: auto; }
         
         .admin-node {
@@ -67,17 +64,13 @@
             font-size: 10px; cursor: grab; user-select: none; z-index: 10;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.1); border-radius: 2px;
         }
-        .admin-node:active { cursor: grabbing; border-color: #007bff; }
         .admin-node.selected-node { border: 2px solid #007bff; background: #e3f2fd; z-index: 20; }
         
-        /* Node Types Styles in SLD */
+        /* Node Types Styles */
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        .type-tr { border-style: double; border-width: 3px; border-radius: 4px; }
-        .type-bus { height: 10px !important; background: #333; border: none; width: 150px; } /* Busbar dẹt */
-        .type-ds { border-style: dashed; border-color: #f39c12; }
+        .type-bus { height: 10px !important; background: #333; border: none; width: 150px; }
         .type-fco { border-top: 4px solid #e74c3c; }
 
-        /* WIRE */
         .wire { position: absolute; background: #999; z-index: 1; height: 2px; transform-origin: 0 0; pointer-events: none; }
 
         /* MAP */
@@ -90,10 +83,9 @@
 <header>
     <div class="header-title">
         <h2><i class="fas fa-bolt"></i> Admin Panel</h2>
-        <span>Hệ thống quản lý lưới điện thông minh</span>
     </div>
     <div style="font-size: 12px; color: #ccc;">
-        Trạng thái: <span id="connection-status" style="color: #2ecc71;">Đã kết nối</span>
+        <span id="status-msg">Sẵn sàng</span>
     </div>
 </header>
 
@@ -106,7 +98,7 @@
             </div>
             <div class="form-content" id="form-content">
                 <div class="form-group">
-                    <label>ID Thiết bị (Duy nhất)</label>
+                    <label>ID Thiết bị</label>
                     <input type="text" id="inp-id" placeholder="VD: CB-01">
                 </div>
                 <div class="form-group">
@@ -116,8 +108,8 @@
                 
                 <div class="row">
                     <div class="col form-group">
-                        <label>Loại thiết bị</label>
-                        <select id="inp-type" onchange="updateNodeType(this.value)">
+                        <label>Loại</label>
+                        <select id="inp-type">
                             <optgroup label="Thiết bị đóng cắt">
                                 <option value="cb">Máy cắt (CB)</option>
                                 <option value="fco">Cầu chì (FCO)</option>
@@ -134,7 +126,7 @@
                         </select>
                     </div>
                     <div class="col form-group">
-                        <label>Nguồn cấp (Parent)</label>
+                        <label>Nguồn cấp</label>
                         <select id="inp-parent"><option value="">-- Gốc --</option></select>
                     </div>
                 </div>
@@ -169,9 +161,10 @@
             </div>
         </div>
 
-        <div class="list-header">Danh sách thiết bị</div>
-        <div class="device-list" id="device-list-container">
-            </div>
+        <div class="list-header">
+            Danh sách thiết bị <span style="font-weight:normal; font-style:italic; font-size:11px">(Double click để Zoom map)</span>
+        </div>
+        <div class="device-list" id="device-list-container"></div>
     </div>
 
     <div class="main-editor">
@@ -195,7 +188,7 @@
     import { getDatabase, ref, onValue, set, remove } 
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- CẤU HÌNH FIREBASE CỦA BẠN ---
+    // --- CẤU HÌNH FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
       authDomain: "tavietnam-78ae8.firebaseapp.com",
@@ -212,12 +205,12 @@
     let allDevices = [];
     let selectedId = null;
     let mapMarkers = {};
+    let mapPolylines = []; // Lưu danh sách dây trên Map
 
     // INIT MAP
     const map = L.map('map-canvas').setView([10.8231, 106.6297], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // REFRESH MAP (Fix lỗi hiển thị khi tab ẩn)
     window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
 
     // FETCH DATA
@@ -226,28 +219,36 @@
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
         
+        // Giữ vị trí scroll của list nếu đang thao tác
+        const listContainer = document.getElementById('device-list-container');
+        const scrollPos = listContainer.scrollTop;
+
         renderTable();
+        listContainer.scrollTop = scrollPos;
+
         updateParentSelect();
         renderSLD();
         renderMap();
     });
 
-    // --- UI FUNCTIONS ---
+    // --- LOGIC GIAO DIỆN ---
 
-    // Toggle Form Collapse
+    // 1. Toggle Form (Đã sửa lỗi logic)
     window.toggleForm = function() {
         const content = document.getElementById('form-content');
         const icon = document.getElementById('toggle-icon');
-        if (content.classList.contains('collapsed')) {
-            content.classList.remove('collapsed');
+        
+        // Sử dụng class 'hidden' để ẩn hiện dứt khoát
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden'); // Hiện
             icon.className = 'fas fa-chevron-up';
         } else {
-            content.classList.add('collapsed');
+            content.classList.add('hidden'); // Ẩn
             icon.className = 'fas fa-chevron-down';
         }
     }
 
-    // Render List
+    // 2. Render List (Thêm Double Click)
     function renderTable() {
         const container = document.getElementById('device-list-container');
         container.innerHTML = '';
@@ -256,32 +257,34 @@
             const div = document.createElement('div');
             div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
             
-            // Badge màu sắc theo loại
             let color = '#7f8c8d';
             if (d.type === 'source') color = '#3498db';
-            else if (d.type === 'cb') color = '#2c3e50';
-            else if (d.type === 'tr') color = '#8e44ad';
-            else if (d.type === 'bus') color = '#27ae60';
+            if (d.type === 'cb') color = '#2c3e50';
+            if (d.type === 'bus') color = '#27ae60';
+            if (d.type === 'fco') color = '#e67e22';
 
             div.innerHTML = `
-                <div>
-                    <strong>${d.id}</strong><br>
-                    <span style="color:#666">${d.label}</span>
-                </div>
+                <div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>
                 <span class="badge" style="background:${color}">${d.type.toUpperCase()}</span>
             `;
-            div.onclick = () => selectDevice(d);
+            
+            // Single Click: Chỉ chọn và điền form (không Zoom)
+            div.onclick = () => selectDevice(d, false);
+            
+            // Double Click: Zoom Map
+            div.ondblclick = () => {
+                selectDevice(d, true); // true = forceZoom
+            };
+
             container.appendChild(div);
         });
     }
 
-    // Update Dropdown Parent
     function updateParentSelect() {
         const sel = document.getElementById('inp-parent');
-        const currentVal = sel.value; // Giữ giá trị đang chọn nếu có
+        const currentVal = sel.value; 
         sel.innerHTML = '<option value="">-- Gốc --</option>';
         allDevices.forEach(d => {
-            // Không cho phép chọn chính nó làm cha
             if (d.id !== selectedId) {
                 const opt = document.createElement('option');
                 opt.value = d.id;
@@ -292,74 +295,74 @@
         sel.value = currentVal;
     }
 
-    // SELECT DEVICE
-    window.selectDevice = function(device) {
+    // 3. Select Device
+    window.selectDevice = function(device, forceZoom = false) {
         selectedId = device.id;
 
-        // Fill Form
+        // Điền Form
         document.getElementById('inp-id').value = device.id;
-        document.getElementById('inp-id').disabled = true; // Khóa ID khi edit
+        document.getElementById('inp-id').disabled = true; 
         document.getElementById('inp-label').value = device.label;
         document.getElementById('inp-type').value = device.type;
-        updateParentSelect(); // Cập nhật lại list cha để loại trừ chính nó
+        updateParentSelect();
         document.getElementById('inp-parent').value = device.parent || "";
         
         document.getElementById('inp-x').value = device.sld ? device.sld.x : 0;
         document.getElementById('inp-y').value = device.sld ? device.sld.y : 0;
-        
-        document.getElementById('inp-lat').value = device.geo ? device.geo.lat : map.getCenter().lat;
-        document.getElementById('inp-lng').value = device.geo ? device.geo.lng : map.getCenter().lng;
+        document.getElementById('inp-lat').value = device.geo ? device.geo.lat : 0;
+        document.getElementById('inp-lng').value = device.geo ? device.geo.lng : 0;
 
-        // Mở rộng form nếu đang đóng để sửa
-        document.getElementById('form-content').classList.remove('collapsed');
+        // Mở Form để sửa
+        document.getElementById('form-content').classList.remove('hidden');
         document.getElementById('toggle-icon').className = 'fas fa-chevron-up';
 
-        // Update UI Highlights
-        renderTable();
+        renderTable(); // Update highlight
         renderSLD();
         
-        // ZOOM MAP ĐẾN THIẾT BỊ
-        if (device.geo && device.geo.lat && device.geo.lng) {
-            map.flyTo([device.geo.lat, device.geo.lng], 18);
-            // Mở popup marker nếu có
-            if (mapMarkers[device.id]) mapMarkers[device.id].openPopup();
+        // Xử lý Map Marker Highlight
+        if (mapMarkers[device.id]) {
+            mapMarkers[device.id].openPopup();
+            // CHỈ ZOOM KHI ĐƯỢC YÊU CẦU (DOUBLE CLICK)
+            if (forceZoom && device.geo) {
+                map.flyTo([device.geo.lat, device.geo.lng], 18);
+            }
         }
     }
 
-    // RESET FORM (ADD NEW)
+    // 4. Reset Form (Sửa lỗi không thêm được thiết bị thứ 2)
     window.resetForm = function() {
-        selectedId = null; // Quan trọng: Xóa trạng thái chọn
+        selectedId = null; // Quan trọng: Reset biến này
+        
         document.getElementById('inp-id').value = "";
-        document.getElementById('inp-id').disabled = false; // Mở khóa ID
+        document.getElementById('inp-id').disabled = false; // Mở khóa input
         document.getElementById('inp-label').value = "";
-        document.getElementById('inp-type').value = "cb";
-        updateParentSelect();
         document.getElementById('inp-parent').value = "";
         
-        // Tọa độ mặc định: Lấy tâm hiện tại của khung nhìn (để user dễ thấy)
-        document.getElementById('inp-x').value = 100;
-        document.getElementById('inp-y').value = 100;
-        
+        // Lấy tâm bản đồ hiện tại cho tiện
         const center = map.getCenter();
         document.getElementById('inp-lat').value = center.lat.toFixed(6);
         document.getElementById('inp-lng').value = center.lng.toFixed(6);
+        
+        // Reset SLD coords default
+        document.getElementById('inp-x').value = 100;
+        document.getElementById('inp-y').value = 100;
 
-        renderTable();
+        renderTable(); // Xóa highlight
         renderSLD();
+        document.getElementById('inp-id').focus(); // Focus vào ô nhập ID
     }
 
-    // SAVE
+    // 5. Save Logic
     window.saveDevice = function() {
         const id = document.getElementById('inp-id').value.trim();
         if(!id) return alert("Vui lòng nhập ID!");
 
-        // Nếu đang chọn thiết bị cũ, update nó. Nếu không, tạo mới.
         const newData = {
             id: id,
             label: document.getElementById('inp-label').value,
             type: document.getElementById('inp-type').value,
             parent: document.getElementById('inp-parent').value || null,
-            state: "closed", // Mặc định đóng
+            state: "closed",
             sld: {
                 x: parseInt(document.getElementById('inp-x').value) || 0,
                 y: parseInt(document.getElementById('inp-y').value) || 0
@@ -372,86 +375,71 @@
 
         set(ref(db, 'system_nodes/' + id), newData)
             .then(() => {
-                // Sau khi lưu, giữ trạng thái chọn thiết bị này
-                selectDevice(newData);
+                // Sau khi lưu, nếu là edit thì giữ nguyên, nếu là new thì reset để nhập tiếp?
+                // Theo yêu cầu của bạn "không thêm được cái tiếp theo", tốt nhất là
+                // sau khi lưu, ta chuyển sang chế độ edit cái vừa lưu.
+                // Muốn thêm cái nữa, người dùng bấm "Mới".
+                selectDevice(newData, false);
+                document.getElementById('status-msg').innerText = "Đã lưu " + id;
+                setTimeout(() => document.getElementById('status-msg').innerText = "Sẵn sàng", 2000);
             })
             .catch(e => alert("Lỗi: " + e.message));
     }
 
-    // DELETE
     window.deleteDevice = function() {
         if(!selectedId) return alert("Chọn thiết bị cần xóa!");
-        if(confirm(`Bạn chắc chắn muốn xóa thiết bị ${selectedId}?`)) {
+        if(confirm(`Xóa ${selectedId}?`)) {
             remove(ref(db, 'system_nodes/' + selectedId));
             resetForm();
         }
     }
 
-    // --- SLD EDITOR LOGIC ---
+    // --- SLD RENDERER ---
     const sldCanvas = document.getElementById('sld-canvas');
-
     function renderSLD() {
         sldCanvas.innerHTML = '';
         
-        // Vẽ Dây (Wire)
+        // Wire Loop
         allDevices.forEach(d => {
             if(d.parent) {
                 const p = allDevices.find(x => x.id == d.parent);
-                if(p) drawLine(p, d);
+                if(p) drawSLDLine(p, d);
             }
         });
 
-        // Vẽ Node
+        // Node Loop
         allDevices.forEach(d => {
             const el = document.createElement('div');
-            // Class chung + class loại thiết bị + class selected
             el.className = `admin-node type-${d.type} ${d.id === selectedId ? 'selected-node' : ''}`;
             el.style.left = d.sld.x + 'px';
             el.style.top = d.sld.y + 'px';
             
-            // Icon
-            let icon = '';
-            if(d.type === 'source') icon = '<i class="fas fa-bolt"></i>';
-            else if(d.type === 'tr') icon = '<i class="fas fa-infinity"></i>';
-            else if(d.type === 'cb') icon = '<b>CB</b>';
-            else if(d.type === 'fco') icon = '<b>FCO</b>';
-            else if(d.type === 'ds') icon = '<b>DS</b>';
+            let content = `<b>${d.id}</b><br>${d.label}`;
+            if (d.type === 'bus') content = `<span style="color:white; font-size:9px">${d.id}</span>`;
             
-            if(d.type === 'bus') {
-                el.innerHTML = `<span style="color:white; font-size:9px">${d.id}</span>`;
-            } else {
-                el.innerHTML = `${icon}<div style="margin-top:2px">${d.label}</div>`;
-            }
+            el.innerHTML = content;
 
-            // Kéo thả (Drag)
+            // Drag Logic
             el.onmousedown = function(e) {
-                if(d.id !== selectedId) selectDevice(d);
-                
+                if(d.id !== selectedId) selectDevice(d, false);
                 let shiftX = e.clientX - el.getBoundingClientRect().left;
                 let shiftY = e.clientY - el.getBoundingClientRect().top;
 
                 function moveAt(pageX, pageY) {
                     let newX = pageX - shiftX - sldCanvas.getBoundingClientRect().left + sldCanvas.scrollLeft;
                     let newY = pageY - shiftY - sldCanvas.getBoundingClientRect().top + sldCanvas.scrollTop;
-                    
-                    // Grid Snap (nhảy theo lưới 10px cho thẳng hàng)
-                    newX = Math.round(newX / 10) * 10;
-                    newY = Math.round(newY / 10) * 10;
-
-                    el.style.left = newX + 'px';
-                    el.style.top = newY + 'px';
-                    
+                    newX = Math.round(newX/10)*10; // Snap grid
+                    newY = Math.round(newY/10)*10;
+                    el.style.left = newX + 'px'; el.style.top = newY + 'px';
                     document.getElementById('inp-x').value = newX;
                     document.getElementById('inp-y').value = newY;
                 }
-
                 function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
                 document.addEventListener('mousemove', onMouseMove);
-
                 document.onmouseup = function() {
                     document.removeEventListener('mousemove', onMouseMove);
                     el.onmouseup = null;
-                    saveDevice(); // Auto save khi thả chuột
+                    saveDevice();
                 };
             };
             el.ondragstart = function() { return false; };
@@ -459,86 +447,75 @@
         });
     }
 
-    function drawLine(p, c) {
-        // Tọa độ tâm node
-        let pW = (p.type==='bus') ? 150 : 80; 
-        let cW = (c.type==='bus') ? 150 : 80; 
-        let pH = (p.type==='bus') ? 10 : 50; 
-        let cH = (c.type==='bus') ? 10 : 50;
-
-        const x1 = p.sld.x + pW/2; 
-        const y1 = p.sld.y + pH/2; 
-        const x2 = c.sld.x + cW/2; 
-        const y2 = c.sld.y + cH/2;
-        
-        // Vẽ Manhattan (Vuông góc)
+    function drawSLDLine(p, c) {
+        let pW = (p.type==='bus') ? 150 : 80; let pH = (p.type==='bus') ? 10 : 50;
+        let cW = (c.type==='bus') ? 150 : 80; let cH = (c.type==='bus') ? 10 : 50;
+        const x1 = p.sld.x + pW/2; const y1 = p.sld.y + pH/2;
+        const x2 = c.sld.x + cW/2; const y2 = c.sld.y + cH/2;
         const midY = y1 + (y2-y1)/2;
         
-        createSegment(x1, y1, x1, midY); // Dọc 1
-        createSegment(x1, midY, x2, midY); // Ngang
-        createSegment(x2, midY, x2, y2); // Dọc 2
+        createSegment(x1, y1, x1, midY);
+        createSegment(x1, midY, x2, midY);
+        createSegment(x2, midY, x2, y2);
     }
-
     function createSegment(x1, y1, x2, y2) {
         if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         const line = document.createElement('div');
         line.className = 'wire';
-        
-        const w = Math.abs(x2 - x1) || 2;
-        const h = Math.abs(y2 - y1) || 2;
-        
-        line.style.left = Math.min(x1, x2) + 'px';
-        line.style.top = Math.min(y1, y2) + 'px';
-        line.style.width = w + 'px';
-        line.style.height = h + 'px';
-        
+        const w = Math.abs(x2 - x1) || 2; const h = Math.abs(y2 - y1) || 2;
+        line.style.left = Math.min(x1, x2) + 'px'; line.style.top = Math.min(y1, y2) + 'px';
+        line.style.width = w + 'px'; line.style.height = h + 'px';
         sldCanvas.appendChild(line);
     }
 
-    // --- MAP EDITOR LOGIC ---
+    // --- MAP RENDERER ---
     function renderMap() {
-        // Clear markers cũ
+        // Xóa layer cũ
         for(let id in mapMarkers) map.removeLayer(mapMarkers[id]);
+        mapPolylines.forEach(l => map.removeLayer(l));
         mapMarkers = {};
+        mapPolylines = [];
 
+        // 1. Vẽ Dây nối (Polylines) - TÍNH NĂNG MỚI
+        allDevices.forEach(d => {
+            if (d.parent && d.geo) {
+                const parent = allDevices.find(p => p.id === d.parent);
+                if (parent && parent.geo) {
+                    const polyline = L.polyline(
+                        [[parent.geo.lat, parent.geo.lng], [d.geo.lat, d.geo.lng]], 
+                        { color: '#555', weight: 3, opacity: 0.7, dashArray: '5, 10' }
+                    ).addTo(map);
+                    mapPolylines.push(polyline);
+                }
+            }
+        });
+
+        // 2. Vẽ Markers
         allDevices.forEach(d => {
             if(!d.geo) return;
-
-            // Icon đặc biệt cho từng loại
-            let color = 'blue';
-            if(d.type === 'cb') color = 'black';
-            if(d.type === 'fco') color = 'red';
-            if(d.type === 'ds') color = 'orange';
-
-            // Tạo Marker (Draggable)
-            const marker = L.marker([d.geo.lat, d.geo.lng], {
-                draggable: true,
-                title: d.label
-            }).addTo(map);
-
-            if(d.id === selectedId) marker.setOpacity(1.0); else marker.setOpacity(0.6);
+            const marker = L.marker([d.geo.lat, d.geo.lng], { draggable: true }).addTo(map);
+            
+            if(d.id === selectedId) marker.setOpacity(1.0); else marker.setOpacity(0.7);
             
             marker.bindPopup(`<b>${d.id}</b><br>${d.label}`);
-
-            marker.on('click', () => selectDevice(d));
+            
+            // Click Map Marker -> Chỉ Select, KHÔNG Zoom
+            marker.on('click', () => selectDevice(d, false));
 
             marker.on('dragend', function(event) {
                 const pos = marker.getLatLng();
-                if(selectedId !== d.id) selectDevice(d);
+                if(selectedId !== d.id) selectDevice(d, false);
                 document.getElementById('inp-lat').value = pos.lat.toFixed(6);
                 document.getElementById('inp-lng').value = pos.lng.toFixed(6);
                 saveDevice();
             });
-
             mapMarkers[d.id] = marker;
         });
     }
 
-    // TAB SWITCHER
     window.switchTab = function(tab) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.editor-content').forEach(c => c.classList.remove('active'));
-        
         if(tab === 'sld') {
             document.querySelector(`button[onclick="switchTab('sld')"]`).classList.add('active');
             document.getElementById('view-sld').classList.add('active');
