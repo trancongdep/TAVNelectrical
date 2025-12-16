@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Lệnh Công Tác (Firebase)</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; line-height: 1.5; max-width: 210mm; margin: 0 auto; padding: 20px; color: #000; }
+        h1, h2, h3 { text-align: center; margin: 5px 0; text-transform: uppercase; }
+        h3 { font-size: 14pt; }
+        .header-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .form-group { margin-bottom: 10px; }
+        input[type="text"], input[type="number"], input[type="date"], textarea {
+            width: 100%; border: 1px solid #ccc; padding: 5px; font-family: inherit;
+        }
+        input.inline-input { border: none; border-bottom: 1px dotted #000; width: auto; flex-grow: 1; outline: none; }
+        .row { display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 5px; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #000; padding: 5px; text-align: center; vertical-align: middle; }
+        th { background-color: #f0f0f0; font-weight: bold; }
+        
+        .btn-group { margin: 20px 0; text-align: center; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; margin: 5px; }
+        button:hover { background-color: #0056b3; }
+        .btn-print { background-color: #28a745; }
+        .btn-save { background-color: #ff9800; }
+        .btn-load { background-color: #17a2b8; }
+        .btn-remove { background-color: #dc3545; padding: 2px 5px; font-size: 12px; }
+
+        .signature-section { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; }
+        .signature-box { width: 45%; }
+        .signature-space { height: 80px; }
+
+        /* Panel quản lý dữ liệu */
+        #data-panel {
+            background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px;
+        }
+        #saved-list { max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid #ccc; background: #fff; }
+        .saved-item { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+        .saved-item:hover { background-color: #e9ecef; }
+
+        @media print {
+            .no-print { display: none !important; }
+            input, textarea { border: none !important; background: transparent; resize: none; overflow: visible; padding: 0; }
+            .inline-input { border-bottom: 1px dotted #000; }
+            #data-panel { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="data-panel" class="no-print">
+        <h3>🗄️ Quản lý dữ liệu (Firebase)</h3>
+        <div>
+            <button class="btn-save" id="btnSave">💾 Lưu Lệnh Công Tác</button>
+            <button class="btn-load" id="btnLoadList">📂 Tải danh sách đã lưu</button>
+            <button onclick="window.location.reload()">🔄 Làm mới (Xóa trắng)</button>
+        </div>
+        <div id="saved-list" style="display:none;">
+            </div>
+        <p style="font-size: 12px; color: #666; margin-top:5px;">*Lưu ý: Dữ liệu được lưu lên đám mây, bạn có thể mở lại từ máy khác.</p>
+    </div>
+
+    <div id="print-area">
+        <div class="header-section">
+            <div style="text-align: center; width: 40%;">
+                TÊN ĐƠN VỊ CẤP LỆNH<br>
+                <input type="text" id="unitName" placeholder="Nhập tên đơn vị..." style="text-align: center; font-weight: bold;">
+            </div>
+            <div style="text-align: center; width: 40%;">
+                <strong>LỆNH CÔNG TÁC</strong><br>
+                Số: <input type="text" id="orderNumber" style="width: 50px; text-align: center;">
+            </div>
+        </div>
+
+        <h3>1. NỘI DUNG LỆNH</h3>
+        <div class="row">
+            <strong>1.1. Người chỉ huy trực tiếp (Người thi hành lệnh):</strong>
+            <input type="text" id="commanderName1" class="inline-input">
+            <span>Bậc ATĐ:</span>
+            <input type="text" id="commanderRank1" class="inline-input" style="width: 50px; text-align: center;">/5
+        </div>
+
+        <div class="row" style="margin-top: 10px;">
+            <strong>1.2. Nhân viên đơn vị công tác, gồm:</strong>
+            <input type="number" id="member-count" class="inline-input" style="width: 50px; text-align: center;" readonly> người.
+        </div>
+        <div class="row">
+            <span>Thuộc (Công ty, Phân xưởng v.v):</span>
+            <input type="text" id="unitBelong" class="inline-input">
+        </div>
+        
+        <table id="staff-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 5%;">TT</th>
+                    <th rowspan="2" style="width: 25%;">Họ, tên</th>
+                    <th rowspan="2" style="width: 10%;">Bậc ATĐ</th>
+                    <th colspan="2">Đến làm việc</th>
+                    <th colspan="2">Rút khỏi</th>
+                    <th class="no-print" rowspan="2" style="width: 5%;">Xóa</th>
+                </tr>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Ký tên</th>
+                    <th>Thời gian</th>
+                    <th>Ký tên</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="btn-group no-print" style="text-align: left;">
+            <button onclick="addStaffRow()">+ Thêm nhân viên</button>
+        </div>
+
+        <div class="form-group">
+            <strong>1.3. Địa điểm (hoặc thiết bị):</strong>
+            <textarea id="location" rows="2" style="width: 100%; border: none; border-bottom: 1px dotted black;"></textarea>
+        </div>
+        <div class="form-group">
+            <strong>1.4. Nội dung công việc:</strong>
+            <textarea id="content" rows="3" style="width: 100%; border: none; border-bottom: 1px dotted black;"></textarea>
+        </div>
+        <div class="form-group">
+            <strong>1.5. Điều kiện an toàn:</strong>
+            <textarea id="safety" rows="3" style="width: 100%; border: none; border-bottom: 1px dotted black;"></textarea>
+        </div>
+
+        <div class="row">
+            <strong>1.6. Thời gian bắt đầu:</strong>
+            <span>Từ</span> <input type="text" id="startHour" class="inline-input" style="width: 40px;"> giờ
+            <input type="text" id="startMin" class="inline-input" style="width: 40px;"> phút,
+            ngày <input type="date" id="startDate" class="inline-input" style="width: 130px;">
+        </div>
+
+        <div class="signature-section">
+            <div></div>
+            <div class="signature-box">
+                <p><strong>Người ra Lệnh công tác</strong></p>
+                <input type="text" id="issuerName" placeholder="Họ tên người ra lệnh" style="text-align: center; border: none; margin-top: 80px;">
+            </div>
+        </div>
+
+        <hr style="border-top: 2px solid black; margin: 20px 0;">
+
+        <h3>2. THỰC HIỆN LỆNH</h3>
+        <div class="row">
+            <strong>2.1. Người chỉ huy trực tiếp ký nhận:</strong>
+            <input type="text" id="commanderSign" class="inline-input">
+        </div>
+
+        <div class="row" style="margin-top: 10px;">
+            <strong>2.2. Người giám sát an toàn điện:</strong>
+            <input type="text" id="supervisorName" class="inline-input">
+        </div>
+
+        <p style="margin-top: 15px;"><strong>2.3. Trình tự công việc:</strong></p>
+        <table id="sequence-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 5%;">TT</th>
+                    <th rowspan="2">Trình tự công việc</th>
+                    <th rowspan="2">Các điều kiện an toàn</th>
+                    <th colspan="2">Thời gian</th>
+                    <th class="no-print" rowspan="2" style="width: 5%;">Xóa</th>
+                </tr>
+                <tr><th>Bắt đầu</th><th>Kết thúc</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="btn-group no-print" style="text-align: left;">
+            <button onclick="addSequenceRow()">+ Thêm bước công việc</button>
+        </div>
+        
+        <h3>3. KẾT THÚC CÔNG TÁC</h3>
+         <div class="row">
+             <span>Kết thúc lúc</span>
+             <input type="text" id="endHour" class="inline-input" style="width: 40px;"> giờ
+             <input type="text" id="endMin" class="inline-input" style="width: 40px;"> phút,
+             ngày <input type="date" id="endDate" class="inline-input" style="width: 130px;">
+         </div>
+         <div class="row">
+             <span>Đã báo cho ông/bà:</span> <input type="text" id="reportTo" class="inline-input">
+             <span>Chức danh:</span> <input type="text" id="reportRole" class="inline-input">
+         </div>
+    </div>
+
+    <div class="btn-group no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ In Lệnh Công Tác</button>
+    </div>
+
+    <script type="module">
+        // --- 1. CẤU HÌNH FIREBASE (THAY ĐỔI Ở ĐÂY) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // ============================================================
+        // BẠN HÃY DÁN CONFIG CỦA BẠN VÀO BÊN DƯỚI
+        const firebaseConfig = {
+          apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
+          authDomain: "tavietnam-78ae8.firebaseapp.com",
+          projectId: "tavietnam-78ae8",
+          storageBucket: "tavietnam-78ae8.firebasestorage.app",
+          messagingSenderId: "670121705534",
+          appId: "1:670121705534:web:1027ad98550573ad37116f"
+        };
+        // ============================================================
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const COLLECTION_NAME = "work_orders"; // Tên bảng trong Database
+
+        // --- 2. HÀM LƯU DỮ LIỆU ---
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSave');
+            btn.innerText = "Đang lưu..."; btn.disabled = true;
+
+            try {
+                // Lấy dữ liệu bảng nhân viên
+                const staffRows = [];
+                document.querySelectorAll('#staff-table tbody tr').forEach(row => {
+                    const inputs = row.querySelectorAll('input');
+                    if(inputs.length > 0) {
+                        staffRows.push({
+                            name: inputs[0].value,
+                            rank: inputs[1].value,
+                            timeIn: inputs[2].value,
+                            sign1: inputs[3].value, // Chữ ký chỉ là text mô phỏng
+                            timeOut: inputs[4].value,
+                            sign2: inputs[5].value
+                        });
+                    }
+                });
+
+                // Lấy dữ liệu bảng trình tự
+                const seqRows = [];
+                document.querySelectorAll('#sequence-table tbody tr').forEach(row => {
+                    const inputs = row.querySelectorAll('input, textarea');
+                    if(inputs.length > 0) {
+                        seqRows.push({
+                            step: inputs[0].value,
+                            safety: inputs[1].value,
+                            start: inputs[2].value,
+                            end: inputs[3].value
+                        });
+                    }
+                });
+
+                const data = {
+                    createdAt: new Date(),
+                    unitName: document.getElementById('unitName').value,
+                    orderNumber: document.getElementById('orderNumber').value,
+                    commanderName1: document.getElementById('commanderName1').value,
+                    commanderRank1: document.getElementById('commanderRank1').value,
+                    unitBelong: document.getElementById('unitBelong').value,
+                    staffList: staffRows,
+                    location: document.getElementById('location').value,
+                    content: document.getElementById('content').value,
+                    safetyConditions: document.getElementById('safety').value,
+                    startHour: document.getElementById('startHour').value,
+                    startMin: document.getElementById('startMin').value,
+                    startDate: document.getElementById('startDate').value,
+                    issuerName: document.getElementById('issuerName').value,
+                    commanderSign: document.getElementById('commanderSign').value,
+                    supervisorName: document.getElementById('supervisorName').value,
+                    workSequence: seqRows,
+                    endHour: document.getElementById('endHour').value,
+                    endMin: document.getElementById('endMin').value,
+                    endDate: document.getElementById('endDate').value,
+                    reportTo: document.getElementById('reportTo').value,
+                    reportRole: document.getElementById('reportRole').value,
+                };
+
+                await addDoc(collection(db, COLLECTION_NAME), data);
+                alert("✅ Đã lưu thành công lên Firebase!");
+            } catch (e) {
+                console.error("Lỗi lưu: ", e);
+                alert("❌ Lỗi khi lưu: " + e.message);
+            } finally {
+                btn.innerText = "💾 Lưu Lệnh Công Tác"; btn.disabled = false;
+            }
+        });
+
+        // --- 3. HÀM TẢI DANH SÁCH ---
+        document.getElementById('btnLoadList').addEventListener('click', async () => {
+            const listDiv = document.getElementById('saved-list');
+            listDiv.style.display = 'block';
+            listDiv.innerHTML = '<p style="padding:10px;">Đang tải...</p>';
+
+            try {
+                // Lấy danh sách, sắp xếp theo ngày tạo mới nhất
+                const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                listDiv.innerHTML = '';
+                if (querySnapshot.empty) {
+                    listDiv.innerHTML = '<p style="padding:10px;">Chưa có dữ liệu nào.</p>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const d = doc.data();
+                    const dateStr = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleString('vi-VN') : 'N/A';
+                    const div = document.createElement('div');
+                    div.className = 'saved-item';
+                    div.innerHTML = `
+                        <span><strong>Số: ${d.orderNumber || '?'}</strong> - ${d.content ? d.content.substring(0,30)+'...' : 'Không nội dung'}</span>
+                        <small>${dateStr}</small>
+                    `;
+                    div.onclick = () => loadDetail(d);
+                    listDiv.appendChild(div);
+                });
+            } catch (e) {
+                listDiv.innerHTML = '<p style="color:red; padding:10px;">Lỗi tải: ' + e.message + '</p>';
+            }
+        });
+
+        // --- 4. HÀM HIỂN THỊ CHI TIẾT ---
+        function loadDetail(data) {
+            if(!confirm("Dữ liệu hiện tại trên màn hình sẽ bị thay thế. Bạn có chắc chắn?")) return;
+
+            // Điền các ô input đơn giản
+            document.getElementById('unitName').value = data.unitName || '';
+            document.getElementById('orderNumber').value = data.orderNumber || '';
+            document.getElementById('commanderName1').value = data.commanderName1 || '';
+            document.getElementById('commanderRank1').value = data.commanderRank1 || '';
+            document.getElementById('unitBelong').value = data.unitBelong || '';
+            document.getElementById('location').value = data.location || '';
+            document.getElementById('content').value = data.content || '';
+            document.getElementById('safety').value = data.safetyConditions || '';
+            document.getElementById('startHour').value = data.startHour || '';
+            document.getElementById('startMin').value = data.startMin || '';
+            document.getElementById('startDate').value = data.startDate || '';
+            document.getElementById('issuerName').value = data.issuerName || '';
+            document.getElementById('commanderSign').value = data.commanderSign || '';
+            document.getElementById('supervisorName').value = data.supervisorName || '';
+            document.getElementById('endHour').value = data.endHour || '';
+            document.getElementById('endMin').value = data.endMin || '';
+            document.getElementById('endDate').value = data.endDate || '';
+            document.getElementById('reportTo').value = data.reportTo || '';
+            document.getElementById('reportRole').value = data.reportRole || '';
+
+            // Tái tạo bảng Nhân viên
+            const staffBody = document.querySelector('#staff-table tbody');
+            staffBody.innerHTML = ''; // Xóa cũ
+            if(data.staffList && Array.isArray(data.staffList)){
+                data.staffList.forEach(s => {
+                    window.addStaffRowWithData(s);
+                });
+            } else {
+                window.addStaffRow(); // Thêm dòng trống nếu không có dữ liệu
+            }
+
+            // Tái tạo bảng Trình tự
+            const seqBody = document.querySelector('#sequence-table tbody');
+            seqBody.innerHTML = ''; // Xóa cũ
+            if(data.workSequence && Array.isArray(data.workSequence)){
+                data.workSequence.forEach(s => {
+                    window.addSequenceRowWithData(s);
+                });
+            } else {
+                window.addSequenceRow();
+            }
+
+            document.getElementById('saved-list').style.display = 'none';
+            alert("Đã tải dữ liệu xong!");
+        }
+
+    </script>
+
+    <script>
+        // Các hàm giao diện nằm ngoài module để HTML gọi được
+        window.addStaffRow = function() {
+            window.addStaffRowWithData({});
+        }
+
+        window.addStaffRowWithData = function(data) {
+            const table = document.getElementById('staff-table').getElementsByTagName('tbody')[0];
+            const rowCount = table.rows.length + 1;
+            const row = table.insertRow();
+            
+            row.innerHTML = `
+                <td>${rowCount}</td>
+                <td><input type="text" value="${data.name || ''}" style="width: 90%; border: none;"></td>
+                <td><input type="text" value="${data.rank || ''}" style="width: 80%; border: none; text-align: center;">/5</td>
+                <td><input type="text" value="${data.timeIn || ''}" placeholder="Giờ vào" style="width: 90%; border: none;"></td>
+                <td><input type="text" value="${data.sign1 || ''}" style="width: 90%; border: none;"></td>
+                <td><input type="text" value="${data.timeOut || ''}" placeholder="Giờ ra" style="width: 90%; border: none;"></td>
+                <td><input type="text" value="${data.sign2 || ''}" style="width: 90%; border: none;"></td>
+                <td class="no-print"><button class="btn-remove" onclick="removeRow(this, 'member-count')">X</button></td>
+            `;
+            updateCount();
+        }
+
+        window.addSequenceRow = function() {
+            window.addSequenceRowWithData({});
+        }
+
+        window.addSequenceRowWithData = function(data) {
+            const table = document.getElementById('sequence-table').getElementsByTagName('tbody')[0];
+            const rowCount = table.rows.length + 1;
+            const row = table.insertRow();
+            
+            row.innerHTML = `
+                <td>${rowCount}</td>
+                <td><textarea rows="1" style="width: 95%; border: none; resize: vertical;">${data.step || ''}</textarea></td>
+                <td><textarea rows="1" style="width: 95%; border: none; resize: vertical;">${data.safety || ''}</textarea></td>
+                <td><input type="text" value="${data.start || ''}" style="width: 90%; border: none;"></td>
+                <td><input type="text" value="${data.end || ''}" style="width: 90%; border: none;"></td>
+                <td class="no-print"><button class="btn-remove" onclick="removeRow(this)">X</button></td>
+            `;
+        }
+
+        window.removeRow = function(btn, countId) {
+            const row = btn.parentNode.parentNode;
+            const table = row.parentNode;
+            table.removeChild(row);
+            
+            for (let i = 0; i < table.rows.length; i++) {
+                table.rows[i].cells[0].innerText = i + 1;
+            }
+            if(countId) updateCount();
+        }
+
+        function updateCount() {
+            const table = document.getElementById('staff-table').getElementsByTagName('tbody')[0];
+            document.getElementById('member-count').value = table.rows.length;
+        }
+
+        // Khởi tạo dòng trống ban đầu nếu chưa có dữ liệu
+        window.addEventListener('DOMContentLoaded', () => {
+             if(document.querySelector('#staff-table tbody').rows.length === 0) window.addStaffRow();
+             if(document.querySelector('#sequence-table tbody').rows.length === 0) window.addSequenceRow();
+        });
+    </script>
+</body>
+</html>
