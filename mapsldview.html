@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ thống Điện Xưởng 1 - TAVIETNAM Monitor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        #sld-panel { width: 50%; height: 100%; background: #f8f9fa; border-right: 2px solid #ccc; position: relative; overflow: auto; }
+        #map-panel { width: 50%; height: 100%; }
+        .panel-title { position: absolute; top: 10px; left: 10px; background: white; padding: 5px 10px; border: 1px solid #999; z-index: 1000; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        /* Node Styles */
+        .node-box {
+            position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold;
+            cursor: pointer; border: 2px solid #333; background: white; transition: all 0.2s;
+            padding: 5px; user-select: none; z-index: 10;
+        }
+        .node-box:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+        .closed { border-color: #d32f2f !important; color: #d32f2f; }
+        .open { border-color: #2e7d32 !important; color: #2e7d32; border-style: dashed !important; opacity: 0.7; }
+        
+        /* Power Styles */
+        .energized-node { background-color: #ffebee !important; }
+        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; }
+        .dead-line { background-color: #ccc; z-index: 1; }
+        .sld-line { position: absolute; height: 2px; width: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="sld-panel">
+        <div class="panel-title">SƠ ĐỒ NGUYÊN LÝ (SLD)</div>
+        <div id="sld-canvas"></div>
+    </div>
+
+    <div id="map-panel">
+        <div class="panel-title">BẢN ĐỒ GIS</div>
+        <div id="map" style="width:100%; height:100%"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // --- CẤU HÌNH CỦA BẠN ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
+            authDomain: "tavietnam-78ae8.firebaseapp.com",
+            projectId: "tavietnam-78ae8",
+            storageBucket: "tavietnam-78ae8.firebasestorage.app",
+            messagingSenderId: "670121705534",
+            appId: "1:670121705534:web:1027ad98550573ad37116f",
+            // Tôi dự đoán URL database của bạn (nếu sai hãy sửa dòng dưới):
+            databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" 
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let localNodes = [];
+        const sldCanvas = document.getElementById('sld-canvas');
+        
+        // Khởi tạo Map (Tọa độ mặc định: HCM)
+        const map = L.map('map').setView([10.8231, 106.6297], 12); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        let mapMarkers = {}; 
+        let mapLines = {};
+
+        // LẮNG NGHE DỮ LIỆU
+        const nodesRef = ref(db, 'system_nodes');
+        onValue(nodesRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                localNodes = Object.values(data);
+                calculatePower();
+                renderSLD();
+                renderMap();
+            } else {
+                sldCanvas.innerHTML = '<div style="padding:20px">Chưa có dữ liệu. Vui lòng dùng trang Admin để tạo thiết bị.</div>';
+            }
+        });
+
+        // LOGIC TÍNH TOÁN ĐIỆN
+        function calculatePower() {
+            localNodes.forEach(n => n.isEnergized = false);
+            const sources = localNodes.filter(n => n.type === 'source');
+            sources.forEach(src => propagate(src));
+        }
+
+        function propagate(p) {
+            if (p.isEnergized && (p.type === 'source' || p.state === 'closed')) {
+                const children = localNodes.filter(n => n.parent === p.id);
+                children.forEach(c => {
+                    c.isEnergized = true;
+                    propagate(c);
+                });
+            }
+        }
+
+        // THAO TÁC NGƯỜI DÙNG (GỬI LÊN FIREBASE)
+        window.toggleDevice = function(id) {
+            const node = localNodes.find(n => n.id === id);
+            if (!node || node.type === 'source') return;
+            const newState = node.state === 'closed' ? 'open' : 'closed';
+            const updates = {};
+            updates['/system_nodes/' + id + '/state'] = newState;
+            update(ref(db), updates);
+        };
+
+        // VẼ SLD
+        function renderSLD() {
+            sldCanvas.innerHTML = '';
+            localNodes.forEach(node => {
+                if (node.parent) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.sld && node.sld) {
+                        const isLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
+                        const colorCls = isLive ? 'energized-line' : 'dead-line';
+                        drawManhattanLine(parent.sld, node.sld, colorCls);
+                    }
+                }
+            });
+
+            localNodes.forEach(node => {
+                if(!node.sld) return;
+                const el = document.createElement('div');
+                el.className = 'node-box';
+                el.style.left = node.sld.x + 'px';
+                el.style.top = node.sld.y + 'px';
+                
+                if (node.type === 'source') {
+                    el.style.backgroundColor = '#e3f2fd'; 
+                    el.style.borderColor = '#1565c0';
+                } else {
+                    el.classList.add(node.state);
+                }
+                if (node.isEnergized) el.classList.add('energized-node');
+
+                el.innerHTML = `${node.label}<br>${node.type !== 'source' ? (node.state === 'closed'?'ON':'OFF') : ''}`;
+                el.onclick = () => window.toggleDevice(node.id);
+                sldCanvas.appendChild(el);
+            });
+        }
+
+        function drawManhattanLine(p, c, cls) {
+            const midY = p.y + (c.y - p.y) / 2 + 20;
+            createDiv(p.x + 40, p.y + 40, 2, midY - (p.y+40), cls);
+            createDiv(p.x + 40, midY, c.x + 40 - (p.x+40), 2, cls);
+            createDiv(c.x + 40, midY, 2, c.y - midY, cls);
+        }
+
+        function createDiv(x, y, w, h, cls) {
+            const d = document.createElement('div');
+            d.className = 'sld-line ' + cls;
+            d.style.left = (w < 0 ? x + w : x) + 'px';
+            d.style.top = (h < 0 ? y + h : y) + 'px';
+            d.style.width = Math.abs(w) + 'px';
+            d.style.height = Math.abs(h) + 'px';
+            sldCanvas.appendChild(d);
+        }
+
+        // VẼ MAP
+        function renderMap() {
+            localNodes.forEach(node => {
+                if(!node.geo) return;
+                let marker = mapMarkers[node.id];
+                const color = node.isEnergized 
+                    ? (node.state === 'closed' ? '#d32f2f' : (node.type==='source'?'#1565c0':'#2e7d32'))
+                    : '#666';
+                
+                const html = `<div style="background:${node.isEnergized ? '#fff' : '#eee'}; border:2px solid ${color}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px; box-shadow: ${node.isEnergized ? '0 0 10px '+color : 'none'}">${node.label}</div>`;
+                const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20] });
+
+                if (!marker) {
+                    marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
+                    marker.on('click', () => window.toggleDevice(node.id));
+                    mapMarkers[node.id] = marker;
+                } else {
+                    marker.setIcon(icon);
+                }
+
+                if (node.parent) {
+                    const parent = localNodes.find(n => n.id === node.parent);
+                    if (parent && parent.geo) {
+                        let line = mapLines[node.id];
+                        const isLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
+                        const lineColor = isLive ? '#ff3d00' : '#666';
+                        const lineWeight = isLive ? 4 : 2;
+
+                        if (!line) {
+                            line = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
+                                { color: lineColor, weight: lineWeight }).addTo(map);
+                            mapLines[node.id] = line;
+                        } else {
+                            line.setStyle({ color: lineColor, weight: lineWeight });
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
