@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sơ đồ Đơn tuyến Xưởng 1 (Digital Twin)</title>
+    <style>
+        /* --- CẤU HÌNH GIAO DIỆN CAD --- */
+        body { 
+            font-family: 'Consolas', 'Courier New', monospace; /* Font kiểu kỹ thuật */
+            background-color: #f8f9fa; 
+            margin: 0; padding: 20px; 
+            overflow: auto;
+        }
+
+        #drawing-board {
+            position: relative;
+            width: 1600px;  /* Khổ rộng để chứa hết sơ đồ */
+            height: 1000px;
+            background-color: white;
+            border: 1px solid #999;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            background-image: 
+                linear-gradient(#eee 1px, transparent 1px),
+                linear-gradient(90deg, #eee 1px, transparent 1px);
+            background-size: 50px 50px; /* Lưới mờ 50px */
+        }
+
+        /* --- THIẾT BỊ (TỦ ĐIỆN / DB) --- */
+        .node {
+            position: absolute;
+            z-index: 10;
+            background: white;
+            border: 2px solid #333;
+            padding: 5px;
+            width: 90px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .node:hover { transform: scale(1.05); box-shadow: 3px 3px 10px rgba(0,0,0,0.2); }
+        
+        .node-label { font-size: 11px; font-weight: bold; color: #333; pointer-events: none; }
+        .node-cable { font-size: 9px; color: #666; margin-top: 2px; font-style: italic; pointer-events: none; }
+        .node-status { font-size: 9px; font-weight: bold; margin-top: 2px; padding: 1px 4px; border-radius: 3px; display: inline-block;}
+
+        /* --- TRẠNG THÁI --- */
+        /* Trạng thái CB (Cơ khí) */
+        .node.closed { border-color: #d32f2f; } /* Đóng - Viền Đỏ */
+        .node.open { border-color: #2e7d32; border-style: dashed; opacity: 0.7; } /* Cắt - Viền Xanh đứt đoạn */
+
+        /* Trạng thái Điện (Năng lượng) */
+        .energized-node { background-color: #ffebee; } /* Nền hồng khi có điện */
+        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important;} /* Dây đỏ rực khi có điện */
+
+        /* --- DÂY DẪN (LINES) --- */
+        .cable-line {
+            position: absolute;
+            background-color: #999; /* Màu xám khi mất điện */
+            z-index: 1;
+            transition: background-color 0.3s;
+        }
+        
+        /* Chú thích */
+        .legend { position: fixed; top: 10px; right: 10px; background: white; padding: 10px; border: 1px solid #333; z-index: 100; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="legend">
+        <b>CHÚ THÍCH</b><br>
+        <span style="color:#ff3d00">■</span> Dây có điện<br>
+        <span style="color:#999">■</span> Dây mất điện<br>
+        <div style="border: 1px solid #d32f2f; color:#d32f2f; margin-top:5px; padding:2px">CB ĐANG ĐÓNG</div>
+        <div style="border: 1px dashed #2e7d32; color:#2e7d32; margin-top:5px; padding:2px">CB ĐANG CẮT</div>
+    </div>
+
+    <div id="drawing-board">
+        </div>
+
+<script>
+    // =========================================================
+    // 1. CẤU HÌNH VỊ TRÍ (Mô phỏng bản vẽ PDF)
+    // =========================================================
+    // X: Ngang (0 -> 1600), Y: Dọc (0 -> 1000)
+    
+    const nodes = [
+        // --- NHÓM NGUỒN TRÁI (DB9-2) ---
+        { id: 'src_db9', type: 'source', x: 100, y: 50, label: 'Nguồn\nDB9-2' },
+        { id: 'db9_2_1', parent: 'src_db9', x: 100, y: 150, label: 'DB9-2.1', cable: '4x120mm' },
+
+        // --- NHÓM NGUỒN PHẢI (MSB1-1 -> DB1-1) ---
+        { id: 'src_msb', type: 'source', x: 1300, y: 50, label: 'Nguồn\nMSB1-1' },
+        { id: 'db1_1', parent: 'src_msb', x: 1300, y: 150, label: 'Tủ Tổng\nDB1-1', cable: '4x300mm' },
+
+            // Nhánh phụ của DB1-1
+            { id: 'db1_1_3', parent: 'db1_1', x: 1100, y: 150, label: 'DB1-1.3\nXử lý CD', cable: 'Nhánh Phụ' },
+                { id: 'db1_1_3_1', parent: 'db1_1_3', x: 1100, y: 250, label: 'DB1-1.3.1', cable: '4x80mm' },
+            
+            { id: 'db1_1_1', parent: 'db1_1', x: 1450, y: 150, label: 'DB1-1.1', cable: 'Nhánh Phụ' },
+
+        // --- TRỤC CHÍNH (DB1-1.2) - Nằm giữa ---
+        { id: 'db1_1_2', parent: 'db1_1', x: 750, y: 300, label: 'PHÂN PHỐI\nDB1-1.2', cable: '4x300mm (Trục)' },
+
+            // === CÁC NHÁNH CON TỪ DB1-1.2 (Sắp xếp từ Trái qua Phải theo bản vẽ) ===
+            
+            // 1. Khu vực PAINT B (Bên Trái)
+            { id: 'paint_b1', parent: 'db1_1_2', x: 250, y: 450, label: 'DB1-1.2.1\nPaint B', cable: '4x70mm' },
+            { id: 'paint_b2', parent: 'db1_1_2', x: 380, y: 450, label: 'DB1-1.2.2\nPaint B', cable: '4x70mm' },
+                // Con của Paint B2
+                { id: 'b2_1', parent: 'paint_b2', x: 330, y: 550, label: '1.2.2.1', cable: '2x6mm' },
+                { id: 'b2_2', parent: 'paint_b2', x: 430, y: 550, label: '1.2.2.2', cable: '2x6mm' },
+
+            // 2. Khu vực PAINT A (Giữa Trái)
+            { id: 'paint_a', parent: 'db1_1_2', x: 550, y: 450, label: 'DB1-1.2.8\nPaint A', cable: '4x70mm' },
+                { id: 'a_1', parent: 'paint_a', x: 550, y: 550, label: '1.2.8.1', cable: '4mm' },
+
+            // 3. Khu vực PAINT D (Giữa Phải) - Cụm đông đúc
+            { id: 'paint_d3', parent: 'db1_1_2', x: 700, y: 450, label: 'DB1-1.2.3\nPaint D', cable: '4x30mm' },
+                { id: 'd3_1', parent: 'paint_d3', x: 700, y: 550, label: '1.2.3.1', cable: '4x10mm' },
+            
+            { id: 'paint_d4', parent: 'db1_1_2', x: 820, y: 450, label: 'DB1-1.2.4\nPaint D', cable: '4x80mm' },
+            
+            { id: 'paint_d5', parent: 'db1_1_2', x: 940, y: 450, label: 'DB1-1.2.5\nPaint D', cable: '4x50mm' },
+                { id: 'd5_1', parent: 'paint_d5', x: 940, y: 550, label: '1.2.5.1', cable: '4x10mm' },
+
+            // 4. Khu vực PAINT C (Bên Phải)
+            { id: 'paint_c6a', parent: 'db1_1_2', x: 1080, y: 450, label: 'DB1-1.2.6\n(Trên)', cable: '4x10mm' },
+            
+            { id: 'paint_c6b', parent: 'db1_1_2', x: 1200, y: 450, label: 'DB1-1.2.6\n(Dưới)', cable: '4x70mm' },
+                { id: 'c6b_1', parent: 'paint_c6b', x: 1200, y: 550, label: '1.2.7.1', cable: '---' },
+
+            { id: 'paint_c7', parent: 'db1_1_2', x: 1350, y: 450, label: 'DB1-1.2.7\nPaint C', cable: '4x70mm' },
+                { id: 'c7_2', parent: 'paint_c7', x: 1300, y: 550, label: '1.2.7.2', cable: '4x4mm' },
+                { id: 'c7_3', parent: 'paint_c7', x: 1400, y: 550, label: '1.2.7.3', cable: '---' },
+
+            // 5. Tải khác (Góc dưới)
+            { id: 'load_other', parent: 'db1_1_2', x: 100, y: 600, label: 'DB-1.2.1\nLoad', cable: '4x35mm' },
+            { id: 'load_10', parent: 'db1_1_2', x: 1550, y: 600, label: 'DB1-1.2.10', cable: '---' }
+    ];
+
+    // Khởi tạo trạng thái mặc định (state = closed: Đóng, open: Mở)
+    // isEnergized: Có điện hay không
+    nodes.forEach(n => {
+        n.state = 'closed'; 
+        n.isEnergized = false;
+        // Các điểm nguồn luôn được coi là có điện đầu vào
+        if(n.type === 'source') n.isEnergized = true;
+    });
+
+    const board = document.getElementById('drawing-board');
+
+    // =========================================================
+    // 2. HÀM VẼ TỰ ĐỘNG (AUTO-ROUTING)
+    // =========================================================
+    function drawSystem() {
+        board.innerHTML = ''; // Xóa cũ
+
+        // Bước 1: Vẽ Dây trước (nằm dưới)
+        nodes.forEach(node => {
+            if (node.parent) {
+                const parentNode = nodes.find(n => n.id === node.parent);
+                if (parentNode) {
+                    drawConnection(parentNode, node);
+                }
+            }
+        });
+
+        // Bước 2: Vẽ Tủ (nằm trên)
+        nodes.forEach(node => {
+            const el = document.createElement('div');
+            el.className = 'node';
+            el.id = 'node_' + node.id;
+            
+            // Căn chỉnh để tọa độ x,y là tâm của hộp
+            el.style.left = (node.x - 50) + 'px'; // width 90 + padding ~ 100
+            el.style.top = (node.y - 25) + 'px';
+
+            // Nội dung HTML bên trong hộp
+            let statusText = node.state === 'closed' ? 'ON' : 'OFF';
+            let statusColor = node.state === 'closed' ? '#d32f2f' : '#2e7d32';
+            
+            el.innerHTML = `
+                <div class="node-label">${node.label.replace(/\n/g, '<br>')}</div>
+                <div class="node-cable">${node.cable || ''}</div>
+                ${node.type !== 'source' ? `<div class="node-status" style="color:${statusColor}; border:1px solid ${statusColor}">${statusText}</div>` : ''}
+            `;
+
+            // Style theo trạng thái
+            if (node.type !== 'source') el.classList.add(node.state);
+            if (node.isEnergized) el.classList.add('energized-node');
+            if (node.type === 'source') {
+                el.style.backgroundColor = '#e3f2fd'; // Màu xanh cho nguồn
+                el.style.border = '2px solid #1976d2';
+            }
+
+            // Sự kiện Click
+            if (node.type !== 'source') {
+                el.onclick = () => toggleNode(node.id);
+            }
+
+            board.appendChild(el);
+        });
+    }
+
+    // Hàm vẽ dây vuông góc (Manhattan)
+    function drawConnection(p, c) {
+        // Tọa độ dây: Có điện nếu Cha có điện VÀ Cha đang Đóng
+        let isLineEnergized = p.isEnergized && (p.type === 'source' || p.state === 'closed');
+        let colorClass = isLineEnergized ? 'energized-line' : '';
+
+        // Tạo 3 đoạn dây để nối vuông góc: 
+        // 1. Đi dọc từ Cha xuống một chút
+        // 2. Đi ngang sang vị trí Con
+        // 3. Đi dọc xuống đầu Con
+        
+        const midY = p.y + (c.y - p.y) / 2; // Điểm giữa theo chiều dọc
+
+        // Đoạn 1: Vertical (Cha -> Mid)
+        createLine(p.x, p.y, p.x, midY, colorClass);
+        
+        // Đoạn 2: Horizontal (Cha.x -> Con.x tại Mid)
+        createLine(p.x, midY, c.x, midY, colorClass);
+
+        // Đoạn 3: Vertical (Mid -> Con)
+        createLine(c.x, midY, c.x, c.y, colorClass);
+    }
+
+    function createLine(x1, y1, x2, y2, colorClass) {
+        // Bỏ qua nếu độ dài = 0
+        if (x1 === x2 && y1 === y2) return;
+
+        const line = document.createElement('div');
+        line.className = 'cable-line ' + colorClass;
+        
+        const width = Math.abs(x2 - x1);
+        const height = Math.abs(y2 - y1);
+        const thickness = 2; // Độ dày dây
+
+        line.style.width = (width || thickness) + 'px';
+        line.style.height = (height || thickness) + 'px';
+        line.style.left = Math.min(x1, x2) + 'px';
+        line.style.top = Math.min(y1, y2) + 'px';
+
+        board.appendChild(line);
+    }
+
+    // =========================================================
+    // 3. LOGIC TÍNH TOÁN ĐIỆN
+    // =========================================================
+    function toggleNode(id) {
+        const node = nodes.find(n => n.id === id);
+        if (node) {
+            node.state = node.state === 'closed' ? 'open' : 'closed';
+            calculatePower();
+            drawSystem();
+        }
+    }
+
+    function calculatePower() {
+        // Reset
+        nodes.forEach(n => {
+            if (n.type !== 'source') n.isEnergized = false;
+        });
+
+        // Lan truyền từ các nguồn
+        const sources = nodes.filter(n => n.type === 'source');
+        sources.forEach(src => propagate(src));
+    }
+
+    function propagate(parentNode) {
+        // Nếu cha có điện và đang ĐÓNG -> truyền cho con
+        if (parentNode.isEnergized && (parentNode.type === 'source' || parentNode.state === 'closed')) {
+            const children = nodes.filter(n => n.parent === parentNode.id);
+            children.forEach(child => {
+                child.isEnergized = true;
+                propagate(child); // Đệ quy tiếp
+            });
+        }
+    }
+
+    // Chạy lần đầu
+    calculatePower();
+    drawSystem();
+
+</script>
+
+</body>
+</html>
