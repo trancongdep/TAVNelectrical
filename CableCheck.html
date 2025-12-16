@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm Tra Tiết Diện Cáp (Motor Cable Sizing)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .container { background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        h2 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #34495e; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        
+        .row { display: flex; gap: 15px; }
+        .col { flex: 1; }
+
+        button { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { background-color: #2980b9; }
+
+        .result-box { margin-top: 25px; padding: 20px; background-color: #ecf0f1; border-radius: 8px; display: none; }
+        .result-item { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #bdc3c7; padding-bottom: 5px; }
+        .result-val { font-weight: bold; }
+        
+        .status { text-align: center; padding: 15px; border-radius: 5px; font-weight: bold; font-size: 1.2em; margin-top: 15px; color: white; }
+        .fail { background-color: #e74c3c; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4); } /* Đỏ - Nguy hiểm */
+        .pass { background-color: #27ae60; box-shadow: 0 0 10px rgba(39, 174, 96, 0.4); } /* Xanh - An toàn */
+        .warn { background-color: #f39c12; box-shadow: 0 0 10px rgba(243, 156, 18, 0.4); } /* Vàng - Cảnh báo */
+
+        .note { font-size: 0.85em; color: #7f8c8d; font-style: italic; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚡ Kiểm Tra Cáp Động Cơ</h2>
+    <p class="note">Dựa trên tiêu chuẩn TCVN 7447-5-52 & IEC 60364</p>
+
+    <div class="input-group">
+        <label>Công suất Động cơ (P) [kW]:</label>
+        <input type="number" id="p_kw" value="75" step="0.5">
+    </div>
+
+    <div class="row">
+        <div class="col input-group">
+            <label>Điện áp (V):</label>
+            <input type="number" id="volt" value="380">
+        </div>
+        <div class="col input-group">
+            <label>Hệ số cosφ:</label>
+            <input type="number" id="pf" value="0.85" step="0.01" max="1">
+        </div>
+        <div class="col input-group">
+            <label>Hiệu suất (η):</label>
+            <input type="number" id="eff" value="0.92" step="0.01" max="1">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Chọn tiết diện cáp dự kiến (mm²):</label>
+        <select id="cable_size">
+            <option value="16">16 mm² (I_max ≈ 94A)</option>
+            <option value="25">25 mm² (I_max ≈ 119A)</option>
+            <option value="35">35 mm² (I_max ≈ 148A)</option>
+            <option value="50">50 mm² (I_max ≈ 180A)</option>
+            <option value="70">70 mm² (I_max ≈ 232A)</option>
+            <option value="95">95 mm² (I_max ≈ 282A)</option>
+            <option value="120">120 mm² (I_max ≈ 328A)</option>
+        </select>
+        <p class="note">*Dòng định mức cáp (I_max) tham khảo cho cáp Đồng (Cu/XLPE) đi trong không khí (Tray/Ladder).</p>
+    </div>
+
+    <div class="input-group">
+        <label>Hệ số an toàn / Hiệu chỉnh (K):</label>
+        <input type="number" id="k_factor" value="1.0" step="0.1">
+        <p class="note">Giảm K nếu đi ngầm, đi chung máng nhiều cáp, hoặc nhiệt độ cao (VD: 0.8).</p>
+    </div>
+
+    <button onclick="checkCable()">KIỂM TRA NGAY</button>
+
+    <div id="resultBox" class="result-box">
+        <div class="result-item">
+            <span>Dòng tải tính toán (I_load):</span>
+            <span class="result-val" id="res_iload" style="color: blue;">0 A</span>
+        </div>
+        <div class="result-item">
+            <span>Khả năng tải của cáp (I_cable):</span>
+            <span class="result-val" id="res_icable">0 A</span>
+        </div>
+        <div class="result-item">
+            <span>Dòng sau hiệu chỉnh (I_cable × K):</span>
+            <span class="result-val" id="res_ireal">0 A</span>
+        </div>
+
+        <div id="statusMsg" class="status"></div>
+        <p id="recommendation" style="margin-top: 15px; font-weight: bold; color: #333; text-align: center;"></p>
+    </div>
+</div>
+
+<script>
+    // Bảng dòng điện định mức tham khảo cho cáp Cu/XLPE/PVC (3 phase, Air)
+    // Số liệu gần đúng theo IEC 60364-5-52
+    const cableTable = {
+        16: 94,
+        25: 119,
+        35: 148,  // Bài toán nói khoảng 130-150A
+        50: 180,
+        70: 232,
+        95: 282,
+        120: 328
+    };
+
+    function checkCable() {
+        // 1. Lấy dữ liệu
+        const P = parseFloat(document.getElementById('p_kw').value);
+        const V = parseFloat(document.getElementById('volt').value);
+        const PF = parseFloat(document.getElementById('pf').value);
+        const Eff = parseFloat(document.getElementById('eff').value);
+        const CableSize = parseInt(document.getElementById('cable_size').value);
+        const K = parseFloat(document.getElementById('k_factor').value);
+
+        // 2. Tính toán dòng tải (Formula từ hình ảnh)
+        // I = P / (sqrt(3) * V * PF * Eff)
+        // P input là kW -> đổi ra W bằng * 1000
+        const I_load = (P * 1000) / (1.732 * V * PF * Eff);
+        
+        // 3. Lấy dòng định mức cáp
+        const I_cable_base = cableTable[CableSize];
+        const I_cable_real = I_cable_base * K; // Áp dụng hệ số hiệu chỉnh
+
+        // 4. Hiển thị thông số
+        document.getElementById('resultBox').style.display = 'block';
+        document.getElementById('res_iload').innerText = I_load.toFixed(1) + " A";
+        document.getElementById('res_icable').innerText = I_cable_base + " A (" + CableSize + "mm²)";
+        document.getElementById('res_ireal').innerText = I_cable_real.toFixed(1) + " A";
+
+        // 5. Đánh giá và Logic so sánh
+        const statusDiv = document.getElementById('statusMsg');
+        const recommendDiv = document.getElementById('recommendation');
+
+        // Logic đánh giá
+        if (I_cable_real < I_load) {
+            // TRƯỜNG HỢP FAIL (Giống bài toán 75kW dùng cáp 35mm2)
+            statusDiv.className = "status fail";
+            statusDiv.innerText = "❌ KHÔNG ĐẠT (QUÁ TẢI)";
+            recommendDiv.innerText = "Cảnh báo: Dòng tải (" + I_load.toFixed(0) + "A) lớn hơn khả năng chịu tải của cáp (" + I_cable_real.toFixed(0) + "A). Nguy cơ cháy nổ cao!";
+            
+            // Tìm cáp đề xuất
+            let suggested = null;
+            for (let size in cableTable) {
+                if (cableTable[size] * K > I_load * 1.25) { // Hệ số dự phòng 1.25
+                    suggested = size;
+                    break;
+                }
+            }
+            if (suggested) {
+                recommendDiv.innerHTML += "<br>👉 Đề xuất: Thay bằng cáp tối thiểu <b>" + suggested + " mm²</b>.";
+            }
+
+        } else if (I_cable_real < I_load * 1.1) {
+            // TRƯỜNG HỢP SÁT TẢI (Warning)
+            statusDiv.className = "status warn";
+            statusDiv.innerText = "⚠️ CẢNH BÁO (SÁT TẢI)";
+            recommendDiv.innerText = "Cáp chịu được nhưng không có dự phòng. Dễ bị nóng nếu hoạt động liên tục hoặc môi trường khắc nghiệt.";
+        } else {
+            // TRƯỜNG HỢP PASS
+            statusDiv.className = "status pass";
+            statusDiv.innerText = "✅ ĐẠT YÊU CẦU";
+            recommendDiv.innerText = "Tiết diện cáp đảm bảo an toàn vận hành.";
+        }
+    }
+</script>
+
+</body>
+</html>

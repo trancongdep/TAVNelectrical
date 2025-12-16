@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tính Toán Khoảng Cách An Toàn (S)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box; /* Đảm bảo padding không làm vỡ layout */
+        }
+        .btn-calc {
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        .btn-calc:hover {
+            background-color: #2980b9;
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            display: none; /* Ẩn mặc định */
+        }
+        .result-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            text-align: center;
+            display: block;
+            margin: 10px 0;
+        }
+        .status {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .safe {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .unsafe {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .note {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-top: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚡ Tính Khoảng Cách An Toàn (S)</h2>
+    <p style="text-align: center; font-size: 0.9em; color: #666;">Theo tiêu chuẩn IEC 62305-3</p>
+
+    <div class="form-group">
+        <label for="ki">1. Cấp bảo vệ chống sét (ki):</label>
+        <select id="ki">
+            <option value="0.08">Cấp I (ki = 0.08) - Rất cao</option>
+            <option value="0.06">Cấp II (ki = 0.06) - Cao</option>
+            <option value="0.04">Cấp III/IV (ki = 0.04) - Tiêu chuẩn</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="kc">2. Cấu hình dây dẫn xuống (kc):</label>
+        <select id="kc">
+            <option value="1">1 dây xuống (kc = 1)</option>
+            <option value="0.66">2 dây xuống (kc = 0.66)</option>
+            <option value="0.44" selected>Nhiều dây / Dạng lưới (kc = 0.44)</option>
+        </select>
+        <div class="note">Nhà xưởng khung thép thường chọn 0.44</div>
+    </div>
+
+    <div class="form-group">
+        <label for="km">3. Vật liệu cách điện (km):</label>
+        <select id="km">
+            <option value="1">Không khí (km = 1)</option>
+            <option value="0.5">Bê tông / Gạch (km = 0.5)</option>
+        </select>
+        <div class="note">Giữa vách kim loại và máy thường là Không khí.</div>
+    </div>
+
+    <div class="form-group">
+        <label for="l">4. Chiều dài đường dẫn dòng sét (L) [mét]:</label>
+        <input type="number" id="l" placeholder="Ví dụ: 10" step="0.1">
+        <div class="note">Khoảng cách từ điểm đang xét dọc theo dây dẫn xuống điểm tiếp địa gần nhất.</div>
+    </div>
+
+    <hr style="border-top: 1px dashed #ccc; margin: 20px 0;">
+
+    <div class="form-group">
+        <label for="d_thuc_te">5. Khoảng cách đo thực tế (tùy chọn) [mét]:</label>
+        <input type="number" id="d_thuc_te" placeholder="Đo từ vách đến máy..." step="0.01">
+    </div>
+
+    <button class="btn-calc" onclick="tinhToanS()">TÍNH TOÁN NGAY</button>
+
+    <div id="ketQua" class="result-box">
+        <div>Khoảng cách an toàn tối thiểu (S):</div>
+        <span id="s_value" class="result-value">0.00 m</span>
+        <div id="status_msg" class="status"></div>
+        <div style="margin-top:15px; font-size: 0.9em;">
+            <strong>Công thức:</strong> S = (ki / km) × kc × L
+        </div>
+    </div>
+</div>
+
+<script>
+    function tinhToanS() {
+        // 1. Lấy giá trị từ form
+        const ki = parseFloat(document.getElementById('ki').value);
+        const kc = parseFloat(document.getElementById('kc').value);
+        const km = parseFloat(document.getElementById('km').value);
+        const l = parseFloat(document.getElementById('l').value);
+        const d_thuc_te = parseFloat(document.getElementById('d_thuc_te').value);
+
+        // Kiểm tra đầu vào
+        if (isNaN(l) || l <= 0) {
+            alert("Vui lòng nhập chiều dài L hợp lệ!");
+            return;
+        }
+
+        // 2. Tính toán S
+        // Công thức: S = (ki / km) * kc * l
+        let s = (ki / km) * kc * l;
+        s = Math.round(s * 100) / 100; // Làm tròn 2 chữ số thập phân
+
+        // 3. Hiển thị kết quả
+        const resultBox = document.getElementById('ketQua');
+        const sValue = document.getElementById('s_value');
+        const statusMsg = document.getElementById('status_msg');
+
+        resultBox.style.display = "block";
+        sValue.innerText = s + " mét";
+
+        // 4. So sánh với thực tế (nếu người dùng nhập)
+        if (!isNaN(d_thuc_te)) {
+            if (d_thuc_te >= s) {
+                statusMsg.className = "status safe";
+                statusMsg.innerHTML = "✅ AN TOÀN<br>Khoảng cách thực tế lớn hơn S";
+            } else {
+                statusMsg.className = "status unsafe";
+                statusMsg.innerHTML = "⚠️ NGUY HIỂM (CÓ THỂ PHÓNG ĐIỆN)<br>Cần liên kết đẳng thế ngay!";
+            }
+        } else {
+            statusMsg.className = "status";
+            statusMsg.innerHTML = "Nhập khoảng cách thực tế để đánh giá an toàn.";
+            statusMsg.style.backgroundColor = "transparent";
+        }
+    }
+</script>
+
+</body>
+</html>

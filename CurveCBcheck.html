@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm Tra Chọn Lọc CB (Selectivity Check)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 30px; }
+        
+        .control-panel { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        .cb-box { flex: 1; min-width: 300px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
+        .cb-box.main { border-left: 5px solid #d93025; } /* Đỏ cho CB tổng */
+        .cb-box.branch { border-left: 5px solid #188038; } /* Xanh cho CB nhánh */
+        
+        h3 { margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9em; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        
+        .result-section { text-align: center; padding: 20px; border-top: 2px dashed #ddd; }
+        .status-badge { display: inline-block; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.2em; margin-bottom: 15px; }
+        .pass { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+        .fail { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+        .warning { background-color: #fef7e0; color: #ea8600; border: 1px solid #fce8b2; }
+
+        /* Vùng vẽ đồ thị TCC */
+        .chart-container { position: relative; height: 350px; width: 100%; border: 1px solid #eee; background: white; margin-top: 20px; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        .legend { display: flex; justify-content: center; gap: 20px; font-size: 0.85em; margin-top: 10px; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        
+        .explanation { text-align: left; background: #e8f0fe; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 0.95em; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚡ Kiểm Tra Tính Chọn Lọc (Selectivity)</h1>
+    <p style="text-align: center; color: #666; margin-bottom: 20px;">
+        Mô phỏng phối hợp giữa CB Tổng (Upstream) và CB Nhánh (Downstream)
+    </p>
+
+    <div class="control-panel">
+        <div class="cb-box main">
+            <h3>🔴 CB Tổng (Upstream)</h3>
+            <div class="form-group">
+                <label>Loại CB:</label>
+                <select id="mainType" onchange="toggleDelayOption()">
+                    <option value="MCB">MCB (Aptomat tép)</option>
+                    <option value="MCCB">MCCB (Aptomat khối)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Dòng định mức (In) [A]:</label>
+                <input type="number" id="mainIn" value="100" min="10">
+            </div>
+            <div class="form-group">
+                <label>Đặc tuyến từ (Curve) / Ngưỡng cắt nhanh:</label>
+                <select id="mainCurve">
+                    <option value="C">Curve C (5-10 In)</option>
+                    <option value="D">Curve D (10-20 In)</option>
+                    <option value="K">Curve K/MA (12 In)</option>
+                </select>
+            </div>
+            <div class="form-group" id="delayGroup" style="display:none;">
+                <label>⏱️ Thời gian trễ ngắn mạch (Short Time Delay):</label>
+                <select id="mainDelay">
+                    <option value="0">Không trễ (Instant)</option>
+                    <option value="0.1">0.1s (100ms)</option>
+                    <option value="0.2">0.2s (200ms)</option>
+                    <option value="0.4">0.4s (400ms)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="cb-box branch">
+            <h3>🟢 CB Nhánh (Downstream)</h3>
+            <div class="form-group">
+                <label>Loại CB:</label>
+                <select id="branchType" disabled>
+                    <option value="MCB" selected>MCB (Aptomat tép)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Dòng định mức (In) [A]:</label>
+                <input type="number" id="branchIn" value="40" min="1">
+            </div>
+            <div class="form-group">
+                <label>Đặc tuyến từ (Curve):</label>
+                <select id="branchCurve">
+                    <option value="B">Curve B (3-5 In) - Dân dụng</option>
+                    <option value="C" selected>Curve C (5-10 In) - Công nghiệp</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="result-section">
+        <button onclick="checkSelectivity()" style="padding: 12px 30px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold;">KIỂM TRA NGAY</button>
+        
+        <div id="resultOutput" style="margin-top: 20px;">
+            </div>
+
+        <div class="chart-container">
+            <canvas id="tccCanvas"></canvas>
+            <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.8em; color: #888;">Log-Log Scale (Mô phỏng)</div>
+        </div>
+        <div class="legend">
+            <span><span class="dot" style="background: red;"></span>Đặc tuyến CB Tổng</span>
+            <span><span class="dot" style="background: green;"></span>Đặc tuyến CB Nhánh</span>
+            <span><span class="dot" style="background: orange;"></span>Vùng chồng lấn (Mất chọn lọc)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDelayOption() {
+        const type = document.getElementById('mainType').value;
+        const delayGroup = document.getElementById('delayGroup');
+        // Chỉ MCCB mới thường chỉnh được độ trễ (trên các model điện tử hoặc Micrologic)
+        if(type === 'MCCB') {
+            delayGroup.style.display = 'block';
+        } else {
+            delayGroup.style.display = 'none';
+            document.getElementById('mainDelay').value = "0";
+        }
+    }
+
+    function checkSelectivity() {
+        // 1. Lấy dữ liệu
+        const mainIn = parseFloat(document.getElementById('mainIn').value);
+        const branchIn = parseFloat(document.getElementById('branchIn').value);
+        const mainType = document.getElementById('mainType').value;
+        const mainCurve = document.getElementById('mainCurve').value;
+        const branchCurve = document.getElementById('branchCurve').value;
+        const timeDelay = parseFloat(document.getElementById('mainDelay').value || 0);
+
+        const resultDiv = document.getElementById('resultOutput');
+        
+        // Tính toán ngưỡng cắt từ (Magnetic Trip threshold - Im)
+        // Lấy giá trị thấp nhất của dải (worst case)
+        const getIm = (curve, In) => {
+            if(curve === 'B') return 3 * In;
+            if(curve === 'C') return 5 * In;
+            if(curve === 'D') return 10 * In;
+            if(curve === 'K') return 12 * In;
+            return 10 * In; 
+        };
+
+        const branchIm = getIm(branchCurve, branchIn);
+        const mainIm = getIm(mainCurve, mainIn);
+
+        // 2. Logic kiểm tra
+        let status = "";
+        let message = "";
+        let details = "";
+        let selectivityType = "NONE"; // NONE, PARTIAL, TOTAL
+
+        // RULE 1: Dòng định mức
+        if (branchIn >= mainIn) {
+            status = "fail";
+            message = "❌ KHÔNG ĐẠT: CB Nhánh lớn hơn hoặc bằng CB Tổng";
+            details = "Dòng định mức CB nhánh phải nhỏ hơn CB tổng để đảm bảo cấp phối.";
+        } else {
+            // RULE 2: Tỷ lệ dòng điện (Rule of thumb 1.6x hoặc 2x)
+            const ratio = mainIn / branchIn;
+            
+            if (ratio < 1.6) {
+                status = "fail";
+                message = "⚠️ CẢNH BÁO: Khoảng cách dòng quá hẹp";
+                details = `Tỷ lệ In Tổng/Nhánh là ${ratio.toFixed(1)}. Khuyến nghị tối thiểu là 1.6 đến 2 lần.`;
+            } else {
+                // RULE 3: Kiểm tra vùng cắt nhanh (Short Circuit Selectivity)
+                // Đây là nơi xảy ra xung đột nhiều nhất
+                if (mainType === 'MCCB' && timeDelay > 0) {
+                    // Nếu CB tổng có Time Delay -> Chọn lọc toàn phần (theo lý thuyết giả định)
+                    status = "pass";
+                    message = "✅ ĐẠT: CHỌN LỌC TOÀN PHẦN (Total Selectivity)";
+                    details = "CB Tổng được cài đặt trễ thời gian. Khi sự cố xảy ra, CB Tổng sẽ 'chờ' để CB Nhánh cắt trước. Đây là giải pháp tối ưu như trong hình ảnh của bạn.";
+                    selectivityType = "TOTAL";
+                } else {
+                    // So sánh ngưỡng cắt từ
+                    if (mainIm > 1.5 * branchIm) {
+                         status = "pass";
+                         message = "✅ ĐẠT: Chọn lọc Ampe (Amperometric Selectivity)";
+                         details = `Ngưỡng cắt nhanh của CB Tổng (${mainIm}A) cao hơn đáng kể so với CB Nhánh (${branchIm}A). Chọn lọc tốt ở vùng quá tải và ngắn mạch nhỏ.`;
+                         selectivityType = "TOTAL"; // Giả định đơn giản cho tool
+                    } else {
+                        status = "warning";
+                        message = "⚠️ CHỌN LỌC MỘT PHẦN (Partial Selectivity)";
+                        details = `Ở dòng ngắn mạch lớn (>${mainIm}A), cả hai CB có thể nhảy cùng lúc vì đặc tuyến cắt nhanh chồng lấn nhau. Cần tăng dòng CB tổng hoặc dùng loại có Time Delay.`;
+                        selectivityType = "PARTIAL";
+                    }
+                }
+            }
+        }
+
+        // Render Kết quả
+        let badgeClass = status === 'pass' ? 'pass' : (status === 'fail' ? 'fail' : 'warning');
+        resultDiv.innerHTML = `
+            <div class="status-badge ${badgeClass}">${message}</div>
+            <div class="explanation">${details}</div>
+        `;
+
+        // Vẽ biểu đồ
+        drawTCC(mainIn, branchIn, mainIm, branchIm, timeDelay, selectivityType);
+    }
+
+    function drawTCC(mainIn, branchIn, mainIm, branchIm, delay, type) {
+        const canvas = document.getElementById('tccCanvas');
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width = canvas.offsetWidth;
+        const h = canvas.height = canvas.offsetHeight;
+
+        // Xóa canvas
+        ctx.clearRect(0, 0, w, h);
+
+        // Thiết lập hệ tọa độ giả lập (Log-Log)
+        // Trục X: Dòng điện (Current), Trục Y: Thời gian (Time)
+        const margin = 40;
+        
+        // Vẽ trục
+        ctx.beginPath();
+        ctx.strokeStyle = "#888";
+        ctx.lineWidth = 1;
+        ctx.moveTo(margin, 10); ctx.lineTo(margin, h - margin); // Y axis
+        ctx.moveTo(margin, h - margin); ctx.lineTo(w - 10, h - margin); // X axis
+        ctx.stroke();
+        
+        ctx.fillStyle = "#666";
+        ctx.fillText("Time (s)", 10, 20);
+        ctx.fillText("Current (A)", w - 60, h - 20);
+
+        // Hàm chuyển đổi giá trị sang tọa độ Canvas (Mô phỏng Log)
+        // Chúng ta map dải dòng từ 0 -> 2000A vào chiều rộng
+        // Map thời gian từ 0.01s -> 1000s vào chiều cao
+        const mapX = (amps) => margin + (Math.log10(amps) * (w - margin) / 4.5); // 4.5 là log10 của max Amps giả định
+        const mapY = (time) => (h - margin) - (Math.log10(time * 100) * (h - margin) / 5); 
+
+        // Hàm vẽ đường Curve L (Thermal + Magnetic)
+        function drawCurve(In, Im, color, isDelayed, delayVal) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+
+            // 1. Phần quá tải (Thermal - đường chéo xuống)
+            // Giả lập đường cong: t = k / I^2
+            let startI = In * 1.13;
+            ctx.moveTo(mapX(startI), mapY(1000)); // Bắt đầu từ trên cao
+            
+            // Vẽ đường cong xuống điểm cắt từ
+            // Đơn giản hóa thành đường thẳng chéo trên log scale cho demo
+            ctx.lineTo(mapX(Im), mapY(0.1)); 
+
+            // 2. Phần cắt nhanh (Magnetic - đường thẳng đứng xuống)
+            if (isDelayed && delayVal > 0) {
+                // Nếu có Delay (CB Tổng MCCB chỉnh định)
+                // Giữ mức thời gian ở delayVal một đoạn
+                let magneticTime = delayVal; 
+                ctx.lineTo(mapX(Im), mapY(magneticTime)); // Xuống đến mức delay
+                ctx.lineTo(mapX(Im * 10), mapY(magneticTime)); // Kéo ngang (Short Time Delay)
+                ctx.lineTo(mapX(Im * 10), mapY(0.01)); // Cắt tức thời (Instantaneous) ở dòng rất lớn
+            } else {
+                // Cắt tức thời (MCB thường)
+                ctx.lineTo(mapX(Im), mapY(0.01)); // Rơi thẳng xuống đáy
+            }
+
+            ctx.stroke();
+        }
+
+        // Vẽ Branch Curve (Xanh)
+        // Branch luôn là MCB cắt nhanh
+        drawCurve(branchIn, branchIm, "green", false, 0);
+
+        // Vẽ Main Curve (Đỏ)
+        drawCurve(mainIn, mainIm, "red", true, delay);
+
+        // Đánh dấu vùng xung đột nếu có
+        if (type === 'PARTIAL' || type === 'NONE') {
+            ctx.fillStyle = "rgba(255, 165, 0, 0.3)";
+            ctx.beginPath();
+            // Vùng tam giác chồng lấn giả định
+            let xOverlap = mapX(mainIm);
+            let yOverlap = mapY(0.02);
+            ctx.rect(xOverlap, yOverlap, 50, 100); 
+            ctx.fill();
+            ctx.fillStyle = "orange";
+            ctx.fillText("Xung đột!", xOverlap, yOverlap - 5);
+        }
+    }
+    
+    // Chạy lần đầu
+    toggleDelayOption();
+</script>
+
+</body>
+</html>

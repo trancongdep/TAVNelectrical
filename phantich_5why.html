@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 5 Whys - Interactive Checklist</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary: #0f766e; --ai: #7e22ce; --bg: #f8fafc; --text: #334155; --border: #cbd5e1; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; line-height: 1.6; }
+        .container { max-width: 950px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        /* HEADER */
+        header { border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { margin: 0 0 15px 0; color: var(--primary); font-size: 1.8rem; display: flex; align-items: center; gap: 10px; }
+        
+        /* QUOTA BAR */
+        .quota-bar { display: flex; gap: 15px; margin-bottom: 15px; background: #1e293b; color: white; padding: 10px 20px; border-radius: 8px; align-items: center; font-family: monospace; font-size: 0.9em; justify-content: space-between; flex-wrap: wrap; }
+        .quota-value { font-weight: bold; color: #4ade80; }
+        .quota-value.warn { color: #facc15; } .quota-value.danger { color: #f87171; }
+
+        /* CONFIG UI */
+        #fullConfig { display: block; background: #fff1f2; padding: 20px; border-radius: 10px; border: 1px solid #fecdd3; animation: fadeIn 0.3s; }
+        #miniConfig { display: none; background: #ecfdf5; padding: 10px 20px; border-radius: 8px; border: 1px solid #a7f3d0; align-items: center; justify-content: space-between; animation: fadeIn 0.3s; }
+        .config-input { width: 100%; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; box-sizing: border-box; }
+        .btn-scan { background: #be123c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em; font-weight: bold; }
+        .config-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #fecdd3; padding-top: 15px; }
+        .btn-test { background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* STEP ANIMATION */
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .step-container { display: none; }
+        .step-container.active { display: block; animation: slideDown 0.5s ease-out; }
+
+        /* BOX STYLES */
+        .step-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; border-left: 5px solid #cbd5e1; transition: 0.3s; }
+        .step-box:focus-within { border-left-color: var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        label.step-label { display: block; font-weight: 700; margin-bottom: 10px; color: #1e293b; font-size: 1.1em; }
+        .input-wrapper { display: flex; gap: 10px; align-items: flex-start; }
+        
+        textarea { 
+            flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 6px; 
+            font-family: inherit; font-size: 1rem; line-height: 1.5;
+            min-height: 50px; resize: none; overflow-y: hidden;
+        }
+        textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+        .ai-tools { display: flex; flex-direction: column; gap: 8px; }
+        .btn-ai { background: #faf5ff; color: var(--ai); border: 1px solid #d8b4fe; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: flex; align-items: center; gap: 8px; min-width: 150px; }
+        .btn-ai:hover { background: #f3e8ff; }
+        .btn-synth { background: #7e22ce; color: white; border: 1px solid #6b21a8; }
+        
+        /* --- NEW: CHECKLIST UI STYLES --- */
+        .suggestion-box { display: none; margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 15px; }
+        
+        .checklist-item {
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px;
+            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s;
+        }
+        .checklist-item:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .cl-question { font-weight: 600; color: #334155; flex: 1; margin-right: 15px; }
+        .cl-actions { display: flex; gap: 8px; }
+        
+        .btn-yes { background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em; }
+        .btn-yes:hover { background: #bbf7d0; }
+        
+        .btn-no { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em; }
+        .btn-no:hover { background: #fecaca; }
+
+        .btn-ignore { opacity: 0.5; cursor: default; }
+
+        /* Animation for removing item */
+        .fade-out { opacity: 0.3; pointer-events: none; }
+
+        .arrow { text-align: center; color: #cbd5e1; margin: 10px 0 10px -30px; font-size: 1.5em; display: none; }
+        .arrow.visible { display: block; animation: slideDown 0.5s ease-out; }
+        
+        .print-mirror { display: none; white-space: pre-wrap; font-family: inherit; font-size: 1rem; color: #000; line-height: 1.5; text-align: justify; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-box { background: white; padding: 25px; border-radius: 10px; max-width: 500px; width: 90%; position: relative; }
+
+        @media print {
+            #fullConfig, #miniConfig, .ai-tools, .btn-action, .quota-bar, header button, .suggestion-box { display: none !important; }
+            .container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+            .step-container { display: block !important; } 
+            .arrow { display: block !important; }
+            textarea { display: none !important; }
+            .print-mirror { display: block !important; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; }
+            .step-box { border: none; border-left: 5px solid #000 !important; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fas fa-file-contract"></i> BÁO CÁO PHÂN TÍCH 5 WHYS</h1>
+        
+        <div class="quota-bar" id="quotaBar">
+            <div style="display:flex; gap:15px;">
+                <span><i class="fas fa-tachometer-alt"></i> RPM: <span id="rpmDisplay" class="quota-value">0</span></span>
+                <span><i class="fas fa-calendar-day"></i> RPD: <span id="rpdDisplay" class="quota-value">0</span></span>
+            </div>
+            <span style="font-size:0.8em; opacity:0.8;">Mode: Interactive Checklist</span>
+        </div>
+
+        <div id="fullConfig">
+            <div style="margin-bottom:10px; font-weight:bold; color:#be123c;">
+                <i class="fas fa-exclamation-triangle"></i> Cài đặt Kết nối
+            </div>
+            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:250px;">
+                    <label style="font-weight:bold; display:block; margin-bottom:5px;">
+                        <i class="fas fa-key"></i> Google Gemini API Key
+                        <button onclick="document.getElementById('keyHelp').style.display='flex'" style="background:#e0f2fe; color:#0284c7; border:none; border-radius:50%; width:20px; height:20px; font-weight:bold; cursor:pointer;">?</button>
+                    </label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="password" id="cfgApiKey" class="config-input" placeholder="Dán Key (AIza...)">
+                        <button class="btn-scan" onclick="scanModels()"><i class="fas fa-sync"></i> Quét</button>
+                    </div>
+                </div>
+                <div style="flex:1; min-width:250px;">
+                    <label style="font-weight:bold; display:block; margin-bottom:5px;"><i class="fas fa-microchip"></i> Chọn Model</label>
+                    <select id="cfgModel" class="config-input">
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Khuyên dùng)</option>
+                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash (Latest)</option>
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    </select>
+                </div>
+            </div>
+            <div class="config-actions">
+                <button class="btn-test" onclick="testConnection()"><i class="fas fa-plug"></i> Test Kết Nối</button>
+                <button class="btn-save" id="btnSave" onclick="saveConfig()" disabled><i class="fas fa-save"></i> Lưu Cấu Hình</button>
+                <span id="testResult" style="margin-left:10px; font-weight:bold;"></span>
+            </div>
+        </div>
+
+        <div id="miniConfig">
+            <span style="color:#065f46; font-weight:bold;"><i class="fas fa-check-circle"></i> AI Sẵn sàng <span id="currentModelDisplay" style="font-weight:normal; font-size:0.9em; background:#d1fae5; padding:2px 8px; border-radius:10px;"></span></span>
+            <button onclick="toggleConfig(true)" style="background:white; color:#059669; border:1px solid #10b981; padding:5px 15px; border-radius:6px; cursor:pointer; font-weight:bold;"><i class="fas fa-cog"></i> Sửa</button>
+        </div>
+    </header>
+
+    <div class="step-box" style="border-left-color: #dc2626;">
+        <label class="step-label">⚠️ Vấn đề / Sự cố</label>
+        <div class="input-wrapper">
+            <textarea id="problem" oninput="autoResize(this); checkReveal('problem', 'step-why1')" placeholder="Mô tả sự cố..."></textarea>
+            <div id="print-problem" class="print-mirror"></div> 
+            <div class="ai-tools">
+                <button class="btn-ai" onclick="callAI('refine', 'problem')"><i class="fas fa-magic"></i> Viết lại</button>
+            </div>
+        </div>
+        <div id="sug-problem" class="suggestion-box"></div>
+    </div>
+    
+    <div id="whys-container"></div>
+
+    <div id="step-root" class="step-container">
+        <div id="arrow-root" class="arrow">↓</div>
+        <div id="root-box" class="step-box" style="background: #f0fdf4; border-left-color: #16a34a;">
+            <label class="step-label">🌱 Nguyên nhân gốc rễ (Root Cause)</label>
+            <div class="input-wrapper">
+                <textarea id="rootCause" oninput="autoResize(this)" placeholder="Nguyên nhân cuối cùng..."></textarea>
+                <div id="print-rootCause" class="print-mirror"></div>
+                <div class="ai-tools">
+                    <button class="btn-ai btn-synth" onclick="callAI('synthesize', 'rootCause')"><i class="fas fa-robot"></i> Tổng hợp</button>
+                    <button class="btn-ai btn-suggest" onclick="callAI('validate', 'rootCause')"><i class="fas fa-clipboard-check"></i> Đánh giá</button>
+                </div>
+            </div>
+            <div id="sug-rootCause" class="suggestion-box"></div>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin-top:30px; display:flex; justify-content:center; gap:15px;">
+        <button class="btn-action" onclick="prepareAndPrint()" style="padding:12px 25px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;"><i class="fas fa-print"></i> Xuất PDF / In</button>
+        <button class="btn-action" onclick="resetForm()" style="padding:12px 25px; background:#e2e8f0; border:none; border-radius:6px; cursor:pointer;">Làm mới</button>
+    </div>
+</div>
+
+<div id="keyHelp" class="modal-overlay">
+    <div class="modal-box">
+        <button style="position:absolute;top:10px;right:15px;border:none;background:none;font-size:1.5em;cursor:pointer;" onclick="document.getElementById('keyHelp').style.display='none'">&times;</button>
+        <h3>Lấy API Key Miễn Phí</h3>
+        <ol>
+            <li>Vào <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+            <li>Bấm <strong>Create API key</strong>.</li>
+            <li>Copy key dán vào ô nhập liệu.</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+    const TOTAL_WHYS = 5;
+    const FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash-exp", "gemini-1.5-pro"];
+
+    // --- UI LOGIC (RESIZE, REVEAL, PRINT) ---
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+    
+    function checkReveal(currentId, nextStepId) {
+        const currentVal = document.getElementById(currentId).value.trim();
+        const nextContainer = document.getElementById(nextStepId);
+        if (currentVal.length > 0 && nextContainer) {
+            nextContainer.classList.add('active');
+            const arrow = nextContainer.querySelector('.arrow');
+            if(arrow) arrow.classList.add('visible');
+        }
+    }
+
+    function prepareAndPrint() {
+        copyToPrintDiv('problem');
+        for(let i=1; i<=TOTAL_WHYS; i++) copyToPrintDiv('why'+i);
+        copyToPrintDiv('rootCause');
+        window.print();
+    }
+    function copyToPrintDiv(id) {
+        const t = document.getElementById(id); const d = document.getElementById('print-' + id);
+        if(t && d) d.innerText = t.value || "(Chưa nhập)";
+    }
+
+    // --- QUOTA & COOKIES ---
+    function recordApiCall() {
+        const now = Date.now();
+        let logs = JSON.parse(localStorage.getItem('gemini_logs') || '[]');
+        logs.push(now); logs = logs.filter(t => now - t < 86400000);
+        localStorage.setItem('gemini_logs', JSON.stringify(logs));
+        updateQuotaDisplay();
+    }
+    function updateQuotaDisplay() {
+        const now = Date.now();
+        const logs = JSON.parse(localStorage.getItem('gemini_logs') || '[]');
+        const rpm = logs.filter(t => now - t < 60000).length;
+        const rpd = logs.length;
+        document.getElementById('rpmDisplay').innerText = rpm;
+        document.getElementById('rpdDisplay').innerText = rpd;
+        document.getElementById('rpmDisplay').className = "quota-value " + (rpm>=10?'warn':(rpm>=14?'danger':''));
+        document.getElementById('rpdDisplay').className = "quota-value " + (rpd>=1000?'warn':(rpd>=1450?'danger':''));
+    }
+    setInterval(updateQuotaDisplay, 1000);
+
+    function setCookie(n,v,d){const date=new Date();date.setTime(date.getTime()+(d*24*60*60*1000));document.cookie=n+"="+v+";expires="+date.toUTCString()+";path=/;SameSite=Strict";}
+    function getCookie(n){let name=n+"=";let ca=document.cookie.split(';');for(let i=0;i<ca.length;i++){let c=ca[i].trim();if(c.indexOf(name)==0)return c.substring(name.length,c.length);}return "";}
+
+    // --- INIT ---
+    window.onload = function() {
+        renderWhySteps();
+        updateQuotaDisplay();
+        const k = getCookie("gemini_key");
+        const m = getCookie("gemini_model");
+        if(k && m) {
+            document.getElementById('cfgApiKey').value = k;
+            const sel = document.getElementById('cfgModel');
+            let exists = false;
+            for(let i=0; i<sel.options.length; i++){ if(sel.options[i].value == m) exists=true; }
+            if(!exists){ const o = document.createElement('option'); o.value=m; o.text=m; sel.add(o); }
+            sel.value=m;
+            updateMiniDisplay(m); toggleConfig(false);
+        } else { toggleConfig(true); }
+        autoResize(document.getElementById('problem'));
+    }
+
+    function toggleConfig(showFull) {
+        document.getElementById('fullConfig').style.display = showFull ? 'block' : 'none';
+        document.getElementById('miniConfig').style.display = showFull ? 'none' : 'flex';
+    }
+    function updateMiniDisplay(m) { document.getElementById('currentModelDisplay').innerText = m; }
+
+    async function scanModels() { /* ... (Giữ nguyên như cũ) ... */ 
+        const k = document.getElementById('cfgApiKey').value.trim();
+        const sel = document.getElementById('cfgModel');
+        const btn = document.querySelector('.btn-scan');
+        if(!k) { alert("Nhập Key trước!"); return; }
+        btn.innerHTML = '...';
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${k}`);
+            const d = await res.json();
+            if(d.error) throw new Error(d.error.message);
+            const valid = d.models.filter(m => m.supportedGenerationMethods?.includes("generateContent"));
+            valid.sort((a,b) => a.name.includes('flash') ? -1 : 0);
+            sel.innerHTML = '';
+            valid.forEach(m => {
+                const n = m.name.replace('models/','');
+                const opt = document.createElement('option'); opt.value=n; opt.text=n; sel.appendChild(opt);
+            });
+            alert("Đã quét thành công!");
+        } catch(e) { 
+            sel.innerHTML = '';
+            FALLBACK_MODELS.forEach(m => { const opt = document.createElement('option'); opt.value=m; opt.text=m; sel.appendChild(opt); });
+            alert("Không quét được. Đã chuyển sang danh sách dự phòng.");
+        } finally { btn.innerHTML = '<i class="fas fa-sync"></i> Quét'; }
+    }
+
+    async function testConnection() { /* ... (Giữ nguyên như cũ) ... */
+        const k = document.getElementById('cfgApiKey').value.trim();
+        const m = document.getElementById('cfgModel').value;
+        const r = document.getElementById('testResult');
+        const bS = document.getElementById('btnSave');
+        const bT = document.querySelector('.btn-test');
+        if(!k || !m) { alert("Thiếu thông tin!"); return; }
+        bT.innerHTML = '...'; bT.disabled = true; r.innerText = '';
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({contents:[{parts:[{text:"Hi"}]}]})
+            });
+            const d = await res.json();
+            if(d.error) throw new Error(d.error.message);
+            r.innerHTML = '<span style="color:green"><i class="fas fa-check"></i> OK</span>';
+            bS.disabled = false;
+        } catch(e) {
+            r.innerHTML = '<span style="color:red; font-size:0.8em">Lỗi: ' + e.message + '</span>';
+            bS.disabled = true;
+        } finally { bT.innerHTML = '<i class="fas fa-plug"></i> Test Kết Nối'; bT.disabled = false; }
+    }
+
+    function saveConfig() {
+        setCookie("gemini_key", document.getElementById('cfgApiKey').value.trim(), 365);
+        setCookie("gemini_model", document.getElementById('cfgModel').value, 365);
+        updateMiniDisplay(document.getElementById('cfgModel').value);
+        toggleConfig(false);
+    }
+
+    function renderWhySteps() {
+        const c = document.getElementById('whys-container');
+        let h = '';
+        for(let i=1; i<=TOTAL_WHYS; i++) {
+            let nextStepId = (i < TOTAL_WHYS) ? `step-why${i+1}` : `step-root`;
+            h += `
+            <div id="step-why${i}" class="step-container">
+                <div class="arrow">↓</div>
+                <div class="step-box">
+                    <label class="step-label">Tại sao ${i}?</label>
+                    <div class="input-wrapper">
+                        <textarea id="why${i}" oninput="autoResize(this); checkReveal('why${i}', '${nextStepId}')" placeholder="Nguyên nhân ${i}..."></textarea>
+                        <div id="print-why${i}" class="print-mirror"></div>
+                        <div class="ai-tools">
+                            <button class="btn-ai" onclick="callAI('refine', 'why${i}')"><i class="fas fa-pen-fancy"></i> Viết lại</button>
+                            <button class="btn-ai btn-suggest" onclick="callAI('suggest', 'why${i}', ${i})"><i class="fas fa-list-check"></i> Kiểm tra</button>
+                        </div>
+                    </div>
+                    <div id="sug-why${i}" class="suggestion-box"></div>
+                </div>
+            </div>`;
+        }
+        c.innerHTML = h;
+    }
+
+    // --- AI LOGIC (UPDATED FOR JSON CHECKLIST) ---
+    async function callAI(type, targetId, stepIndex = 0) {
+        const k = document.getElementById('cfgApiKey').value.trim();
+        const m = document.getElementById('cfgModel').value;
+        if(!k) { alert("Chưa có cấu hình Key!"); toggleConfig(true); return; }
+
+        const btn = event.currentTarget;
+        const orgHtml = btn.innerHTML;
+        const targetEl = document.getElementById(targetId);
+        const sugBox = document.getElementById(targetId.includes('sug') ? targetId : 'sug-' + targetId);
+
+        btn.innerHTML = '<i class="fas fa-spinner loading-spin"></i>';
+        btn.disabled = true;
+        recordApiCall();
+
+        const problem = document.getElementById('problem').value;
+        const currentContent = targetEl ? targetEl.value : "";
+        let prompt = "";
+
+        if(type === 'refine') {
+            if(!currentContent) { alert("Nhập nội dung trước."); resetBtn(btn, orgHtml); return; }
+            prompt = `Viết lại câu sau cho chuyên nghiệp, kỹ thuật: "${currentContent}"`;
+        } 
+        else if (type === 'suggest') {
+            // PROMPT MỚI: YÊU CẦU JSON
+            let prev = stepIndex === 1 ? "Vấn đề: " + problem : "Nguyên nhân trước: " + document.getElementById('why' + (stepIndex - 1)).value;
+            if(!prev || prev.length < 5) { alert("Nhập bước trước đã."); resetBtn(btn, orgHtml); return; }
+            
+            prompt = `Ngữ cảnh: "${prev}". 
+            Hãy đóng vai chuyên gia kỹ thuật, đưa ra 3 giả thuyết nguyên nhân (hypothesis) dưới dạng câu hỏi Nghi vấn (Yes/No Question) để tìm nguyên nhân tiếp theo.
+            
+            QUAN TRỌNG: Chỉ trả về JSON thuần túy (không có markdown code block) theo định dạng sau:
+            [
+              {"question": "Câu hỏi nghi vấn 1?", "cause": "Nguyên nhân khẳng định tương ứng 1"},
+              {"question": "Câu hỏi nghi vấn 2?", "cause": "Nguyên nhân khẳng định tương ứng 2"},
+              {"question": "Câu hỏi nghi vấn 3?", "cause": "Nguyên nhân khẳng định tương ứng 3"}
+            ]`;
+        } 
+        else if (type === 'synthesize') {
+             let chain = `Vấn đề: ${problem}\n`;
+             for(let i=1; i<=TOTAL_WHYS; i++) {
+                 let v = document.getElementById('why'+i).value;
+                 if(v) chain += `Why ${i}: ${v}\n`;
+             }
+             if(!problem) { alert("Nhập dữ liệu trước."); resetBtn(btn, orgHtml); return; }
+             prompt = `Dữ liệu 5 Whys:\n${chain}\nHãy tổng hợp và viết ra Nguyên nhân gốc rễ (Root Cause) cuối cùng. Tập trung vào lỗi hệ thống.`;
+        }
+        else if (type === 'validate') {
+            if(!currentContent) { alert("Nhập Root Cause đã."); resetBtn(btn, orgHtml); return; }
+            prompt = `Sự cố: "${problem}". Root Cause: "${currentContent}". Đánh giá xem đây là nguyên nhân gốc chưa?`;
+        }
+
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({contents:[{parts:[{text: prompt }]}]})
+            });
+            const d = await res.json();
+            if(d.error) throw new Error(d.error.message);
+            let txt = d.candidates[0].content.parts[0].text;
+
+            if(type === 'refine' || type === 'synthesize') {
+                targetEl.value = txt.trim();
+                autoResize(targetEl);
+                // Trigger reveal next
+                let nextStep = "";
+                if(targetId === 'problem') nextStep = 'step-why1';
+                else if(targetId.includes('why')) {
+                    let idx = parseInt(targetId.replace('why',''));
+                    nextStep = (idx < 5) ? `step-why${idx+1}` : 'step-root';
+                }
+                checkReveal(targetId, nextStep);
+
+            } else if (type === 'suggest') {
+                // XỬ LÝ JSON CHECKLIST
+                // Clean markdown if exists
+                txt = txt.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(txt);
+                } catch(e) {
+                    console.error("JSON Parse Error", e);
+                    sugBox.innerHTML = "Lỗi định dạng AI. Hãy thử lại.";
+                    sugBox.style.display = 'block';
+                    return;
+                }
+
+                // Render HTML Checklist
+                let html = `<strong>🔍 Chọn nguyên nhân phù hợp:</strong><br><br>`;
+                jsonData.forEach((item, index) => {
+                    html += `
+                    <div class="checklist-item" id="chk-${targetId}-${index}">
+                        <div class="cl-question">${item.question}</div>
+                        <div class="cl-actions">
+                            <button class="btn-yes" onclick="selectCause('${item.cause.replace(/'/g, "\\'")}', '${targetId}', 'chk-${targetId}-${index}')">Đúng</button>
+                            <button class="btn-no" onclick="rejectCause('chk-${targetId}-${index}')">Sai</button>
+                        </div>
+                    </div>`;
+                });
+                sugBox.innerHTML = html;
+                sugBox.style.display = 'block';
+
+            } else {
+                const box = document.getElementById('sug-' + targetId);
+                box.style.display = 'block';
+                box.innerHTML = `<strong>🤖 AI:</strong><br>` + txt.replace(/\n/g, '<br>').replace(/\*/g, '');
+            }
+        } catch (e) { alert("Lỗi AI: " + e.message); } 
+        finally { resetBtn(btn, orgHtml); }
+    }
+
+    // --- INTERACTIVE CHECKLIST ACTIONS ---
+    function selectCause(causeText, targetInputId, rowId) {
+        const input = document.getElementById(targetInputId);
+        input.value = causeText;
+        autoResize(input);
+        
+        // Trigger reveal manually since input event didn't fire
+        let nextStep = "";
+        if(targetInputId === 'problem') nextStep = 'step-why1';
+        else if(targetInputId.includes('why')) {
+            let idx = parseInt(targetInputId.replace('why',''));
+            nextStep = (idx < 5) ? `step-why${idx+1}` : 'step-root';
+        }
+        checkReveal(targetInputId, nextStep);
+
+        // Visual Feedback
+        document.getElementById(rowId).style.background = "#dcfce7";
+        document.getElementById(rowId).style.border = "1px solid #86efac";
+    }
+
+    function rejectCause(rowId) {
+        const row = document.getElementById(rowId);
+        row.classList.add('fade-out');
+        // Optional: Hide entirely after animation
+        // setTimeout(() => row.style.display = 'none', 300);
+    }
+
+    function resetBtn(b, h) { b.innerHTML = h; b.disabled = false; }
+    function resetForm() { if(confirm("Xóa nội dung?")) { document.querySelectorAll('textarea').forEach(t=>{t.value=''; autoResize(t);}); document.querySelectorAll('.suggestion-box').forEach(b=>b.style.display='none'); document.querySelectorAll('.step-container').forEach(c=>c.classList.remove('active')); } }
+</script>
+
+</body>
+</html>
