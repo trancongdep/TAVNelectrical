@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel - TAVIETNAM System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+        header { background: #343a40; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 350px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; overflow-y: auto; padding: 10px; }
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; }
+        .editor-tabs { display: flex; background: #e9ecef; border-bottom: 1px solid #ddd; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; }
+        .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
+        .editor-content { flex: 1; position: relative; display: none; }
+        .editor-content.active { display: block; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
+        button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-save { background: #28a745; color: white; }
+        .btn-del { background: #dc3545; color: white; }
+        .btn-new { background: #007bff; color: white; }
+        .device-item { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+        .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        #sld-canvas { width: 100%; height: 100%; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; position: relative; overflow: auto; }
+        #map-canvas { width: 100%; height: 100%; }
+        .admin-node {
+            position: absolute; width: 80px; height: 50px; 
+            background: white; border: 2px solid #333; 
+            display: flex; align-items: center; justify-content: center; text-align: center;
+            font-size: 10px; cursor: grab; user-select: none; z-index: 10;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .admin-node:active { cursor: grabbing; border-color: #007bff; }
+        .admin-node.selected-node { border: 2px solid #007bff; background: #e3f2fd; }
+        .wire { position: absolute; background: #ccc; z-index: 1; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2>Admin Panel: Quản trị Hệ thống</h2>
+    <span style="font-size:12px; opacity: 0.8">ID Dự án: tavietnam-78ae8</span>
+</header>
+
+<div class="container">
+    <div class="sidebar">
+        <div style="margin-bottom: 15px;">
+            <h3 style="margin-top:0">Thông tin Thiết bị</h3>
+            <div class="form-group">
+                <label>ID Thiết bị (Duy nhất)</label>
+                <input type="text" id="inp-id" placeholder="VD: DB1-1">
+            </div>
+            <div class="form-group">
+                <label>Tên hiển thị</label>
+                <input type="text" id="inp-label" placeholder="VD: Tủ Phân Phối 1">
+            </div>
+            <div class="form-group">
+                <label>Loại</label>
+                <select id="inp-type">
+                    <option value="cb">CB (Aptomat/Tủ)</option>
+                    <option value="source">Nguồn (Source)</option>
+                    <option value="load">Tải (Motor/Máy)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nguồn cấp (Parent)</label>
+                <select id="inp-parent"><option value="">-- Gốc --</option></select>
+            </div>
+            <div style="display:flex; gap:10px">
+                <div class="form-group" style="flex:1"><label>SLD X</label><input type="number" id="inp-x"></div>
+                <div class="form-group" style="flex:1"><label>SLD Y</label><input type="number" id="inp-y"></div>
+            </div>
+            <div style="display:flex; gap:10px">
+                <div class="form-group" style="flex:1"><label>Lat</label><input type="number" id="inp-lat" step="0.0001"></div>
+                <div class="form-group" style="flex:1"><label>Lng</label><input type="number" id="inp-lng" step="0.0001"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-new" onclick="resetForm()">Mới</button>
+                <button class="btn-save" onclick="saveDevice()">Lưu</button>
+                <button class="btn-del" onclick="deleteDevice()">Xóa</button>
+            </div>
+        </div>
+        <div class="device-list" id="device-list-container"></div>
+    </div>
+
+    <div class="main-editor">
+        <div class="editor-tabs">
+            <button class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button>
+            <button class="tab-btn" onclick="switchTab('map')">Map Editor</button>
+        </div>
+        <div id="view-sld" class="editor-content active">
+            <div id="sld-canvas"></div>
+        </div>
+        <div id="view-map" class="editor-content">
+            <div id="map-canvas"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, remove } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // --- CẤU HÌNH CỦA BẠN ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
+        authDomain: "tavietnam-78ae8.firebaseapp.com",
+        projectId: "tavietnam-78ae8",
+        storageBucket: "tavietnam-78ae8.firebasestorage.app",
+        messagingSenderId: "670121705534",
+        appId: "1:670121705534:web:1027ad98550573ad37116f",
+        databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let allDevices = [];
+    let selectedId = null;
+
+    // MAP SETUP
+    const map = L.map('map-canvas').setView([10.8231, 106.6297], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    let mapMarkers = {};
+    window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
+
+    // FETCH DATA
+    const nodesRef = ref(db, 'system_nodes');
+    onValue(nodesRef, (snapshot) => {
+        const data = snapshot.val();
+        allDevices = data ? Object.values(data) : [];
+        renderTable();
+        updateParentSelect();
+        renderSLD();
+        renderMap();
+    });
+
+    // UI HELPER
+    function renderTable() {
+        const container = document.getElementById('device-list-container');
+        container.innerHTML = '';
+        allDevices.forEach(d => {
+            const div = document.createElement('div');
+            div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
+            div.innerText = `${d.id} - ${d.label}`;
+            div.onclick = () => selectDevice(d);
+            container.appendChild(div);
+        });
+    }
+
+    function updateParentSelect() {
+        const sel = document.getElementById('inp-parent');
+        sel.innerHTML = '<option value="">-- Gốc --</option>';
+        allDevices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.innerText = `${d.id} (${d.label})`;
+            sel.appendChild(opt);
+        });
+    }
+
+    window.selectDevice = function(device) {
+        selectedId = device.id;
+        document.getElementById('inp-id').value = device.id;
+        document.getElementById('inp-id').disabled = true;
+        document.getElementById('inp-label').value = device.label;
+        document.getElementById('inp-type').value = device.type;
+        document.getElementById('inp-parent').value = device.parent || "";
+        document.getElementById('inp-x').value = device.sld ? device.sld.x : 0;
+        document.getElementById('inp-y').value = device.sld ? device.sld.y : 0;
+        document.getElementById('inp-lat').value = device.geo ? device.geo.lat : map.getCenter().lat;
+        document.getElementById('inp-lng').value = device.geo ? device.geo.lng : map.getCenter().lng;
+        renderTable();
+        renderSLD();
+    }
+
+    window.resetForm = function() {
+        selectedId = null;
+        document.getElementById('inp-id').value = "";
+        document.getElementById('inp-id').disabled = false;
+        document.getElementById('inp-label').value = "";
+        document.getElementById('inp-parent').value = "";
+        renderTable();
+        renderSLD();
+    }
+
+    window.saveDevice = function() {
+        const id = document.getElementById('inp-id').value.trim();
+        if(!id) return alert("Vui lòng nhập ID!");
+        const newData = {
+            id: id,
+            label: document.getElementById('inp-label').value,
+            type: document.getElementById('inp-type').value,
+            parent: document.getElementById('inp-parent').value || null,
+            state: "closed",
+            sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
+            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||10.0, lng: parseFloat(document.getElementById('inp-lng').value)||106.0 }
+        };
+        set(ref(db, 'system_nodes/' + id), newData).then(() => { if(!selectedId) selectDevice(newData); });
+    }
+
+    window.deleteDevice = function() {
+        if(!selectedId) return;
+        if(confirm(`Xóa ${selectedId}?`)) {
+            remove(ref(db, 'system_nodes/' + selectedId));
+            resetForm();
+        }
+    }
+
+    // SLD EDITOR
+    const sldCanvas = document.getElementById('sld-canvas');
+    function renderSLD() {
+        sldCanvas.innerHTML = '';
+        allDevices.forEach(d => {
+            if(d.parent) {
+                const p = allDevices.find(x => x.id == d.parent);
+                if(p) drawLine(p, d);
+            }
+        });
+        allDevices.forEach(d => {
+            const el = document.createElement('div');
+            el.className = `admin-node ${d.id === selectedId ? 'selected-node' : ''}`;
+            el.style.left = d.sld.x + 'px';
+            el.style.top = d.sld.y + 'px';
+            el.innerHTML = `<b>${d.id}</b><br>${d.label}`;
+            el.onmousedown = function(e) {
+                if(d.id !== selectedId) selectDevice(d);
+                let shiftX = e.clientX - el.getBoundingClientRect().left;
+                let shiftY = e.clientY - el.getBoundingClientRect().top;
+                function moveAt(pageX, pageY) {
+                    let newX = pageX - shiftX - sldCanvas.getBoundingClientRect().left + sldCanvas.scrollLeft;
+                    let newY = pageY - shiftY - sldCanvas.getBoundingClientRect().top + sldCanvas.scrollTop;
+                    el.style.left = newX + 'px'; el.style.top = newY + 'px';
+                    document.getElementById('inp-x').value = Math.round(newX);
+                    document.getElementById('inp-y').value = Math.round(newY);
+                }
+                function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+                document.addEventListener('mousemove', onMouseMove);
+                document.onmouseup = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    el.onmouseup = null;
+                    saveDevice();
+                };
+            };
+            el.ondragstart = function() { return false; };
+            sldCanvas.appendChild(el);
+        });
+    }
+
+    function drawLine(p, c) {
+        const x1 = p.sld.x + 40, y1 = p.sld.y + 25, x2 = c.sld.x + 40, y2 = c.sld.y + 25;
+        const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        const line = document.createElement('div');
+        line.className = 'wire';
+        line.style.height = '2px'; line.style.width = length + 'px';
+        line.style.left = x1 + 'px'; line.style.top = y1 + 'px';
+        line.style.transform = `rotate(${angle}deg)`; line.style.transformOrigin = "0 0";
+        sldCanvas.appendChild(line);
+    }
+
+    // MAP EDITOR
+    function renderMap() {
+        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]);
+        mapMarkers = {};
+        allDevices.forEach(d => {
+            if(!d.geo) return;
+            const marker = L.marker([d.geo.lat, d.geo.lng], { draggable: true, title: d.label }).addTo(map);
+            if(d.id === selectedId) marker.setOpacity(1.0); else marker.setOpacity(0.7);
+            marker.on('click', () => selectDevice(d));
+            marker.on('dragend', function(event) {
+                const position = marker.getLatLng();
+                if(selectedId !== d.id) selectDevice(d);
+                document.getElementById('inp-lat').value = position.lat.toFixed(5);
+                document.getElementById('inp-lng').value = position.lng.toFixed(5);
+                saveDevice();
+            });
+            mapMarkers[d.id] = marker;
+        });
+    }
+
+    window.switchTab = function(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.editor-content').forEach(c => c.classList.remove('active'));
+        if(tab === 'sld') {
+            document.querySelector(`button[onclick="switchTab('sld')"]`).classList.add('active');
+            document.getElementById('view-sld').classList.add('active');
+        } else {
+            document.querySelector(`button[onclick="switchTab('map')"]`).classList.add('active');
+            document.getElementById('view-map').classList.add('active');
+            window.refreshMap();
+        }
+    }
+</script>
+</body>
+</html>
