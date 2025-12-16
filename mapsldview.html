@@ -2,276 +2,148 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Hệ thống Điện - TAVIETNAM Monitor</title>
+    <title>TAVIETNAM Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* CẤU HÌNH GIAO DIỆN */
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
-        
-        /* Layout chia đôi */
         #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
         #map-panel { width: 50%; height: 100%; }
-
-        /* Tiêu đề & Chú thích */
         .panel-overlay { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #ddd; }
         .legend-item { display: flex; align-items: center; margin-top: 5px; font-size: 12px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
-        
-        /* SLD NODE (Thiết bị trên sơ đồ) */
-        .node-box {
-            position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold;
-            cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s;
-            padding: 4px; user-select: none; z-index: 10; border-radius: 3px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
+        .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .node-box:hover { transform: scale(1.05); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        
-        /* Trạng thái Đóng/Cắt (Cơ khí) */
-        .closed { border-color: #d32f2f !important; color: #d32f2f; } /* Đóng (Đỏ) */
-        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; } /* Mở (Xanh lá) */
-        
-        /* TRẠNG THÁI CÓ ĐIỆN (Năng lượng) */
+        .closed { border-color: #d32f2f !important; color: #d32f2f; }
+        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 8px rgba(255, 61, 0, 0.4); }
         .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; box-shadow: 0 0 4px #ff3d00; }
         .dead-line { background-color: #bdc3c7; z-index: 1; }
-
-        /* Dây dẫn SLD */
         .sld-line { position: absolute; height: 2px; width: 2px; transition: background-color 0.3s; pointer-events: none; }
-        
-        /* Busbar Style */
         .type-bus { height: 8px !important; background: #333; border: none; width: 140px; border-radius: 4px; }
-        .type-bus span { display: none; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; }
-
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
     </style>
 </head>
 <body>
-
     <div id="sld-panel">
         <div class="panel-overlay">
             <strong>SƠ ĐỒ NGUYÊN LÝ</strong>
             <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện (Live)</div>
             <div class="legend-item"><span class="dot" style="background:#bdc3c7"></span>Mất điện (Dead)</div>
-            <div style="margin-top:5px; font-size:11px; color:#666">Click thiết bị để Đóng/Cắt</div>
         </div>
         <div id="sld-canvas"></div>
     </div>
-
-    <div id="map-panel">
-        <div class="panel-overlay">
-            <strong>BẢN ĐỒ GIS</strong>
-        </div>
-        <div id="map" style="width:100%; height:100%"></div>
-    </div>
-
+    <div id="map-panel"><div class="panel-overlay"><strong>BẢN ĐỒ GIS</strong></div><div id="map" style="width:100%; height:100%"></div></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } 
-        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // --- CẤU HÌNH CỦA BẠN ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
-            authDomain: "tavietnam-78ae8.firebaseapp.com",
-            projectId: "tavietnam-78ae8",
-            storageBucket: "tavietnam-78ae8.firebasestorage.app",
-            messagingSenderId: "670121705534",
-            appId: "1:670121705534:web:1027ad98550573ad37116f",
-            databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com"
-        };
-
+        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        let localNodes = [];
-        const sldCanvas = document.getElementById('sld-canvas');
-        
-        // Khởi tạo Map
-        const map = L.map('map').setView([10.8231, 106.6297], 13); 
+        let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
+        const map = L.map('map').setView([10.8231, 106.6297], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        
-        let mapMarkers = {}; 
-        let mapLines = {};
+        let mapMarkers = {}; let mapLines = {};
 
-        // 1. LẮNG NGHE DỮ LIỆU TỪ FIREBASE
         onValue(ref(db, 'system_nodes'), (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 localNodes = Object.values(data);
-                
-                // Tính toán luồng điện trước khi vẽ
                 calculatePower();
-                
-                renderSLD();
-                renderMap();
-            } else {
-                sldCanvas.innerHTML = '<div style="padding:50px; text-align:center; color:#999">Chưa có dữ liệu. Vui lòng cập nhật từ trang Admin.</div>';
-            }
+                renderSLD(); renderMap();
+            } else { sldCanvas.innerHTML = '<div style="padding:50px;">Chưa có dữ liệu.</div>'; }
         });
 
-        // 2. LOGIC TÍNH TOÁN ĐIỆN (POWER FLOW)
         function calculatePower() {
-            // Reset toàn bộ về mất điện
             localNodes.forEach(n => n.isEnergized = false);
-            
-            // Tìm nguồn (Source) và bắt đầu lan truyền
-            const sources = localNodes.filter(n => n.type === 'source');
-            sources.forEach(src => {
-                src.isEnergized = true; // Nguồn luôn có điện
-                propagate(src);
-            });
+            localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
         }
-
         function propagate(parent) {
-            // Điều kiện truyền: Cha có điện VÀ Cha không bị cắt (Source coi như luôn đóng)
             const canPropagate = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-
             if (canPropagate) {
-                const children = localNodes.filter(n => n.parent === parent.id);
-                children.forEach(child => {
-                    child.isEnergized = true;
-                    propagate(child); // Đệ quy xuống cấp tiếp theo
-                });
+                localNodes.filter(n => n.parent === parent.id).forEach(child => { child.isEnergized = true; propagate(child); });
             }
         }
 
-        // 3. XỬ LÝ CLICK (GỬI LỆNH LÊN FIREBASE)
         window.toggleDevice = function(id) {
             const node = localNodes.find(n => n.id === id);
-            // Không cho phép cắt nguồn trực tiếp hoặc busbar (tùy logic)
             if (!node || node.type === 'source' || node.type === 'bus') return;
-            
-            const newState = node.state === 'closed' ? 'open' : 'closed';
-            update(ref(db, 'system_nodes/' + id), { state: newState });
+            update(ref(db, 'system_nodes/' + id), { state: node.state === 'closed' ? 'open' : 'closed' });
         };
 
-        // 4. VẼ SLD
         function renderSLD() {
             sldCanvas.innerHTML = '';
-            
-            // Vẽ Dây trước (nằm dưới)
+            // Wire
             localNodes.forEach(node => {
                 if (node.parent) {
                     const parent = localNodes.find(n => n.id === node.parent);
                     if (parent && parent.sld && node.sld) {
-                        // Màu dây: Nếu Cha truyền được điện -> Dây có điện
                         const isWireLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-                        const colorCls = isWireLive ? 'energized-line' : 'dead-line';
-                        drawManhattanLine(parent, node, colorCls);
+                        // FIX: Pass full object
+                        drawManhattanLine(parent, node, isWireLive ? 'energized-line' : 'dead-line');
                     }
                 }
             });
-
-            // Vẽ Thiết bị
+            // Node
             localNodes.forEach(node => {
                 if(!node.sld) return;
                 const el = document.createElement('div');
-                
-                // Class chung
                 el.className = `node-box ${node.type === 'bus' ? 'type-bus' : ''}`;
+                el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
                 
-                // Vị trí
-                el.style.left = node.sld.x + 'px';
-                el.style.top = node.sld.y + 'px';
-                
-                // Màu sắc theo loại & trạng thái
-                if (node.type === 'source') {
-                    el.style.backgroundColor = '#e3f2fd'; el.style.borderColor = '#1565c0';
-                } else if (node.type !== 'bus') {
-                    el.classList.add(node.state); // closed (đỏ) / open (xanh)
-                }
-
-                // Hiệu ứng có điện
+                if (node.type === 'source') { el.style.backgroundColor = '#e3f2fd'; el.style.borderColor = '#1565c0'; }
+                else if (node.type !== 'bus') { el.classList.add(node.state); }
                 if (node.isEnergized) el.classList.add('energized-node');
 
-                // Nội dung text
                 let statusText = (node.state === 'closed' ? 'ON' : 'OFF');
-                if (node.type === 'bus') statusText = '';
-                if (node.type === 'source') statusText = '';
-
+                if (node.type === 'bus' || node.type === 'source') statusText = '';
                 el.innerHTML = `<span>${node.label}</span><br><span style="font-size:9px">${statusText}</span>`;
-                
                 el.onclick = () => window.toggleDevice(node.id);
                 sldCanvas.appendChild(el);
             });
         }
 
         function drawManhattanLine(p, c, cls) {
-            // Tính toán điểm neo dây (Anchor points)
-            // Nếu là Busbar, điểm neo rộng hơn
             const pW = (p.type==='bus') ? 140 : 80; const pH = (p.type==='bus') ? 8 : 40;
             const cW = (c.type==='bus') ? 140 : 80; const cH = (c.type==='bus') ? 8 : 40;
-
-            const x1 = p.sld.x + pW/2; 
-            const y1 = p.sld.y + pH/2; 
-            const x2 = c.sld.x + cW/2; 
-            const y2 = c.sld.y + cH/2;
-
+            const x1 = p.sld.x + pW/2; const y1 = p.sld.y + pH/2; 
+            const x2 = c.sld.x + cW/2; const y2 = c.sld.y + cH/2;
             const midY = y1 + (y2 - y1) / 2;
-            
-            // Vẽ 3 đoạn vuông góc
-            createDiv(x1, y1, 2, midY - y1, cls); // Dọc 1
-            createDiv(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); // Ngang
-            createDiv(x2, midY, 2, y2 - midY, cls); // Dọc 2
+            createDiv(x1, y1, 2, midY - y1, cls); createDiv(Math.min(x1,x2), midY, Math.abs(x2-x1), 2, cls); createDiv(x2, midY, 2, y2 - midY, cls);
         }
-
         function createDiv(x, y, w, h, cls) {
-            // Xử lý tọa độ âm/chiều cao âm
-            const d = document.createElement('div');
-            d.className = 'sld-line ' + cls;
-            d.style.left = (w < 0 ? x + w : x) + 'px';
-            d.style.top = (h < 0 ? y + h : y) + 'px';
-            d.style.width = Math.abs(w) + 'px';
-            d.style.height = Math.abs(h) + 'px';
+            const d = document.createElement('div'); d.className = 'sld-line ' + cls;
+            d.style.left = (w < 0 ? x + w : x) + 'px'; d.style.top = (h < 0 ? y + h : y) + 'px';
+            d.style.width = Math.abs(w) + 'px'; d.style.height = Math.abs(h) + 'px';
             sldCanvas.appendChild(d);
         }
 
-        // 5. VẼ BẢN ĐỒ (MAP)
         function renderMap() {
-            // Xóa layer cũ
-            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]);
-            for(let id in mapLines) map.removeLayer(mapLines[id]);
+            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); for(let id in mapLines) map.removeLayer(mapLines[id]);
             mapMarkers = {}; mapLines = {};
-
-            // A. Vẽ Dây Map
             localNodes.forEach(node => {
                 if (node.parent && node.geo) {
                     const parent = localNodes.find(n => n.id === node.parent);
                     if (parent && parent.geo) {
                         const isWireLive = parent.isEnergized && (parent.type === 'source' || parent.state === 'closed');
-                        const color = isWireLive ? '#ff3d00' : '#95a5a6';
-                        const weight = isWireLive ? 4 : 2;
-                        const dash = isWireLive ? null : '5, 10'; // Nét đứt nếu mất điện
-
-                        const line = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], 
-                            { color: color, weight: weight, dashArray: dash }).addTo(map);
-                        mapLines[node.id] = line;
+                        const color = isWireLive ? '#ff3d00' : '#bdc3c7';
+                        const w = isLive ? 4 : 2;
+                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], { color: color, weight: w, dashArray: isWireLive?null:'5,10' }).addTo(map);
                     }
                 }
             });
-
-            // B. Vẽ Marker Map
             localNodes.forEach(node => {
                 if(!node.geo) return;
-                
-                // Màu viền marker theo trạng thái
                 let borderColor = '#666';
                 if (node.isEnergized) {
-                    if (node.state === 'closed') borderColor = '#d32f2f'; // Đỏ (Đóng & Có điện)
-                    else if (node.type === 'source') borderColor = '#1565c0';
-                    else borderColor = '#27ae60'; // Xanh lá (Mở nhưng đầu trên có điện)
-                } 
-
+                    if (node.state === 'closed') borderColor = '#d32f2f'; else if (node.type === 'source') borderColor = '#1565c0'; else borderColor = '#27ae60';
+                }
                 const bg = node.isEnergized ? '#fff' : '#f0f0f0';
-                const shadow = node.isEnergized ? `box-shadow: 0 0 10px ${borderColor};` : '';
-
-                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; ${shadow} border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px; white-space:nowrap; min-width:40px;">${node.label}</div>`;
-                
+                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px;">${node.label}</div>`;
                 const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20], iconAnchor: [30, 10] });
                 const marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
-                
                 marker.on('click', () => window.toggleDevice(node.id));
                 mapMarkers[node.id] = marker;
             });
