@@ -1,357 +1,305 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Sơ đồ Một Sợi (SLD) Xưởng 1 - Mô phỏng Tương tác</title>
+    <title>Sơ đồ SLD Xưởng 1 - Quản lý Trạng thái Busbar</title>
     <style>
-        /* CẤU HÌNH GIAO DIỆN CHUNG */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f7; text-align: center; margin: 0; padding: 20px; }
-        h2 { color: #2c3e50; margin-bottom: 10px; }
-        .panel-info { background: #fff; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: inline-block; margin-bottom: 20px; font-size: 14px; }
-        .legend-box { display: inline-block; width: 15px; height: 15px; margin-right: 5px; vertical-align: middle; border: 1px solid #ccc; }
-        .legend-live { background-color: #ff5252; border-color: #d32f2f; }
-        .legend-dead { background-color: #e0e0e0; border-color: #999; }
-        .legend-cb { background-color: #fff; border: 2px solid #2c3e50; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #eef2f5; margin: 0; padding: 20px; user-select: none; }
+        
+        /* BẢNG ĐIỀU KHIỂN */
+        .control-panel {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ddd;
+        }
+        .btn-grid {
+            padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        .btn-grid:hover { background: #0056b3; }
+        .legend { margin-top: 10px; font-size: 13px; line-height: 1.8; }
+        .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 
-        /* KHUNG CHỨA SƠ ĐỒ CHÍNH */
+        /* KHUNG VẼ CHÍNH */
         #diagram-container {
-            width: 1400px; /* Mở rộng chiều ngang */
-            height: 850px; /* Mở rộng chiều cao */
-            margin: 0 auto;
-            background-color: white;
-            border: 1px solid #dcdcdc;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden; /* Ẩn phần thừa */
+            width: 1400px; height: 900px;
+            background-color: white; border: 1px solid #ccc;
+            position: relative; margin: 0 auto; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
 
-        /* ĐỊNH NGHĨA CÁC THÀNH PHẦN */
+        /* LƯỚI TỌA ĐỘ */
+        #grid-layer {
+            position: absolute; inset: 0; display: none; pointer-events: none;
+            background-image: linear-gradient(#e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px);
+            background-size: 50px 50px; z-index: 0;
+        }
+
+        /* === CÁC PHẦN TỬ HỆ THỐNG ĐIỆN === */
         
-        /* 1. THIẾT BỊ (Tủ điện, Nguồn, Tải) */
-        .device {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 12px;
-            font-weight: bold;
-            text-align: center;
-            z-index: 10; /* Luôn nằm trên dây */
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        /* 1. NGUỒN */
+        .source {
+            position: absolute; z-index: 10;
+            background: #e3f2fd; border: 2px solid #1976d2; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #0d47a1; text-align: center;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* 2. THANH CÁI (BUSBAR) - QUAN TRỌNG */
+        .busbar {
+            position: absolute; z-index: 5; /* Nằm dưới CB nhưng trên dây */
+            background-color: #455a64; /* MÀU GỐC: Xám đậm (Mất điện) */
+            border: 1px solid #263238;
+            border-radius: 4px;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.3);
+            transition: background-color 0.3s ease; /* Hiệu ứng đổi màu mượt */
+        }
+
+        /* 3. DÂY DẪN */
+        .line {
+            position: absolute; z-index: 4;
+            background-color: #b0bec5; /* Màu gốc: Xám nhạt */
+            transition: background-color 0.3s ease;
+        }
+
+        /* 4. APTOMAT (CB) */
+        .cb {
+            position: absolute; z-index: 20;
+            background: white; border: 2px solid #78909c;
+            cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-size: 11px; font-weight: bold; color: #333;
             transition: all 0.2s;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .cb:hover { transform: scale(1.05); box-shadow: 3px 3px 8px rgba(0,0,0,0.2); }
+        
+        /* Trạng thái CB */
+        .cb.closed { border-color: #d32f2f; color: #d32f2f; } /* ĐÓNG */
+        .cb.open { border-color: #2e7d32; color: #2e7d32; border-style: dashed; background-color: #f1f8e9; opacity: 0.9; } /* CẮT */
+
+        /* 5. CLASS TRẠNG THÁI "CÓ ĐIỆN" (ENERGIZED) */
+        /* Áp dụng cho Busbar và Line */
+        .energized { 
+            background-color: #ff3d00 !important; /* MÀU ĐỎ CAM RỰC RỠ */
+            box-shadow: 0 0 5px rgba(255, 61, 0, 0.4); /* Phát sáng nhẹ */
         }
         
-        /* Nguồn điện */
-        .source-node {
-            width: 80px; height: 60px;
-            background-color: #e3f2fd; /* Màu xanh nhạt cho nguồn */
-            border: 3px solid #1976d2;
-            border-radius: 8px;
-        }
+        /* Áp dụng cho thiết bị (Nguồn, CB) */
+        .source.energized-device { background-color: #bbdefb; }
+        .cb.energized-device { background-color: #ffccbc; border-color: #d32f2f; }
 
-        /* Thiết bị đóng cắt (Aptomat/Tủ điện) */
-        .cb-node {
-            width: 70px; height: 50px;
-            background-color: #fff;
-            border: 2px solid #455a64; /* Màu viền mặc định */
-            cursor: pointer;
-            user-select: none;
-        }
-        .cb-node:hover { transform: scale(1.03); box-shadow: 3px 3px 7px rgba(0,0,0,0.15); }
-        
-        /* Trạng thái ON/OFF của CB */
-        .cb-node.closed { border-color: #d32f2f; color: #d32f2f; } /* Đang ĐÓNG */
-        .cb-node.open { border-color: #388e3c; color: #388e3c; border-style: dashed; background-color: #f1f8e9; } /* Đang CẮT */
-
-        /* Tải (Load) */
-        .load-node {
-            width: 50px; height: 50px;
-            background-color: #fbe9e7;
-            border: 2px solid #d84315;
-            border-radius: 50%; /* Hình tròn */
-            font-size: 10px;
-        }
-
-        /* 2. ĐƯỜNG DÂY & THANH CÁI (Busbar) */
-        .line, .busbar {
-            position: absolute;
-            background-color: #bdbdbd; /* Màu xám (Mất điện) */
-            transition: background-color 0.4s ease; /* Hiệu ứng chuyển màu mượt */
-            z-index: 5;
-        }
-        /* Thanh cái (Busbar) - Dày hơn */
-        .busbar { height: 6px; border-radius: 3px; }
-
-        /* 3. HIỆU ỨNG "CÓ ĐIỆN" (Energized) */
-        /* Dây/Busbar có điện -> Màu đỏ */
-        .line.energized, .busbar.energized { background-color: #ff5252 !important; }
-        
-        /* Thiết bị có điện đi qua -> Nền hồng nhạt */
-        .device.energized-device { background-color: #ffebee; }
-        .source-node.energized-device { background-color: #bbdefb; } /* Nguồn giữ màu xanh */
-
-        /* Nhãn trạng thái nhỏ trên CB */
-        .cb-status-label {
-            font-size: 9px; margin-top: 2px;
+        /* Tooltip tọa độ */
+        .device-wrapper:hover::after {
+            content: "ID: " attr(id) " (x:" attr(data-x) ", y:" attr(data-y) ")";
+            position: absolute; top: -25px; left: 0; background: #333; color: #fff;
+            padding: 4px 8px; border-radius: 4px; font-size: 10px; white-space: nowrap; z-index: 100;
         }
     </style>
 </head>
 <body>
 
-    <h2>Sơ đồ Nguyên lý Một sợi (SLD) - Xưởng 1</h2>
-    
-    <div class="panel-info">
-        <strong>Hướng dẫn:</strong> Nhấp chuột vào các hộp <strong>CB / Tủ điện</strong> để Đóng (ON) hoặc Cắt (OFF) điện.
-        <br>
-        <strong>Trạng thái:</strong>
-        <span class="legend-box legend-live"></span>Có Điện (Live) |
-        <span class="legend-box legend-dead"></span>Mất Điện (Dead) |
-        <span class="legend-box legend-cb" style="border-color: #d32f2f;"></span>CB Đóng (ON) |
-        <span class="legend-box legend-cb" style="border-style: dashed; border-color: #388e3c;"></span>CB Cắt (OFF)
+    <div class="control-panel">
+        <button class="btn-grid" onclick="toggleGrid()">Bật/Tắt Lưới (50px)</button>
+        <div class="legend">
+            <div><span class="dot" style="background:#ff3d00"></span> Có điện (Live)</div>
+            <div><span class="dot" style="background:#455a64"></span> Mất điện (Dead)</div>
+            <div><span class="dot" style="border:2px solid #d32f2f; background:white"></span> CB Đóng (ON)</div>
+            <div><span class="dot" style="border:2px dashed #2e7d32; background:white"></span> CB Cắt (OFF)</div>
+        </div>
+        <div style="margin-top:10px; font-style: italic; color: #666; font-size:12px;">
+            * Click vào CB để thao tác
+        </div>
     </div>
 
     <div id="diagram-container">
+        <div id="grid-layer"></div>
         </div>
 
 <script>
-    // ============================================================
-    // PHẦN 1: CẤU TRÚC DỮ LIỆU (Mô hình hóa bản vẽ Xưởng 1)
-    // ============================================================
-    // parentId: ID của thiết bị cấp nguồn trực tiếp cho nó.
-    // state: 'closed' (Đóng - Mặc định) hoặc 'open' (Cắt). Chỉ áp dụng cho type: 'cb'.
+    // =================================================================
+    // DỮ LIỆU CẤU HÌNH HỆ THỐNG (XƯỞNG 1)
+    // =================================================================
     
-    const systemData = [
-        // --- HỆ THỐNG NGUỒN 1 (CHÍNH) ---
-        { id: 'src1', type: 'source', x: 50, y: 50, label: 'Tủ Nguồn\nMSB1-1', parentId: null },
-        
-        // Dây từ MSB1-1 -> DB1-1 (Cáp 4x300)
-        { id: 'L1', type: 'line', x: 130, y: 80, w: 100, h: 4, parentId: 'src1' },
+    const config = {
+        // 1. NGUỒN (Sources)
+        sources: [
+            { id: 'src_main', x: 50, y: 50, w: 100, h: 60, label: 'NGUỒN\nMSB1-1' },
+            { id: 'src_bkup', x: 1250, y: 600, w: 100, h: 60, label: 'NGUỒN\nDB9-2' }
+        ],
 
-        // Tủ DB1-1 (Phân phối tổng)
-        { id: 'db1_1', type: 'cb', x: 230, y: 55, label: 'Tủ Tổng\nDB1-1', state: 'closed', parentId: 'src1' },
-
-            // --- Các nhánh con trực tiếp từ DB1-1 ---
-            // Nhánh 1.1 (Khác)
-            { id: 'L_db1_1', type: 'line', x: 265, y: 105, w: 4, h: 50, parentId: 'db1_1' },
-            { id: 'db1_1_1', type: 'cb', x: 230, y: 155, label: 'DB1-1.1\n(Khác)', state: 'closed', parentId: 'db1_1' },
-
-            // Nhánh 1.3 (Xử Lý CD) - Đi sang phải
-            { id: 'L_db1_3_h', type: 'line', x: 300, y: 80, w: 150, h: 4, parentId: 'db1_1' },
-            { id: 'db1_1_3', type: 'cb', x: 450, y: 55, label: 'DB1-1.3\n(Xử lý CD)', state: 'closed', parentId: 'db1_1' },
-                // Con của 1.3
-                { id: 'L_db1_3_1', type: 'line', x: 520, y: 80, w: 80, h: 4, parentId: 'db1_1_3' },
-                { id: 'db1_1_3_1', type: 'cb', x: 600, y: 55, label: 'DB1-1.3.1\n(80mm²)', state: 'closed', parentId: 'db1_1_3' },
-
-            // === NHÁNH TRỤC CHÍNH DB1-1.2 (LINE SƠN) ===
-            // Dây chính từ DB1-1 xuống DB1-1.2 (Cáp 4x300)
-            // Vẽ thanh busbar ngang dài để làm trục phân phối
-            { id: 'L_main_bus_v', type: 'line', x: 265, y: 205, w: 4, h: 80, parentId: 'db1_1' }, // Dây xuống
-            { id: 'db1_1_2', type: 'cb', x: 230, y: 285, label: 'Phân Phối\nDB1-1.2', state: 'closed', parentId: 'db1_1' },
+        // 2. THANH CÁI (BUSBARS) - Sẽ đổi màu theo trạng thái
+        busbars: [
+            // Busbar Tủ Tổng DB1-1 (Nhỏ, ngắn)
+            { id: 'bus_db1', x: 230, y: 130, w: 10, h: 100, label: '', parentId: 'cb_db1_in' },
             
-            // Thanh cái phân phối chính của DB1-1.2 (Busbar)
-            { id: 'bus_1_2', type: 'busbar', x: 100, y: 350, w: 1200, parentId: 'db1_1_2' }, // Thanh ngang dài
+            // Busbar Tủ Phân Phối DB1-1.2 (Thanh cái chính dài ngang)
+            { id: 'bus_main_1_2', x: 100, y: 350, w: 1200, h: 15, label: '', parentId: 'cb_1_2_in' }
+        ],
 
-                // --- CÁC PHỤ TẢI ĐẤU VÀO THANH CÁI DB1-1.2 ---
-                
-                // 1. Khu vực Paint B (Trái)
-                { id: 'L_b1', type: 'line', x: 150, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_1', type: 'cb', x: 115, y: 396, label: 'DB1-1.2.1\n(Paint B)', state: 'closed', parentId: 'db1_1_2' },
+        // 3. THIẾT BỊ ĐÓNG CẮT (CBs)
+        cbs: [
+            // --- Nhánh Nguồn Chính ---
+            { id: 'cb_db1_in', x: 205, y: 60, w: 60, h: 50, label: 'Tổng\nDB1-1', state: 'closed', parentId: 'src_main' },
+            
+            // Các CB ra từ Tủ Tổng DB1-1
+            { id: 'cb_1_3', x: 300, y: 140, w: 60, h: 40, label: 'Ra CD\n1.1.3', state: 'closed', parentId: 'bus_db1' },
+            { id: 'cb_1_2_feeder', x: 205, y: 250, w: 60, h: 50, label: 'Cấp\n1.1.2', state: 'closed', parentId: 'bus_db1' }, // Cấp xuống dưới
 
-                { id: 'L_b2', type: 'line', x: 250, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_2', type: 'cb', x: 215, y: 396, label: 'DB1-1.2.2\n(Paint B)', state: 'closed', parentId: 'db1_1_2' },
-                    // Con của 1.2.2
-                    { id: 'L_b2_1', type: 'line', x: 235, y: 446, w: 4, h: 30, parentId: 'db1_2_2' },
-                    { id: 'db1_2_2_1', type: 'cb', x: 200, y: 476, label: '1.2.2.1\n(6mm²)', state: 'closed', parentId: 'db1_2_2' },
-                    { id: 'L_b2_2_h', type: 'line', x: 250, y: 420, w: 40, h: 4, parentId: 'db1_2_2' }, // Ngang
-                    { id: 'db1_2_2_2', type: 'cb', x: 290, y: 396, label: '1.2.2.2\n(6mm²)', state: 'closed', parentId: 'db1_2_2' },
+            // CB Tổng đầu vào của tủ DB1-1.2
+            { id: 'cb_1_2_in', x: 205, y: 310, w: 60, h: 40, label: 'Tổng\n1.1.2', state: 'closed', parentId: 'cb_1_2_feeder' },
 
-                // 2. Khu vực Paint D & CD (Giữa trái)
-                { id: 'L_d3', type: 'line', x: 400, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_3', type: 'cb', x: 365, y: 396, label: 'DB1-1.2.3\n(Paint D)', state: 'closed', parentId: 'db1_1_2' },
-                    { id: 'L_d3_1', type: 'line', x: 400, y: 446, w: 4, h: 30, parentId: 'db1_2_3' },
-                    { id: 'db1_2_3_1', type: 'cb', x: 365, y: 476, label: '1.2.3.1\n(10mm²)', state: 'closed', parentId: 'db1_2_3' },
+            // --- Các CB Nhánh trên Busbar Chính (DB1-1.2) ---
+            // Paint B
+            { id: 'cb_pb1', x: 150, y: 400, w: 50, h: 40, label: 'Paint B\n1.2.1', state: 'closed', parentId: 'bus_main_1_2' },
+            { id: 'cb_pb2', x: 250, y: 400, w: 50, h: 40, label: 'Paint B\n1.2.2', state: 'closed', parentId: 'bus_main_1_2' },
+            
+            // Paint D
+            { id: 'cb_pd1', x: 450, y: 400, w: 50, h: 40, label: 'Paint D\n1.2.3', state: 'closed', parentId: 'bus_main_1_2' },
+            
+            // Paint A
+            { id: 'cb_pa1', x: 750, y: 400, w: 50, h: 40, label: 'Paint A\n1.2.8', state: 'closed', parentId: 'bus_main_1_2' },
+            
+            // Paint C
+            { id: 'cb_pc1', x: 1050, y: 400, w: 50, h: 40, label: 'Paint C\n1.2.7', state: 'closed', parentId: 'bus_main_1_2' },
 
-                { id: 'L_d4', type: 'line', x: 500, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_4', type: 'cb', x: 465, y: 396, label: 'DB1-1.2.4\n(80mm²)', state: 'closed', parentId: 'db1_1_2' },
+            // --- Nhánh Nguồn Phụ DB9-2 ---
+            { id: 'cb_src2', x: 1140, y: 610, w: 50, h: 40, label: 'DB9-2.1', state: 'open', parentId: 'src_bkup' }
+        ],
 
-                { id: 'L_d5', type: 'line', x: 600, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_5', type: 'cb', x: 565, y: 396, label: 'DB1-1.2.5\n(50mm²)', state: 'closed', parentId: 'db1_1_2' },
-                    { id: 'L_d5_1', type: 'line', x: 635, y: 420, w: 40, h: 4, parentId: 'db1_2_5' },
-                    { id: 'db1_2_5_1', type: 'cb', x: 675, y: 396, label: '1.2.5.1\n(10mm²)', state: 'closed', parentId: 'db1_2_5' },
+        // 4. DÂY DẪN (LINES) - Nối các điểm lại với nhau
+        lines: [
+            // Nối Nguồn -> CB Tổng
+            { id: 'l1', x: 150, y: 80, w: 55, h: 4, parentId: 'src_main' },
 
-                // 3. Khu vực Paint A (Giữa)
-                { id: 'L_a8', type: 'line', x: 800, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_8', type: 'cb', x: 765, y: 396, label: 'DB1-1.2.8\n(Paint A)', state: 'closed', parentId: 'db1_1_2' },
-                    { id: 'L_a8_1', type: 'line', x: 800, y: 446, w: 4, h: 30, parentId: 'db1_2_8' },
-                    { id: 'db1_2_8_1', type: 'cb', x: 765, y: 476, label: '1.2.8.1\n(4mm²)', state: 'closed', parentId: 'db1_2_8' },
+            // CB Tổng -> Busbar DB1-1
+            { id: 'l2', x: 233, y: 110, w: 4, h: 20, parentId: 'cb_db1_in' },
 
-                // 4. Khu vực Paint C (Phải)
-                { id: 'L_c6_tren', type: 'line', x: 950, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_6a', type: 'cb', x: 915, y: 396, label: 'DB1-1.2.6\n(Trên)', state: 'closed', parentId: 'db1_1_2' },
+            // Busbar DB1-1 -> CB Nhánh 1.3
+            { id: 'l3', x: 240, y: 160, w: 60, h: 4, parentId: 'bus_db1' },
 
-                { id: 'L_c6_duoi', type: 'line', x: 1050, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_6b', type: 'cb', x: 1015, y: 396, label: 'DB1-1.2.6\n(Dưới)', state: 'closed', parentId: 'db1_1_2' },
-                     { id: 'L_c7_1', type: 'line', x: 1085, y: 420, w: 40, h: 4, parentId: 'db1_2_6b' },
-                     { id: 'db1_2_7_1', type: 'cb', x: 1125, y: 396, label: '1.2.7.1', state: 'closed', parentId: 'db1_2_6b' },
+            // Busbar DB1-1 -> CB Cấp nguồn 1.2
+            // (Busbar dọc đã vẽ sẵn, chỉ cần nối từ busbar vào CB)
+            { id: 'l4', x: 233, y: 230, w: 4, h: 20, parentId: 'bus_db1' },
 
-                { id: 'L_c7', type: 'line', x: 1180, y: 356, w: 4, h: 40, parentId: 'db1_1_2' },
-                { id: 'db1_2_7', type: 'cb', x: 1145, y: 396, label: 'DB1-1.2.7\n(Paint C)', state: 'closed', parentId: 'db1_1_2' },
-                    // Các con của 1.2.7
-                    { id: 'L_c7_2', type: 'line', x: 1180, y: 446, w: 4, h: 30, parentId: 'db1_2_7' },
-                    { id: 'db1_2_7_2', type: 'cb', x: 1145, y: 476, label: '1.2.7.2\n(4mm²)', state: 'closed', parentId: 'db1_2_7' },
-                    { id: 'L_c7_3_h', type: 'line', x: 1215, y: 420, w: 40, h: 4, parentId: 'db1_2_7' },
-                    { id: 'db1_2_7_3', type: 'cb', x: 1255, y: 396, label: '1.2.7.3', state: 'closed', parentId: 'db1_2_7' },
-                
-                // 5. Các tải khác (Góc dưới)
-                { id: 'L_other1', type: 'line', x: 100, y: 550, w: 4, h: 50, parentId: 'db1_1_2' }, // Nối từ busbar xuống xa
-                 // Vẽ một đường nối dài từ Busbar xuống khu vực này (ảo)
-                 { id: 'L_bus_ext_1', type: 'line', x: 100, y: 356, w: 4, h: 200, parentId: 'db1_1_2' },
-                { id: 'db_1_2_1_load', type: 'cb', x: 65, y: 600, label: 'DB-1.2.1\n(Khác)', state: 'closed', parentId: 'db1_1_2' },
-                
-                 { id: 'L_bus_ext_2', type: 'line', x: 600, y: 356, w: 4, h: 200, parentId: 'db1_1_2' },
-                { id: 'db1_2_10', type: 'cb', x: 565, y: 600, label: 'DB1-1.2.10\n(Khác)', state: 'closed', parentId: 'db1_1_2' },
+            // CB Feeder -> CB Input 1.2 (Dây cáp trục chính 4x300)
+            { id: 'l5', x: 233, y: 300, w: 4, h: 10, parentId: 'cb_1_2_feeder' },
+            
+            // CB Input 1.2 -> Busbar Chính 1.2
+            { id: 'l6', x: 233, y: 350, w: 4, h: 0, parentId: 'cb_1_2_in' }, // Kết nối trực tiếp
 
+            // Từ Busbar Chính -> Các CB Nhánh (Vẽ các dây thả xuống)
+            { id: 'ld_1', x: 175, y: 365, w: 4, h: 35, parentId: 'bus_main_1_2' }, // Xuống Paint B1
+            { id: 'ld_2', x: 275, y: 365, w: 4, h: 35, parentId: 'bus_main_1_2' }, // Xuống Paint B2
+            { id: 'ld_3', x: 475, y: 365, w: 4, h: 35, parentId: 'bus_main_1_2' }, // Xuống Paint D
+            { id: 'ld_4', x: 775, y: 365, w: 4, h: 35, parentId: 'bus_main_1_2' }, // Xuống Paint A
+            { id: 'ld_5', x: 1075, y: 365, w: 4, h: 35, parentId: 'bus_main_1_2' }, // Xuống Paint C
 
-        // --- HỆ THỐNG NGUỒN 2 (ĐỘC LẬP) ---
-        // Nằm ở góc dưới bên phải
-        { id: 'src2', type: 'source', x: 1250, y: 600, label: 'Nguồn Độc Lập\nDB9-2', parentId: null },
-        { id: 'L2', type: 'line', x: 1210, y: 630, w: 40, h: 4, parentId: 'src2' }, // Dây ngang sang trái
-        { id: 'db9_2_1', type: 'cb', x: 1140, y: 605, label: 'Tủ\nDB9-2.1', state: 'closed', parentId: 'src2' },
-        // Tải giả định cho nguồn 2
-        { id: 'L_load9', type: 'line', x: 1140, y: 655, w: 4, h: 30, parentId: 'db9_2_1' },
-        { id: 'load9', type: 'load', x: 1125, y: 685, label: 'Tải\nDB9-2', parentId: 'db9_2_1' },
+            // Nguồn phụ
+            { id: 'l_src2', x: 1190, y: 630, w: 60, h: 4, parentId: 'src_bkup' },
+        ]
+    };
 
+    // =================================================================
+    // CORE ENGINE (LOGIC XỬ LÝ)
+    // =================================================================
+    
+    // Gộp dữ liệu
+    let systemData = [
+        ...config.sources.map(i => ({...i, type: 'source'})),
+        ...config.busbars.map(i => ({...i, type: 'busbar'})),
+        ...config.cbs.map(i => ({...i, type: 'cb'})),
+        ...config.lines.map(i => ({...i, type: 'line'}))
     ];
 
     const container = document.getElementById('diagram-container');
 
-    // ============================================================
-    // PHẦN 2: HÀM VẼ GIAO DIỆN (RENDER ENGINE)
-    // ============================================================
-    function renderSystem() {
-        container.innerHTML = ''; // Xóa trắng container để vẽ lại
-        
+    function render() {
+        // Xóa phần tử cũ (Giữ lại grid)
+        const oldItems = document.querySelectorAll('.device-wrapper, .line, .busbar');
+        oldItems.forEach(e => e.remove());
+
         systemData.forEach(item => {
             const el = document.createElement('div');
             el.id = item.id;
-            
-            // Định vị tọa độ
             el.style.left = item.x + 'px';
             el.style.top = item.y + 'px';
+            el.style.width = item.w + 'px';
+            el.style.height = item.h + 'px';
             
-            // Phân loại để áp dụng CSS class và nội dung
-            if (item.type === 'line' || item.type === 'busbar') {
-                el.className = item.type; // class='line' hoặc 'busbar'
-                el.style.width = (item.w || 0) + 'px';
-                el.style.height = (item.h || 0) + 'px';
-            } else {
-                // Các thiết bị (Source, CB, Load)
-                el.className = 'device ' + item.type + '-node';
-                el.innerHTML = `<span>${item.label.replace(/\n/g, '<br>')}</span>`;
+            // Metadata cho tooltip
+            el.setAttribute('data-x', item.x);
+            el.setAttribute('data-y', item.y);
+
+            // Gán class
+            if (item.type === 'line') el.className = 'line';
+            else if (item.type === 'busbar') el.className = 'busbar';
+            else {
+                el.className = 'device-wrapper source'; // Default
+                if (item.type === 'cb') el.className = 'device-wrapper cb ' + item.state;
+                if (item.type === 'source') el.className = 'device-wrapper source';
                 
-                // Xử lý riêng cho CB (Aptomat)
-                if (item.type === 'cb') {
-                    el.classList.add(item.state); // Thêm class 'open' hoặc 'closed'
-                    // Thêm sự kiện Click để Đóng/Cắt
-                    el.onclick = (e) => {
-                        e.stopPropagation(); // Ngăn sự kiện lan ra ngoài
-                        toggleBreaker(item.id);
-                    };
-                    // Thêm nhãn trạng thái nhỏ bên dưới
-                    const statusDiv = document.createElement('div');
-                    statusDiv.className = 'cb-status-label';
-                    statusDiv.innerText = item.state === 'closed' ? 'ON' : 'OFF';
-                    el.appendChild(statusDiv);
+                el.innerHTML = `<span>${item.label.replace(/\n/g, '<br>')}</span>`;
+            }
+
+            // Sự kiện Click cho CB
+            if (item.type === 'cb') {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    item.state = item.state === 'closed' ? 'open' : 'closed';
+                    recalculatePower();
+                    render();
+                };
+            }
+
+            // HIỂN THỊ TRẠNG THÁI CÓ ĐIỆN (COLORING)
+            if (item.isEnergized) {
+                if (item.type === 'line' || item.type === 'busbar') {
+                    el.classList.add('energized'); // Dây/Busbar đỏ
+                } else {
+                    el.classList.add('energized-device'); // Thiết bị sáng
                 }
             }
+
             container.appendChild(el);
         });
-        
-        // Sau khi vẽ xong các phần tử, tính toán luồng điện ngay
-        updatePowerFlow();
     }
 
-    // ============================================================
-    // PHẦN 3: LOGIC XỬ LÝ (INTERACTION LOGIC)
-    // ============================================================
-    
-    // Hàm xử lý khi click vào CB
-    function toggleBreaker(id) {
-        const device = systemData.find(d => d.id === id);
-        if (device && device.type === 'cb') {
-            // Đảo ngược trạng thái: closed <-> open
-            device.state = device.state === 'closed' ? 'open' : 'closed';
-            // Vẽ lại toàn bộ hệ thống để cập nhật giao diện
-            renderSystem();
-        }
-    }
-
-    // ============================================================
-    // PHẦN 4: THUẬT TOÁN LAN TRUYỀN ĐIỆN (POWER FLOW PROPAGATION)
-    // ============================================================
-    // Đây là lõi của việc mô phỏng. Nó xác định thiết bị nào có điện.
-    
-    function updatePowerFlow() {
-        // Bước 1: Reset trạng thái. Coi như toàn bộ hệ thống mất điện.
+    // Thuật toán lan truyền điện (Recursive Power Propagation)
+    function recalculatePower() {
+        // 1. Reset toàn bộ về "Mất điện"
         systemData.forEach(d => d.isEnergized = false);
 
-        // Bước 2: Tìm tất cả các NGUỒN (Roots) của hệ thống
+        // 2. Tìm các nguồn và bắt đầu lan truyền
         const sources = systemData.filter(d => d.type === 'source');
-
-        // Bước 3: Kích hoạt lan truyền điện từ từng nguồn
-        sources.forEach(source => {
-            propagatePower(source.id); 
-        });
-
-        // Bước 4: Cập nhật màu sắc giao diện (CSS) dựa trên kết quả tính toán
-        systemData.forEach(d => {
-            const el = document.getElementById(d.id);
-            if (!el) return;
-
-            // Xóa các class trạng thái cũ
-            el.classList.remove('energized', 'energized-device');
-            
-            if (d.isEnergized) {
-                if (d.type === 'line' || d.type === 'busbar') {
-                    el.classList.add('energized'); // Dây màu đỏ
-                } else {
-                    el.classList.add('energized-device'); // Thiết bị sáng màu
-                }
-            }
-        });
+        sources.forEach(source => propagate(source.id));
     }
 
-    // Hàm đệ quy để lan truyền trạng thái "Có điện" xuống các cấp dưới
-    function propagatePower(currentId) {
-        const currentItem = systemData.find(d => d.id === currentId);
-        if (!currentItem) return;
+    function propagate(parentId) {
+        const parent = systemData.find(d => d.id === parentId);
+        if (!parent) return;
 
-        // 1. Cấp điện cho chính nó
-        currentItem.isEnergized = true;
+        // Parent có điện
+        parent.isEnergized = true;
 
-        // 2. Kiểm tra điều kiện chặn (Nếu là CB và đang CẮT/OPEN)
-        if (currentItem.type === 'cb' && currentItem.state === 'open') {
-            // Dừng lại, không truyền điện xuống các con của nó nữa.
-            return; 
-        }
+        // Nếu là CB đang CẮT -> Chặn dòng điện, không truyền xuống con
+        if (parent.type === 'cb' && parent.state === 'open') return;
 
-        // 3. Tìm các thiết bị con (có parentId là ID của thiết bị hiện tại)
-        const children = systemData.filter(d => d.parentId === currentId);
-        
-        // 4. Tiếp tục lan truyền đệ quy cho từng thiết bị con
-        children.forEach(child => {
-            propagatePower(child.id);
-        });
+        // Tìm các con nối vào parent này
+        const children = systemData.filter(d => d.parentId === parentId);
+        children.forEach(child => propagate(child.id));
     }
 
-    // ============================================================
-    // KHỞI CHẠY ỨNG DỤNG
-    // ============================================================
-    // Gọi hàm render lần đầu tiên khi trang web tải xong
-    renderSystem();
+    function toggleGrid() {
+        const grid = document.getElementById('grid-layer');
+        grid.style.display = grid.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // Khởi chạy
+    recalculatePower();
+    render();
 
 </script>
-
 </body>
 </html>
