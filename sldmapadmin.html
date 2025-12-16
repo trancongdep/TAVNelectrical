@@ -2,11 +2,10 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Busbar Fix</title>
+    <title>Admin Panel - Fix Wire Color</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS CƠ BẢN GIỮ NGUYÊN */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
         header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .container { display: flex; flex: 1; overflow: hidden; }
@@ -31,20 +30,16 @@
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .admin-node:active { cursor: grabbing; }
 
-        /* MÀU SẮC */
+        /* MÀU DÂY */
         .energized-node { background-color: #ffccbc !important; }
         .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; }
         .dead-line { background-color: #95a5a6 !important; z-index: 1; }
 
-        /* LOẠI THIẾT BỊ */
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        /* Busbar: Dài, dẹt, đậm màu */
-        .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; } 
-        .type-bus.energized-node { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
+        .type-bus { height: 10px !important; background: #333; border: none; width: 150px; }
         
         .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.2s; }
         #map-canvas { width: 100%; height: 100%; }
-        .col { flex: 1; } .row { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
@@ -107,17 +102,20 @@
         renderMap();
     });
 
+    // --- LOGIC TÍNH ĐIỆN ĐÃ CẬP NHẬT ---
     function calculatePower() {
         allDevices.forEach(n => n.isEnergized = false);
         const sources = allDevices.filter(n => n.type === 'source');
         sources.forEach(src => { src.isEnergized = true; propagate(src); });
     }
     
+    // Hàm kiểm tra xem thiết bị có dẫn điện không (Source và Busbar luôn dẫn)
     function isConductive(node) {
         return node.type === 'source' || node.type === 'bus' || node.state === 'closed';
     }
 
     function propagate(parent) {
+        // Chỉ truyền điện nếu parent có điện VÀ dẫn điện
         if (parent.isEnergized && isConductive(parent)) {
             allDevices.filter(n => n.parent === parent.id).forEach(c => { 
                 c.isEnergized = true; 
@@ -181,16 +179,17 @@
         if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
     }
 
-    // --- SLD RENDER (BUSBAR FIX) ---
+    // --- SLD RENDER ---
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
         sldCanvas.innerHTML = '';
         
-        // VẼ DÂY
+        // VẼ DÂY (QUAN TRỌNG: CHECK MÀU)
         allDevices.forEach(d => {
             if(d.parent) {
                 const p = allDevices.find(x => x.id == d.parent);
                 if(p) {
+                    // Logic màu dây: Dây nối P->D có điện nếu P có điện và P dẫn điện
                     const isLive = p.isEnergized && isConductive(p);
                     drawWire(p, d, isLive ? 'energized-line' : 'dead-line');
                 }
@@ -202,8 +201,6 @@
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            
-            // Nội dung node
             if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
             else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
 
@@ -226,54 +223,17 @@
         });
     }
 
-    // --- HÀM VẼ DÂY THÔNG MINH CHO BUSBAR ---
     function drawWire(p, c, cls) {
-        // Kích thước node
-        let pW = (p.type==='bus') ? 300 : 80; let pH = (p.type==='bus') ? 12 : 50;
-        let cW = (c.type==='bus') ? 300 : 80; let cH = (c.type==='bus') ? 12 : 50;
-
-        // Tọa độ gốc (trái trên)
-        let pX = p.sld.x; let pY = p.sld.y;
-        let cX = c.sld.x; let cY = c.sld.y;
-
-        // Điểm nối dây (Anchor Points)
-        let x1, y1, x2, y2;
-
-        if (p.type === 'bus') {
-            // Nếu Cha là Busbar -> Xuất phát từ điểm thẳng hàng với con
-            // (Trừ khi con nằm ngoài phạm vi busbar thì lấy mép)
-            let idealX = cX + cW/2;
-            x1 = Math.max(pX, Math.min(pX + pW, idealX)); 
-            y1 = pY + pH; // Đáy busbar
-        } else {
-            // Cha thường -> Xuất phát từ tâm đáy
-            x1 = pX + pW/2;
-            y1 = pY + pH;
-        }
-
-        if (c.type === 'bus') {
-            // Nếu Con là Busbar -> Đích đến thẳng hàng với cha
-            let idealX = x1;
-            x2 = Math.max(cX, Math.min(cX + cW, idealX));
-            y2 = cY; // Đỉnh busbar
-        } else {
-            // Con thường -> Đến tâm đỉnh
-            x2 = cX + cW/2;
-            y2 = cY;
-        }
-
-        const midY = y1 + (y2-y1)/2;
-        
-        // Vẽ 3 đoạn
-        createWireSegment(x1, y1, x1, midY, cls); // Dọc xuống
-        createWireSegment(x1, midY, x2, midY, cls); // Ngang
-        createWireSegment(x2, midY, x2, y2, cls); // Dọc xuống tiếp
+        let pW = (p.type==='bus') ? 150 : 80; let pH = (p.type==='bus') ? 10 : 50;
+        let cW = (c.type==='bus') ? 150 : 80; let cH = (c.type==='bus') ? 10 : 50;
+        const x1=p.sld.x+pW/2, y1=p.sld.y+pH/2, x2=c.sld.x+cW/2, y2=c.sld.y+cH/2, midY=y1+(y2-y1)/2;
+        createWireSegment(x1,y1,x1,midY,cls); createWireSegment(x1,midY,x2,midY,cls); createWireSegment(x2,midY,x2,y2,cls);
     }
     
     function createWireSegment(x1,y1,x2,y2,cls) {
         if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         const d = document.createElement('div'); 
-        d.className = 'wire ' + cls;
+        d.className = 'wire ' + cls; // FIX: CỘNG CLASS
         d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
         d.style.width=(Math.abs(x2-x1)||3)+'px'; d.style.height=(Math.abs(y2-y1)||3)+'px';
         sldCanvas.appendChild(d);
@@ -289,6 +249,7 @@
             if(d.parent && d.geo) {
                 const p = allDevices.find(x=>x.id==d.parent);
                 if(p && p.geo) {
+                    // Logic màu dây Map
                     const isLive = p.isEnergized && isConductive(p);
                     const color = isLive ? '#ff3d00' : '#555';
                     const w = isLive ? 4 : 2;
