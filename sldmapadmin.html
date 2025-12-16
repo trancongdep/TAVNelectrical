@@ -2,11 +2,10 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM (Fixed Color)</title>
+    <title>Admin Panel - TAVIETNAM (Final)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS GIỮ NGUYÊN */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
         header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .container { display: flex; flex: 1; overflow: hidden; }
@@ -31,15 +30,16 @@
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .admin-node:active { cursor: grabbing; }
 
-        /* MÀU DÂY & THIẾT BỊ */
+        /* MÀU SẮC TRẠNG THÁI */
         .energized-node { background-color: #ffccbc !important; }
-        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; } /* Đỏ cam khi có điện */
-        .dead-line { background-color: #95a5a6 !important; z-index: 1; } /* Xám khi mất điện */
+        /* Quan trọng: !important để đè lên màu mặc định */
+        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; } 
+        .dead-line { background-color: #95a5a6 !important; z-index: 1; } 
 
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
         .type-bus { height: 10px !important; background: #333; border: none; width: 150px; }
         
-        .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.3s; }
+        .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.2s; }
         #map-canvas { width: 100%; height: 100%; }
     </style>
 </head>
@@ -93,8 +93,7 @@
     onValue(ref(db, 'system_nodes'), (snapshot) => {
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
-        calculatePower(); // Tính toán điện
-        
+        calculatePower();
         const listContainer = document.getElementById('device-list-container');
         const scrollPos = listContainer.scrollTop; 
         renderTable();
@@ -171,34 +170,32 @@
         if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
     }
 
-    // --- SLD RENDER (Fixed Color & Drag) ---
+    // --- SLD RENDER (Fixed Color) ---
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
         sldCanvas.innerHTML = '';
-        
-        // VẼ DÂY VÀ TRUYỀN MÀU
+        // 1. VẼ DÂY
         allDevices.forEach(d => {
             if(d.parent) {
                 const p = allDevices.find(x => x.id == d.parent);
                 if(p) {
-                    // Logic màu dây: Nếu cha có điện và đang đóng -> dây đỏ
                     const isLive = p.isEnergized && (p.type==='source'||p.state==='closed');
-                    drawSLDLine(p, d, isLive ? 'energized-line' : 'dead-line');
+                    // GỌI HÀM VẼ DÂY
+                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line');
                 }
             }
         });
-
-        // VẼ NODE
+        // 2. VẼ NODE
         allDevices.forEach(d => {
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
             if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
             else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
-
+            
+            // THÊM CLASS MÀU SẮC NẾU CÓ ĐIỆN
             if(d.isEnergized) el.classList.add('energized-node'); 
 
-            // Drag Logic Delta
             el.onmousedown = function(e) {
                 e.preventDefault(); e.stopPropagation();
                 if(d.id!==selectedId) selectDevice(d, false);
@@ -216,17 +213,20 @@
         });
     }
 
-    function drawSLDLine(p, c, cls) {
+    // HÀM VẼ DÂY ĐÃ CHUẨN HÓA TÊN
+    function drawWire(p, c, cls) {
         let pW = (p.type==='bus') ? 150 : 80; let pH = (p.type==='bus') ? 10 : 50;
         let cW = (c.type==='bus') ? 150 : 80; let cH = (c.type==='bus') ? 10 : 50;
         const x1=p.sld.x+pW/2, y1=p.sld.y+pH/2, x2=c.sld.x+cW/2, y2=c.sld.y+cH/2, midY=y1+(y2-y1)/2;
-        // Truyền biến cls (màu sắc) vào hàm vẽ đoạn
-        createDiv(x1,y1,x1,midY,cls); createDiv(x1,midY,x2,midY,cls); createDiv(x2,midY,x2,y2,cls);
+        createWireSegment(x1,y1,x1,midY,cls); 
+        createWireSegment(x1,midY,x2,midY,cls); 
+        createWireSegment(x2,midY,x2,y2,cls);
     }
     
-    function createDiv(x1,y1,x2,y2,cls) {
+    function createWireSegment(x1,y1,x2,y2,cls) {
         if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-        const d = document.createElement('div'); d.className = 'wire ' + cls;
+        const d = document.createElement('div'); 
+        d.className = 'wire ' + cls; // QUAN TRỌNG: CỘNG CLASS MÀU VÀO ĐÂY
         d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
         d.style.width=(Math.abs(x2-x1)||3)+'px'; d.style.height=(Math.abs(y2-y1)||3)+'px';
         sldCanvas.appendChild(d);
@@ -234,7 +234,8 @@
 
     // --- MAP RENDER ---
     function renderMap() {
-        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); mapPolylines.forEach(l=>map.removeLayer(l));
+        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); 
+        mapPolylines.forEach(l=>map.removeLayer(l));
         mapMarkers={}; mapPolylines=[];
         
         allDevices.forEach(d => {
@@ -242,7 +243,7 @@
                 const p = allDevices.find(x=>x.id==d.parent);
                 if(p && p.geo) {
                     const isLive = p.isEnergized && (p.type==='source'||p.state==='closed');
-                    const color = isLive ? '#ff3d00' : '#555';
+                    const color = isLive ? '#ff3d00' : '#555'; // Màu đỏ nếu có điện
                     const w = isLive ? 4 : 2;
                     mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w}).addTo(map));
                 }
@@ -253,10 +254,8 @@
             if(!d.geo) return;
             let color = d.isEnergized ? '#ff3d00' : '#666'; 
             if(d.isEnergized && d.state==='closed') color = '#d32f2f'; 
-
             const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
             const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
-
             const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
             m.on('click', ()=>selectDevice(d,false));
             m.on('dragend', ()=>{
