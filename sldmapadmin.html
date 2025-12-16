@@ -2,11 +2,11 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Hệ thống Điện (Final Fix)</title>
+    <title>Admin Panel - Fix SLD Drag</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* GLOBAL STYLES */
+        /* --- GLOBAL STYLES --- */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
         
         header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -20,16 +20,13 @@
         /* FORM SECTION */
         .form-section { border-bottom: 2px solid #f1f1f1; background: #fff; }
         .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; user-select: none; }
-        .form-header:hover { background: #e9ecef; }
-        
-        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; transition: all 0.3s ease; display: block; }
-        .form-content.hidden { display: none; } /* Class ẩn nội dung */
+        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; display: block; }
+        .form-content.hidden { display: none; }
 
         .form-group { margin-bottom: 8px; }
         .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; box-sizing: border-box; }
-        .row { display: flex; gap: 10px; }
-        .col { flex: 1; }
+        .row { display: flex; gap: 10px; } .col { flex: 1; }
 
         /* BUTTONS */
         .btn-group { display: flex; gap: 5px; margin-top: 15px; }
@@ -37,25 +34,35 @@
         .btn-new { background: #3498db; color: white; }
         .btn-save { background: #27ae60; color: white; }
         .btn-del { background: #e74c3c; color: white; }
+        /* Nút cứu hộ vị trí */
+        .btn-rescue { background: #f39c12; color: white; font-size: 10px; padding: 4px; margin-top: 5px; width: 100%; border-radius: 3px; cursor: pointer; border: none; }
 
         /* LIST SECTION */
         .list-header { padding: 10px 15px; background: #f8f9fa; font-weight: bold; font-size: 13px; border-bottom: 1px solid #eee; }
         .device-list { flex: 1; overflow-y: auto; padding: 0; }
         .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
-        .device-item:hover { background: #f1f8ff; }
         .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
         .badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; color: white; min-width: 30px; text-align: center; }
 
         /* EDITOR AREA */
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; }
-        .editor-tabs { display: flex; background: #e9ecef; border-bottom: 1px solid #ddd; }
-        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; width: auto; flex: none; }
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .editor-tabs { display: flex; background: #e9ecef; border-bottom: 1px solid #ddd; flex-shrink: 0; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; }
         .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
-        .editor-content { flex: 1; position: relative; display: none; }
+        
+        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; }
         .editor-content.active { display: block; }
 
-        /* SLD CANVAS */
-        #sld-canvas { width: 100%; height: 100%; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; position: relative; overflow: auto; }
+        /* SLD CANVAS FIX: Overflow Auto để hiện thanh cuộn nếu văng ra xa */
+        #view-sld { overflow: auto; background: #ccc; } 
+        #sld-canvas { 
+            width: 3000px; /* Canvas cực rộng để chứa thiết bị */
+            height: 2000px; 
+            background-color: white;
+            background-image: radial-gradient(#999 1px, transparent 1px); 
+            background-size: 20px 20px; 
+            position: relative; 
+        }
         
         .admin-node {
             position: absolute; width: 80px; height: 50px; 
@@ -64,7 +71,7 @@
             font-size: 10px; cursor: grab; user-select: none; z-index: 10;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.1); border-radius: 2px;
         }
-        .admin-node.selected-node { border: 2px solid #007bff; background: #e3f2fd; z-index: 20; }
+        .admin-node.selected-node { border: 2px solid #007bff; background: #e3f2fd; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         
         /* Node Types Styles */
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
@@ -72,8 +79,6 @@
         .type-fco { border-top: 4px solid #e74c3c; }
 
         .wire { position: absolute; background: #999; z-index: 1; height: 2px; transform-origin: 0 0; pointer-events: none; }
-
-        /* MAP */
         #map-canvas { width: 100%; height: 100%; }
 
     </style>
@@ -135,6 +140,9 @@
                     <div class="col form-group">
                         <label>SLD X</label>
                         <input type="number" id="inp-x">
+                        <button type="button" class="btn-rescue" onclick="rescuePosition()">
+                            <i class="fas fa-compress-arrows-alt"></i> Thu hồi về (50,50)
+                        </button>
                     </div>
                     <div class="col form-group">
                         <label>SLD Y</label>
@@ -162,7 +170,7 @@
         </div>
 
         <div class="list-header">
-            Danh sách thiết bị <span style="font-weight:normal; font-style:italic; font-size:11px">(Double click để Zoom map)</span>
+            Danh sách thiết bị
         </div>
         <div class="device-list" id="device-list-container"></div>
     </div>
@@ -188,7 +196,7 @@
     import { getDatabase, ref, onValue, set, remove } 
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- CẤU HÌNH FIREBASE ---
+    // --- CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
       authDomain: "tavietnam-78ae8.firebaseapp.com",
@@ -196,7 +204,7 @@
       storageBucket: "tavietnam-78ae8.firebasestorage.app",
       messagingSenderId: "670121705534",
       appId: "1:670121705534:web:1027ad98550573ad37116f"
-    };
+    };;
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -205,77 +213,53 @@
     let allDevices = [];
     let selectedId = null;
     let mapMarkers = {};
-    let mapPolylines = []; // Lưu danh sách dây trên Map
+    let mapPolylines = [];
 
     // INIT MAP
     const map = L.map('map-canvas').setView([10.8231, 106.6297], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
     window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
 
     // FETCH DATA
-    const nodesRef = ref(db, 'system_nodes');
-    onValue(nodesRef, (snapshot) => {
+    onValue(ref(db, 'system_nodes'), (snapshot) => {
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
-        
-        // Giữ vị trí scroll của list nếu đang thao tác
         const listContainer = document.getElementById('device-list-container');
-        const scrollPos = listContainer.scrollTop;
-
+        const scrollPos = listContainer.scrollTop; // Giữ vị trí cuộn
         renderTable();
         listContainer.scrollTop = scrollPos;
-
         updateParentSelect();
         renderSLD();
         renderMap();
     });
 
-    // --- LOGIC GIAO DIỆN ---
-
-    // 1. Toggle Form (Đã sửa lỗi logic)
+    // --- UI FUNCTIONS ---
     window.toggleForm = function() {
         const content = document.getElementById('form-content');
         const icon = document.getElementById('toggle-icon');
-        
-        // Sử dụng class 'hidden' để ẩn hiện dứt khoát
         if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden'); // Hiện
+            content.classList.remove('hidden');
             icon.className = 'fas fa-chevron-up';
         } else {
-            content.classList.add('hidden'); // Ẩn
+            content.classList.add('hidden');
             icon.className = 'fas fa-chevron-down';
         }
     }
 
-    // 2. Render List (Thêm Double Click)
     function renderTable() {
         const container = document.getElementById('device-list-container');
         container.innerHTML = '';
-        
         allDevices.forEach(d => {
             const div = document.createElement('div');
             div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
-            
             let color = '#7f8c8d';
             if (d.type === 'source') color = '#3498db';
             if (d.type === 'cb') color = '#2c3e50';
             if (d.type === 'bus') color = '#27ae60';
-            if (d.type === 'fco') color = '#e67e22';
-
-            div.innerHTML = `
-                <div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>
-                <span class="badge" style="background:${color}">${d.type.toUpperCase()}</span>
-            `;
+            div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div><span class="badge" style="background:${color}">${d.type.toUpperCase()}</span>`;
             
-            // Single Click: Chỉ chọn và điền form (không Zoom)
             div.onclick = () => selectDevice(d, false);
-            
-            // Double Click: Zoom Map
-            div.ondblclick = () => {
-                selectDevice(d, true); // true = forceZoom
-            };
-
+            div.ondblclick = () => selectDevice(d, true); // Zoom on Double Click
             container.appendChild(div);
         });
     }
@@ -295,11 +279,9 @@
         sel.value = currentVal;
     }
 
-    // 3. Select Device
+    // --- SELECT DEVICE ---
     window.selectDevice = function(device, forceZoom = false) {
         selectedId = device.id;
-
-        // Điền Form
         document.getElementById('inp-id').value = device.id;
         document.getElementById('inp-id').disabled = true; 
         document.getElementById('inp-label').value = device.label;
@@ -312,47 +294,60 @@
         document.getElementById('inp-lat').value = device.geo ? device.geo.lat : 0;
         document.getElementById('inp-lng').value = device.geo ? device.geo.lng : 0;
 
-        // Mở Form để sửa
         document.getElementById('form-content').classList.remove('hidden');
         document.getElementById('toggle-icon').className = 'fas fa-chevron-up';
 
-        renderTable(); // Update highlight
+        renderTable(); 
         renderSLD();
         
-        // Xử lý Map Marker Highlight
         if (mapMarkers[device.id]) {
             mapMarkers[device.id].openPopup();
-            // CHỈ ZOOM KHI ĐƯỢC YÊU CẦU (DOUBLE CLICK)
-            if (forceZoom && device.geo) {
-                map.flyTo([device.geo.lat, device.geo.lng], 18);
-            }
+            if (forceZoom && device.geo) map.flyTo([device.geo.lat, device.geo.lng], 18);
         }
+        
+        // Scroll SLD view to element if needed
+        scrollToSLDElement(device);
     }
 
-    // 4. Reset Form (Sửa lỗi không thêm được thiết bị thứ 2)
+    // --- RESCUE POSITION FUNCTION (Fix lỗi văng thiết bị) ---
+    window.rescuePosition = function() {
+        document.getElementById('inp-x').value = 50;
+        document.getElementById('inp-y').value = 50;
+        saveDevice();
+        alert("Đã thu hồi thiết bị về tọa độ (50, 50).");
+    }
+
+    // --- AUTO SCROLL SLD ---
+    function scrollToSLDElement(device) {
+        if (!device.sld) return;
+        const view = document.getElementById('view-sld');
+        // Simple Logic: Nếu nó nằm ngoài vùng nhìn thấy, scroll tới đó
+        // (Đây là logic cơ bản, có thể cải tiến smooth scroll)
+        // view.scrollTo({ left: device.sld.x - 100, top: device.sld.y - 100, behavior: 'smooth' });
+    }
+
+    // --- RESET / NEW ---
     window.resetForm = function() {
-        selectedId = null; // Quan trọng: Reset biến này
-        
+        selectedId = null; 
         document.getElementById('inp-id').value = "";
-        document.getElementById('inp-id').disabled = false; // Mở khóa input
+        document.getElementById('inp-id').disabled = false;
         document.getElementById('inp-label').value = "";
         document.getElementById('inp-parent').value = "";
         
-        // Lấy tâm bản đồ hiện tại cho tiện
         const center = map.getCenter();
         document.getElementById('inp-lat').value = center.lat.toFixed(6);
         document.getElementById('inp-lng').value = center.lng.toFixed(6);
         
-        // Reset SLD coords default
+        // Vị trí mặc định an toàn cho SLD
         document.getElementById('inp-x').value = 100;
         document.getElementById('inp-y').value = 100;
 
-        renderTable(); // Xóa highlight
+        renderTable(); 
         renderSLD();
-        document.getElementById('inp-id').focus(); // Focus vào ô nhập ID
+        document.getElementById('inp-id').focus();
     }
 
-    // 5. Save Logic
+    // --- SAVE ---
     window.saveDevice = function() {
         const id = document.getElementById('inp-id').value.trim();
         if(!id) return alert("Vui lòng nhập ID!");
@@ -375,13 +370,11 @@
 
         set(ref(db, 'system_nodes/' + id), newData)
             .then(() => {
-                // Sau khi lưu, nếu là edit thì giữ nguyên, nếu là new thì reset để nhập tiếp?
-                // Theo yêu cầu của bạn "không thêm được cái tiếp theo", tốt nhất là
-                // sau khi lưu, ta chuyển sang chế độ edit cái vừa lưu.
-                // Muốn thêm cái nữa, người dùng bấm "Mới".
                 selectDevice(newData, false);
-                document.getElementById('status-msg').innerText = "Đã lưu " + id;
-                setTimeout(() => document.getElementById('status-msg').innerText = "Sẵn sàng", 2000);
+                const msg = document.getElementById('status-msg');
+                msg.innerText = "Đã lưu " + id;
+                msg.style.color = "#2ecc71";
+                setTimeout(() => { msg.innerText = "Sẵn sàng"; msg.style.color = "#ccc"; }, 2000);
             })
             .catch(e => alert("Lỗi: " + e.message));
     }
@@ -396,18 +389,12 @@
 
     // --- SLD RENDERER ---
     const sldCanvas = document.getElementById('sld-canvas');
+
     function renderSLD() {
         sldCanvas.innerHTML = '';
         
-        // Wire Loop
-        allDevices.forEach(d => {
-            if(d.parent) {
-                const p = allDevices.find(x => x.id == d.parent);
-                if(p) drawSLDLine(p, d);
-            }
-        });
+        allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x => x.id == d.parent); if(p) drawSLDLine(p, d); } });
 
-        // Node Loop
         allDevices.forEach(d => {
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id === selectedId ? 'selected-node' : ''}`;
@@ -416,10 +403,9 @@
             
             let content = `<b>${d.id}</b><br>${d.label}`;
             if (d.type === 'bus') content = `<span style="color:white; font-size:9px">${d.id}</span>`;
-            
             el.innerHTML = content;
 
-            // Drag Logic
+            // DRAG LOGIC (WITH BOUNDS CHECKING)
             el.onmousedown = function(e) {
                 if(d.id !== selectedId) selectDevice(d, false);
                 let shiftX = e.clientX - el.getBoundingClientRect().left;
@@ -428,8 +414,15 @@
                 function moveAt(pageX, pageY) {
                     let newX = pageX - shiftX - sldCanvas.getBoundingClientRect().left + sldCanvas.scrollLeft;
                     let newY = pageY - shiftY - sldCanvas.getBoundingClientRect().top + sldCanvas.scrollTop;
-                    newX = Math.round(newX/10)*10; // Snap grid
+                    
+                    // BOUNDARIES CHECK (Fix lỗi kéo ra ngoài biên âm)
+                    newX = Math.max(0, newX); 
+                    newY = Math.max(0, newY);
+                    
+                    // SNAP GRID
+                    newX = Math.round(newX/10)*10;
                     newY = Math.round(newY/10)*10;
+
                     el.style.left = newX + 'px'; el.style.top = newY + 'px';
                     document.getElementById('inp-x').value = newX;
                     document.getElementById('inp-y').value = newY;
@@ -453,38 +446,31 @@
         const x1 = p.sld.x + pW/2; const y1 = p.sld.y + pH/2;
         const x2 = c.sld.x + cW/2; const y2 = c.sld.y + cH/2;
         const midY = y1 + (y2-y1)/2;
-        
-        createSegment(x1, y1, x1, midY);
-        createSegment(x1, midY, x2, midY);
-        createSegment(x2, midY, x2, y2);
+        createSegment(x1, y1, x1, midY); createSegment(x1, midY, x2, midY); createSegment(x2, midY, x2, y2);
     }
     function createSegment(x1, y1, x2, y2) {
         if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         const line = document.createElement('div');
         line.className = 'wire';
-        const w = Math.abs(x2 - x1) || 2; const h = Math.abs(y2 - y1) || 2;
         line.style.left = Math.min(x1, x2) + 'px'; line.style.top = Math.min(y1, y2) + 'px';
-        line.style.width = w + 'px'; line.style.height = h + 'px';
+        line.style.width = (Math.abs(x2 - x1) || 2) + 'px'; 
+        line.style.height = (Math.abs(y2 - y1) || 2) + 'px';
         sldCanvas.appendChild(line);
     }
 
     // --- MAP RENDERER ---
     function renderMap() {
-        // Xóa layer cũ
         for(let id in mapMarkers) map.removeLayer(mapMarkers[id]);
         mapPolylines.forEach(l => map.removeLayer(l));
-        mapMarkers = {};
-        mapPolylines = [];
+        mapMarkers = {}; mapPolylines = [];
 
-        // 1. Vẽ Dây nối (Polylines) - TÍNH NĂNG MỚI
+        // 1. Vẽ Dây Map
         allDevices.forEach(d => {
             if (d.parent && d.geo) {
                 const parent = allDevices.find(p => p.id === d.parent);
                 if (parent && parent.geo) {
-                    const polyline = L.polyline(
-                        [[parent.geo.lat, parent.geo.lng], [d.geo.lat, d.geo.lng]], 
-                        { color: '#555', weight: 3, opacity: 0.7, dashArray: '5, 10' }
-                    ).addTo(map);
+                    const polyline = L.polyline([[parent.geo.lat, parent.geo.lng], [d.geo.lat, d.geo.lng]], 
+                        { color: '#555', weight: 3, opacity: 0.7, dashArray: '5, 10' }).addTo(map);
                     mapPolylines.push(polyline);
                 }
             }
@@ -494,14 +480,9 @@
         allDevices.forEach(d => {
             if(!d.geo) return;
             const marker = L.marker([d.geo.lat, d.geo.lng], { draggable: true }).addTo(map);
-            
-            if(d.id === selectedId) marker.setOpacity(1.0); else marker.setOpacity(0.7);
-            
+            if(d.id === selectedId) marker.setOpacity(1.0); else marker.setOpacity(0.6);
             marker.bindPopup(`<b>${d.id}</b><br>${d.label}`);
-            
-            // Click Map Marker -> Chỉ Select, KHÔNG Zoom
             marker.on('click', () => selectDevice(d, false));
-
             marker.on('dragend', function(event) {
                 const pos = marker.getLatLng();
                 if(selectedId !== d.id) selectDevice(d, false);
