@@ -7,66 +7,76 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* --- 1. CẤU HÌNH MẶC ĐỊNH (DESKTOP) --- */
+        /* --- CẤU HÌNH CHUNG --- */
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
         
-        /* Desktop: Chia đôi màn hình */
+        /* Mặc định Desktop */
         #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
         #map-panel { width: 50%; height: 100%; position: relative; }
         
-        .mobile-nav { display: none; } /* Ẩn menu mobile trên desktop */
+        /* Thanh điều hướng (Mặc định ẩn trên PC màn hình to) */
+        .mobile-nav { display: none; } 
 
-        /* --- 2. CẤU HÌNH MOBILE (QUAN TRỌNG) --- */
-        @media (max-width: 1024px) { /* Tăng phạm vi lên 1024px để iPad/Tablet cũng dùng Tab */
-            body { display: block; position: relative; } /* Bỏ flex chia đôi */
+        /* --- CẤU HÌNH MOBILE & TABLET (Màn hình < 1024px) --- */
+        @media (max-width: 1024px) { 
+            body { display: block; position: relative; } /* Bỏ Flexbox */
             
-            /* Ép buộc 2 panel chồng lên nhau và full màn hình */
+            /* Panel chiếm full màn hình, trừ 60px đáy */
             #sld-panel, #map-panel { 
                 position: absolute; 
                 top: 0; left: 0; 
                 width: 100% !important; 
-                height: calc(100% - 60px) !important; /* Trừ chiều cao menu đáy */
+                height: calc(100% - 60px) !important; 
                 z-index: 10;
-                display: none; /* Mặc định ẩn hết */
+                display: none; /* Ẩn mặc định */
                 border: none;
             }
             
-            /* Class kích hoạt hiển thị */
+            /* Class hiển thị */
             .active-panel { display: block !important; z-index: 20; }
 
-            /* Thanh điều hướng đáy */
+            /* --- THANH ĐIỀU HƯỚNG (FIXED) --- */
             .mobile-nav {
-                display: flex; position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
-                background: white; border-top: 1px solid #ddd; z-index: 9999;
-                justify-content: space-around; align-items: center;
-                box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+                display: flex !important; /* Bắt buộc hiện */
+                position: fixed; /* Ghim chặt vào màn hình */
+                bottom: 0; left: 0; right: 0;
+                height: 60px;
+                background: white; 
+                border-top: 1px solid #ddd; 
+                z-index: 99999; /* Cao hơn tất cả mọi thứ */
+                justify-content: space-around; 
+                align-items: center;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             }
             
             .nav-btn {
                 flex: 1; text-align: center; color: #7f8c8d; font-size: 11px; cursor: pointer; padding: 8px 0;
-                display: flex; flex-direction: column; align-items: center;
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                height: 100%;
             }
-            .nav-btn i { font-size: 22px; margin-bottom: 4px; }
-            .nav-btn.active { color: #007bff; font-weight: bold; }
+            .nav-btn i { font-size: 20px; margin-bottom: 4px; }
+            .nav-btn.active { color: #007bff; font-weight: bold; background-color: #f8f9fa; }
         }
 
-        /* --- STYLES KHÁC GIỮ NGUYÊN --- */
-        .panel-overlay { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; }
+        /* --- STYLE CHO OVERLAY & LEGEND --- */
+        .panel-overlay { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; pointer-events: none; }
         .legend-item { display: flex; align-items: center; margin-top: 5px; font-size: 12px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
+        /* NODE */
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .closed { border-color: #d32f2f !important; color: #d32f2f; }
         .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
-        
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 8px rgba(255, 61, 0, 0.4); }
-        .energized-line { border-color: #ff3d00 !important; z-index: 5 !important; box-shadow: 0 0 4px #ff3d00; }
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-
+        
+        /* WIRE */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
+        .energized-line { border-color: #ff3d00 !important; z-index: 5; box-shadow: 0 0 3px #ff3d00; }
+        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
 
+        /* TYPE STYLES */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
@@ -78,7 +88,7 @@
 
     <div id="sld-panel" class="active-panel">
         <div class="panel-overlay">
-            <strong style="color:#2c3e50">SƠ ĐỒ SLD</strong>
+            <strong style="color:#2c3e50">SƠ ĐỒ NGUYÊN LÝ</strong>
             <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện</div>
             <div class="legend-item"><span class="dot" style="background:#95a5a6"></span>Mất điện</div>
         </div>
@@ -93,11 +103,11 @@
     </div>
 
     <div class="mobile-nav">
-        <div class="nav-btn active" onclick="switchView('sld', this)">
+        <div class="nav-btn active" onclick="switchMobileTab('sld', this)">
             <i class="fas fa-project-diagram"></i>
             <div>Sơ đồ</div>
         </div>
-        <div class="nav-btn" onclick="switchView('map', this)">
+        <div class="nav-btn" onclick="switchMobileTab('map', this)">
             <i class="fas fa-map-marked-alt"></i>
             <div>Bản đồ</div>
         </div>
@@ -118,27 +128,28 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         let mapMarkers = {}; let mapLines = {};
 
-        // --- XỬ LÝ CHUYỂN TAB (FIX CHO MOBILE) ---
-        window.switchView = function(mode, btn) {
-            // Cập nhật nút
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        // --- HÀM CHUYỂN TAB MOBILE ---
+        window.switchMobileTab = function(tabName, btnElement) {
+            // Cập nhật nút active
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
 
             const sldPanel = document.getElementById('sld-panel');
             const mapPanel = document.getElementById('map-panel');
 
-            if(mode === 'sld') {
+            // Ẩn/Hiện Panel bằng class active-panel (QUAN TRỌNG)
+            if (tabName === 'sld') {
                 sldPanel.classList.add('active-panel');
                 mapPanel.classList.remove('active-panel');
             } else {
                 sldPanel.classList.remove('active-panel');
                 mapPanel.classList.add('active-panel');
-                // Refresh map size sau 300ms để tránh lỗi hiển thị
-                setTimeout(() => map.invalidateSize(), 300);
+                // Fix lỗi map bị xám
+                setTimeout(() => map.invalidateSize(), 200);
             }
         }
 
-        // --- LOGIC ĐIỆN ---
+        // --- LOGIC ĐIỆN & RENDER ---
         function isConductive(node) {
             if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
             if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
@@ -156,7 +167,8 @@
 
         function calculatePower() {
             localNodes.forEach(n => n.isEnergized = false);
-            localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
+            const sources = localNodes.filter(n => n.type === 'source');
+            sources.forEach(src => { src.isEnergized = true; propagate(src); });
         }
         function propagate(parent) {
             if (parent.isEnergized && isConductive(parent)) {
@@ -167,13 +179,13 @@
         window.toggleDevice = function(id) {
             const node = localNodes.find(n => n.id === id);
             if (['cb', 'ds', 'fco'].includes(node.type)) {
+                if(navigator.vibrate) navigator.vibrate(30); // Rung nhẹ khi bấm
                 update(ref(db, 'system_nodes/' + id), { state: node.state === 'closed' ? 'open' : 'closed' });
             }
         };
 
         function renderSLD() {
             sldCanvas.innerHTML = '';
-            // Vẽ Dây
             localNodes.forEach(node => {
                 if (node.parent) {
                     const parent = localNodes.find(n => n.id === node.parent);
@@ -185,12 +197,12 @@
                     }
                 }
             });
-            // Vẽ Node
             localNodes.forEach(node => {
                 if(!node.sld) return;
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                
                 if (['cb', 'ds', 'fco'].includes(node.type)) el.classList.add(node.state);
                 if (node.isEnergized) el.classList.add('energized-node');
                 
@@ -279,4 +291,3 @@
     </script>
 </body>
 </html>
-
