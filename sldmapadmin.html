@@ -2,457 +2,402 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCADA Monitor - Operation & Fault Sim</title>
+    <title>Admin Panel - TAVIETNAM (Visual Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* --- CSS CƠ BẢN --- */
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
-        #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
-        #map-panel { width: 50%; height: 100%; }
+        /* CSS CHUNG */
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #eef2f5; height: 100vh; display: flex; flex-direction: column; }
+        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 340px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; display: block; }
+        .form-content.hidden { display: none; }
+        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .row { display: flex; gap: 10px; } .col { flex: 1; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-new { background: #3498db; color: white; } .btn-save { background: #27ae60; color: white; } .btn-del { background: #e74c3c; color: white; }
+        .btn-extent { background: #8e44ad; color: white; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; }
+        .device-list { flex: 1; overflow-y: auto; padding: 0; } .device-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .editor-tabs { display: flex; background: #e9ecef; } .tab-btn { padding: 10px 20px; cursor: pointer; border: none; font-weight: bold; color: #666; } .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
+        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; } .editor-content.active { display: block; }
         
-        @media (max-width: 768px) {
-            body { flex-direction: column; }
-            #sld-panel, #map-panel { width: 100%; height: 100%; display: none; }
-            .active-panel { display: block !important; }
-            .mobile-nav { display: flex !important; }
+        /* SLD CANVAS - ĐỔI MÀU NỀN ĐỂ DỄ NHÌN HỘP TRẮNG */
+        #view-sld { overflow: auto; background: #95a5a6; } 
+        #sld-canvas { 
+            width: 4000px; height: 3000px; 
+            background-color: #f0f3f4; /* Màu nền canvas xám rất nhạt */
+            background-image: radial-gradient(#bdc3c7 1px, transparent 1px); 
+            background-size: 20px 20px; 
+            position: relative; 
         }
-        .mobile-nav { display: none; position: absolute; bottom: 0; width: 100%; height: 50px; background: white; border-top: 1px solid #ddd; z-index: 999; }
-        .nav-btn { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #666; font-size: 12px; font-weight: bold; }
-        .nav-btn.active { color: #007bff; background: #eef2f5; }
-
-        /* --- STYLES CHO MODAL (DIALOG BOX) --- */
-        .modal-overlay { display: none; position: fixed; sit: n; fixe:  ; p: 0;: eft:; ; widt:  100;  height: 1: %; bac,g,o,nd: ; ba(0,0,: 0.5); z-index: 9999; : stify-; ntent: cent: ; alig; i
-        .er; }
-        .modal-b:  { ba; groun:  whit;  width: 400px: bor; r-radius: : x  bo -sha ow: 0 ,p, ,0px ; ba(0,0,0: .3); o; rflow: hi: en; anima ion:; l
-        .3s; }
-        @keyf a es s i eDown { f: m { transform: tr; slateY(: 0; )  o a ity: 0; }: o { transform; transla: Y; )  
         
-        .     
-         modal-head: #2c3e50; ound:: 2c3e5;  color:: hite; padding: 15: ; fo; -weight: bold; display: flex; : stify-content; space-betwe: ; alig; i
-        .er; }
-        .clo: -btn { ; rsor: poi: er; ; n
+        /* --- NODE STYLES (HỘP THIẾT BỊ) --- */
+        .admin-node { 
+            position: absolute; width: 90px; height: 50px; 
+            background: #ffffff; /* Nền trắng */
+            border: 2px solid #34495e; /* Viền xám đậm */
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            text-align: center; font-size: 11px; font-weight: bold; color: #2c3e50;
+            cursor: grab; user-select: none; z-index: 10; border-radius: 4px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2); 
+        }
+        .admin-node:hover { border-color: #3498db; transform: scale(1.05); z-index: 100; }
+        .admin-node.selected-node { border: 2px solid #3498db; background: #e3f2fd; z-index: 50; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3); }
+        .admin-node:active { cursor: grabbing; }
+
+        /* MÀU SẮC ĐIỆN (Node dùng background, Dây dùng border) */
+        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
         
-        .     
-        .modal: abs ; display: flex: bor er-bo #ddd; px solid #: #f8f9fa; o
-        .fa; }       : .; tab { f: x: 1; padding: 1: x; tex; align:: enter; ; rsor: point: ; f; t-wei: #666; ;
-        .66; }.         m-tab.acti:  { ba; ground: white: bor er-bo #3498db; solid: #3498db; o
+        /* --- WIRE STYLES (SỬA LỖI MÀU DÂY Ở ĐÂY) --- */
+        .wire { 
+            position: absolute; z-index: 5; pointer-events: none; 
+            transition: border-color 0.2s; 
+            box-sizing: border-box; /* Quan trọng để tính border đúng */
+        }
         
-        .     
-        .modal: ody ; p
-        .px; }
-        .tab-co: ent ; d
-        .ne; }
-     .  .tab c ntent.a: ive {; i
+        /* Style màu cho Border (Không dùng background-color nữa) */
+        .energized-line { border-color: #ff3d00 !important; z-index: 6; }
+        .dead-line { border-color: #7f8c8d !important; z-index: 1; }
 
-        ck; }
+        /* Kiểu nét */
+        .wire-solid { border-style: solid; }
+        .wire-dashed { border-style: dashed; }
 
-        /* Form Elements
-        .al */
-        . ontrol-group : marg; -
-        .px; }
-        .cont o -group : bel {; isplay: b: ck; ; nt-size: 12: ; fo; -weight: bold: mar; n-bot: #555; ;
-        .55; }
-        .cont, .-group input, .contr l group: elec; { width: 100;  paddi: : 8 x; bo #ccc; px solid #ccc: bor; r-radius: : x; box-siz; g
+        /* --- LOẠI THIẾT BỊ ĐẶC BIỆT --- */
+        .type-source { border-radius: 50%; border: 3px solid #1565c0; width: 60px; height: 60px; background: #e3f2fd; }
+        .type-bus { height: 14px !important; width: 250px; background: #2c3e50; border: none; border-radius: 7px; }
+        .type-bus.energized-node { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
+        .type-tr { border: 3px double #333; height: 60px; width: 60px; }
+        .type-fco { border-top: 5px solid #e74c3c; }
         
-        .     
-        : tn-o; { width: 100%; padding: 1: x; m; gin-to:  10p;  border: none: bor; r-radius: 4: ; fo; -weigh:  bold; ; rsor: poi: er; ; n
-        .px; }
-         btn-close-: #e74c3c; ound:: e74c3;  
-        .te; }
-        .btn-open-: #27ae60; ound:: 27ae6;  
-        .te; }
-        .btn-s: #f39c12; ound:: f39c1;  
-
-        te; }
-
-        /* --- STYLES CHO NOD
-        .-- */
-        . anel-ove: ay { pos; ion: abso; te; : p: 1; x; left: 1: x; backg,oun,: r,ba(25; 255,255: .95); padding: 10px: bor; r-radius: : x  bo -sh dow: 0,2,x,5px ; ba(0,0,: 0.1); z-inde:  10 0; bo #ddd; p
-        .dd; }
-        .legend: tem ; display: fl: ; alig; items: cen: r; ; rgin-top:: px; ; n
-        .px; }      :  .do; { widt:  12p;  height: 12px: bor; r-radius: 50:  ma; in-rig: : 8 x; bo der: 1,x,s,lid ; b
-
-        .); }
-
-        .node: ox { pos; ion: : solu; ; width: 8: x; tex; align: ce: er; ; nt-size: 10: ; fo; -weigh:  bold; ; rsor: : int r; bo #555; px solid #: 5; ba; ground: wh: e;  rans; ion: al: 0.2;  padding: 4: ; us; -select: no; ; z-index: 10: bor; r-radius: : x;  ox- had w: 2px,2,x,5px ; b
-        .1); }
-  :      n de-box:ho: r { transfo; : scale: .05;  z-index: : 0  bo -sha ow: 0 ,p, ,5px ; b
+        /* Hiển thị Cáp như một thiết bị hình chữ nhật dẹt */
+        .type-cable, .type-wire, .type-underground { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; font-size: 9px; transform: skewX(-10deg); }
         
-        .     
-        .closed: #d32f2f color: #d3; 2f !i: #d32f2f; o
-        .2f;  
-        .open: #27ae60 color: #27; 60 !i: #27ae60; olor: #27ae6:  borde -style: da; ed !important; b: #f9fff9; o
-        
-        .     
-         e ergized-node { b: #ffccbc color: #ff; bc !import: t   ox- hadow: 0,  8,  , ba(2; ,
-        .4); }
-         e ergized-line: #ff3d00 color: #ff; 00 !imp: t nt; z-inde;  5 !import: t   ox- #ff3d00; 0
-        .00; }
-        .dead-line: #95a5a6 color: #95; a6 !imp: t; t
-
-         1; }
-
-   
-        .RE * 
-        .: re { pos; ion: a: o; te; height: 0;: oint; -events: n: e; transitio : bo; er-colo: 0; s
-        . 5; }
-        .wire-sol:  {  order; o
-        .id; }
-        .wire-dash:  {  order-; p
-
-        .d; }
-
-        .ty: -bus { height: ; px !import: #2c3e50; ound: : c3e5;  bord: : non;  width: 300px: bor; r
-        .px; }
-        . ype-bus: pan ; d .play: no.e; } .type-bus e ergized-node { b: #ff3d00 color: #ff; 0
-        .nt; }
-        .type-source { b: #e3f2fd; olor: #e3f2f: #1565c0; olor: #1565c0: bor; r-rad: s: 5; ; widt:  60p;  height: 60px; display: fl: ; alig; items: center; : stify-; n
-        .er; }
-        .type: abl  { bor #555; x dashed #: #eee; kgroun:  #ee;  heig: : 20p;  width: 1: px; transform; s
-        .g); }
-    .   .type-cable e ergized-node { b: #ffccbc color: #ff; bc !importan: #ff3d00; o
+        #map-canvas { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
-    <div id="control-modal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <span id="modal-title">Máy Cắt: CB-01</span>
-                <span class="close-btn" onclick="-btn" onclic">&times;</span>
-            </div>
-            <div class="modal-tabs">
-                <div class="m-tab active" onclick="tive" onclick="'op'c">Vận Hành</div>
-                <div class="m-tab" onclick="-tab" onclick="'sim'h">Giả Lập Sự Cố</div>
-            </div>
-            <div class="modal-body">
-                <div id="tab-op" class="tab-content active">
-                    <p style="     <p style="font-size:13px; color:#666; mar;">Thao tác đóng cắt lưới điện theo quy trình vận hành.</p>
-                    <div style="   <div style="display;">
-                        <button class="btn-op btn-close-cb" onclick="e-cb" onclick="pe'closed'r">
-                            <i class="fas fa-bolt"></i> ĐÓNG ĐIỆN (CLOSE)
-                        </button>
-                        <button class="btn-op btn-open-cb" onclick="performOperation('open')">
-                            <i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)
-                        </button>
-                    </div>
-                </div>
-
-                <div id="tab-sim" class="tab-content">
-                    <div class="control-group">
-                        <label>Chọn Relay bảo vệ tác động:</label>
-                        <select id="relay-type" onchange="updateRelayParams()">
-                            <option value="21">Relay 21 - Khoảng cách (Distance)</option>
-                            <option value="67">Relay 67 - Quá dòng có hướng</option>
-                            <option value="87">Relay 87 - So lệch dòng điện</option>
+<header>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
+    <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
+</header>
+<div class="container">
+    <div class="sidebar">
+        <div class="form-section">
+            <div class="form-header" onclick="toggleForm()"><span><i class="fas fa-edit"></i> Thông tin thiết bị</span><i class="fas fa-chevron-up" id="toggle-icon"></i></div>
+            <div class="form-content" id="form-content">
+                <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" placeholder="VD: CB-01"></div>
+                <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Máy cắt tổng"></div>
+                <div class="row">
+                    <div class="col form-group"><label>Loại</label>
+                        <select id="inp-type">
+                            <optgroup label="Đóng cắt">
+                                <option value="cb">CB (Máy cắt)</option>
+                                <option value="fco">FCO (Cầu chì)</option>
+                                <option value="ds">DS (Dao cách ly)</option>
+                            </optgroup>
+                            <optgroup label="Thiết bị chính">
+                                <option value="source">Nguồn (Source)</option>
+                                <option value="bus">Busbar (Thanh cái)</option>
+                                <option value="tr">Máy biến áp</option>
+                            </optgroup>
+                            <optgroup label="Dây dẫn (Asset)">
+                                <option value="cable">Cáp (Cable)</option>
+                                <option value="wire">Đường dây (Wire)</option>
+                            </optgroup>
+                            <optgroup label="Phụ tải">
+                                <option value="load">Tải (Load)</option>
+                            </optgroup>
                         </select>
                     </div>
+                    <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
+                </div>
+                
+                <div class="form-group"><label>Kiểu đấu nối từ nguồn</label>
+                    <select id="inp-connection">
+                        <option value="solid">Dây nổi (Nét liền)</option>
+                        <option value="dashed">Cáp ngầm (Nét đứt)</option>
+                    </select>
+                </div>
 
-                    <div id="param-21" class="relay-params">
-                        <div class="control-group">
-                            <label>Tổng trở sự cố (Z - Ohm):</label>
-                            <input type="number" id="val-z" placeholder="VD: 5.2">
-                        </div>
-                        <div class="control-group">
-                            <label>Vùng bảo vệ (Zone):</label>
-                            <select id="val-zone">
-                                <option value="1">Zone 1 (80%)</option>
-                                <option value="2">Zone 2 (120%)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="param-67" class="relay-params" style="display:none">
-                        <div class="control-group">
-                            <label>Dòng điện sự cố (I - Amps):</label>
-                            <input type="number" id="val-i" placeholder="VD: 1200">
-                        </div>
-                        <div class="control-group">
-                            <label>Góc pha (Degree):</label>
-                            <input type="number" id="val-angle" placeholder="VD: 45">
-                        </div>
-                    </div>
-
-                    <div id="param-87" class="relay-params" style="display:none">
-                        <div class="control-group">
-                            <label>Dòng so lệch (Idiff - Amps):</label>
-                            <input type="number" id="val-idiff" placeholder="VD: 500">
-                        </div>
-                        <div class="control-group">
-                            <label>Dòng hãm (Ibias - Amps):</label>
-                            <input type="number" id="val-ibias" placeholder="VD: 200">
-                        </div>
-                    </div>
-
-                    <button class="btn-op btn-sim" onclick="simulateFault()">
-                        <i class="fas fa-exclamation-triangle"></i> TÁC ĐỘNG SỰ CỐ (TRIP)
-                    </button>
+                <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
+                <button type="button" class="btn-extent" onclick="zoomExtent()">Gom về khung nhìn</button>
+                <div class="row" style="margin-top:5px"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
+                
+                <div class="btn-group">
+                    <button type="button" class="btn-new" onclick="resetForm()"><i class="fas fa-plus"></i> Mới</button>
+                    <button type="button" class="btn-save" onclick="saveDevice()"><i class="fas fa-save"></i> Lưu</button>
+                    <button type="button" class="btn-del" onclick="deleteDevice()"><i class="fas fa-trash"></i> Xóa</button>
                 </div>
             </div>
         </div>
+        <div class="list-header">Danh sách thiết bị</div>
+        <div class="device-list" id="device-list-container"></div>
     </div>
-
-    <div id="sld-panel" class="active-panel">
-        <div class="panel-overlay">
-            <strong style="color:#2c3e50">SƠ ĐỒ NGUYÊN LÝ</strong>
-            <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện (Live)</div>
-            <div class="legend-item"><span class="dot" style="background:#95a5a6"></span>Mất điện (Dead)</div>
-        </div>
-        <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
+    <div class="main-editor">
+        <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button><button class="tab-btn" onclick="switchTab('map')">Map Editor</button></div>
+        <div id="view-sld" class="editor-content active"><div id="sld-canvas"></div></div>
+        <div id="view-map" class="editor-content"><div id="map-canvas"></div></div>
     </div>
+</div>
 
-    <div id="map-panel">
-        <div class="panel-overlay" style="right: 15px; left: auto;"><strong>BẢN ĐỒ GIS</strong></div>
-        <div id="map" style="width:100%; height:100%"></div>
-    </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    <div class="mobile-nav">
-        <div class="nav-btn active" onclick="switchView('sld', this)"><i class="fas fa-project-diagram"></i> SLD</div>
-        <div class="nav-btn" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> MAP</div>
-    </div>
+    const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
+    const map = L.map('map-canvas').setView([10.8231, 106.6297], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
 
-        // FIREBASE CONFIG
-        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
-        const map = L.map('map').setView([10.8231, 106.6297], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        let mapMarkers = {}; let mapLines = {};
+    onValue(ref(db, 'system_nodes'), (snapshot) => {
+        const data = snapshot.val();
+        // AUTO REPAIR: Gán tọa độ mặc định nếu thiếu để tránh lỗi hiển thị
+        allDevices = data ? Object.values(data).map(d => {
+            if(!d.sld) d.sld = {x: 50, y: 50};
+            if(!d.geo) d.geo = {lat: 10.82, lng: 106.62};
+            if(!d.connection) d.connection = 'solid';
+            return d;
+        }) : [];
         
-        let currentTargetId = null; // ID thiết bị đang thao tác
+        calculatePower();
+        const listContainer = document.getElementById('device-list-container');
+        const scrollPos = listContainer.scrollTop; 
+        renderTable();
+        listContainer.scrollTop = scrollPos;
+        updateParentSelect();
+        renderSLD();
+        renderMap();
+        document.getElementById('status-msg').innerText = `Đã tải ${allDevices.length} thiết bị`;
+        document.getElementById('status-msg').style.color = "#2ecc71";
+    });
 
-        // --- MODAL LOGIC ---
-        window.openControlModal = function(id) {
-            const node = localNodes.find(n => n.id === id);
-            // Chỉ mở modal cho thiết bị đóng cắt
-            if (!['cb', 'ds', 'fco'].includes(node.type)) return;
+    function calculatePower() {
+        allDevices.forEach(n => n.isEnergized = false);
+        const sources = allDevices.filter(n => n.type === 'source');
+        sources.forEach(src => { src.isEnergized = true; propagate(src); });
+    }
+    
+    function isConductive(node) {
+        if (['source', 'bus', 'tr', 'load', 'cable', 'wire'].includes(node.type)) return true;
+        if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
+        return false;
+    }
 
-            currentTargetId = id;
-            document.getElementById('modal-title').innerText = `${node.type.toUpperCase()}: ${node.label} (${node.id})`;
-            document.getElementById('control-modal').style.display = 'flex';
-            switchTabModal('op'); // Mặc định tab vận hành
-        }
-
-        window.closeModal = function() {
-            document.getElementById('control-modal').style.display = 'none';
-            currentTargetId = null;
-        }
-
-        window.switchTabModal = function(tab) {
-            document.querySelectorAll('.m-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            if(tab === 'op') {
-                document.querySelectorAll('.m-tab')[0].classList.add('active');
-                document.getElementById('tab-op').classList.add('active');
-            } else {
-                document.querySelectorAll('.m-tab')[1].classList.add('active');
-                document.getElementById('tab-sim').classList.add('active');
-            }
-        }
-
-        window.updateRelayParams = function() {
-            const type = document.getElementById('relay-type').value;
-            document.querySelectorAll('.relay-params').forEach(d => d.style.display = 'none');
-            document.getElementById(`param-${type}`).style.display = 'block';
-        }
-
-        // --- ACTION HANDLERS ---
-        window.performOperation = function(action) {
-            if(!currentTargetId) return;
-            // Cập nhật trạng thái
-            update(ref(db, 'system_nodes/' + currentTargetId), { 
-                state: action,
-                last_operation: 'manual', // Ghi chú là thao tác tay
-                fault_info: null // Xóa lỗi cũ nếu có
+    function propagate(parent) {
+        if (parent.isEnergized && isConductive(parent)) {
+            allDevices.filter(n => n.parent === parent.id).forEach(c => { 
+                c.isEnergized = true; propagate(c); 
             });
-            closeModal();
         }
+    }
 
-        window.simulateFault = function() {
-            if(!currentTargetId) return;
-            const relayType = document.getElementById('relay-type').value;
-            let faultData = { type: relayType, timestamp: Date.now() };
+    window.toggleForm = function() { document.getElementById('form-content').classList.toggle('hidden'); }
+    function renderTable() {
+        const container = document.getElementById('device-list-container'); container.innerHTML = '';
+        allDevices.forEach(d => {
+            const div = document.createElement('div'); div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
+            div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>`;
+            div.onclick = () => selectDevice(d, false); div.ondblclick = () => selectDevice(d, true); 
+            container.appendChild(div);
+        });
+    }
+    function updateParentSelect() {
+        const sel = document.getElementById('inp-parent'); const v = sel.value; sel.innerHTML = '<option value="">-- Gốc --</option>';
+        allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
+        sel.value = v;
+    }
+    
+    window.selectDevice = function(d, z) {
+        selectedId = d.id;
+        document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
+        document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
+        updateParentSelect(); 
+        document.getElementById('inp-parent').value = d.parent||"";
+        document.getElementById('inp-connection').value = d.connection || "solid";
+        document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
+        document.getElementById('inp-lat').value = d.geo.lat; document.getElementById('inp-lng').value = d.geo.lng;
+        document.getElementById('form-content').classList.remove('hidden');
+        renderTable(); renderSLD();
+        if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 18); }
+    }
 
-            // Lấy thông số tùy theo relay
-            if(relayType === '21') {
-                faultData.z = document.getElementById('val-z').value;
-                faultData.zone = document.getElementById('val-zone').value;
-            } else if(relayType === '67') {
-                faultData.i = document.getElementById('val-i').value;
-                faultData.angle = document.getElementById('val-angle').value;
-            } else if(relayType === '87') {
-                faultData.idiff = document.getElementById('val-idiff').value;
-                faultData.ibias = document.getElementById('val-ibias').value;
+    window.resetForm = function() {
+        selectedId = null; 
+        document.getElementById('inp-id').value = ""; document.getElementById('inp-id').disabled = false;
+        document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
+        const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
+        const container = document.getElementById('view-sld');
+        document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
+        renderTable(); renderSLD(); document.getElementById('inp-id').focus();
+    }
+
+    window.saveDevice = function() {
+        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Vui lòng nhập ID!");
+        const nd = {
+            id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
+            parent: document.getElementById('inp-parent').value||null, 
+            connection: document.getElementById('inp-connection').value,
+            state: "closed",
+            sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
+            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||0, lng: parseFloat(document.getElementById('inp-lng').value)||0 }
+        };
+        set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false)).catch(e=>alert(e.message));
+    }
+    window.deleteDevice = function() {
+        if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
+    }
+    window.zoomExtent = function() {
+        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
+        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
+        const sX=50-minX, sY=50-minY, u={};
+        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
+        update(ref(db), u);
+    }
+
+    const sldCanvas = document.getElementById('sld-canvas');
+    function renderSLD() {
+        sldCanvas.innerHTML = '';
+        // 1. VẼ DÂY
+        allDevices.forEach(d => {
+            if(d.parent) {
+                const p = allDevices.find(x => x.id == d.parent);
+                if(p) {
+                    const isLive = p.isEnergized && isConductive(p);
+                    const colorCls = isLive ? 'energized-line' : 'dead-line';
+                    const typeCls = 'wire-' + (d.connection || 'solid');
+                    drawWire(p, d, colorCls, typeCls);
+                }
             }
-
-            // Gửi lên Firebase: State = Open (Trip) + Thông tin lỗi
-            update(ref(db, 'system_nodes/' + currentTargetId), { 
-                state: 'open',
-                last_operation: 'fault_trip',
-                fault_info: faultData
-            });
+        });
+        // 2. VẼ NODE
+        allDevices.forEach(d => {
+            const el = document.createElement('div');
+            el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
+            el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
             
-            alert(`Đã gửi lệnh TRIP relay ${relayType} cho thiết bị ${currentTargetId}`);
-            closeModal();
-        }
+            if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
+            else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
 
-        // --- POWER LOGIC ---
-        function isConductive(node) {
-            if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
-            if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
-            return false;
-        }
+            if(d.isEnergized) el.classList.add('energized-node'); 
 
-        onValue(ref(db, 'system_nodes'), (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                localNodes = Object.values(data);
-                calculatePower();
-                renderSLD(); renderMap();
+            el.onmousedown = function(e) {
+                e.preventDefault(); e.stopPropagation();
+                if(d.id!==selectedId) selectDevice(d, false);
+                const startMX = e.clientX, startMY = e.clientY, startNX = d.sld.x, startNY = d.sld.y;
+                function onMM(ev) {
+                    let nx = startNX + (ev.clientX - startMX), ny = startNY + (ev.clientY - startMY);
+                    nx = Math.max(0, Math.round(nx/10)*10); ny = Math.max(0, Math.round(ny/10)*10);
+                    el.style.left=nx+'px'; el.style.top=ny+'px';
+                    document.getElementById('inp-x').value=nx; document.getElementById('inp-y').value=ny;
+                }
+                document.addEventListener('mousemove', onMM);
+                document.onmouseup = function() { document.removeEventListener('mousemove', onMM); el.onmouseup=null; saveDevice(); };
+            };
+            sldCanvas.appendChild(el);
+        });
+    }
+
+    function drawWire(p, c, colorCls, typeCls) {
+        // Kích thước chuẩn các loại
+        let pW = 80; let pH = 50; let cW = 80; let cH = 50;
+        if(p.type==='bus') { pW=300; pH=14; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; }
+        if(c.type==='bus') { cW=300; cH=14; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; }
+
+        let x1, y1, x2, y2;
+        // Điểm nối từ Busbar: Chạy theo con
+        if (p.type === 'bus') {
+            let idealX = c.sld.x + cW/2;
+            x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH;
+        } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
+
+        if (c.type === 'bus') {
+            let idealX = x1;
+            x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y;
+        } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+
+        const midY = y1 + (y2 - y1) / 2;
+        createWireSegment(x1, y1, x1, midY, colorCls, typeCls, 'v'); 
+        createWireSegment(x1, midY, x2, midY, colorCls, typeCls, 'h'); 
+        createWireSegment(x2, midY, x2, y2, colorCls, typeCls, 'v');
+    }
+    
+    function createWireSegment(x1, y1, x2, y2, colorCls, typeCls, dir) {
+        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
+        const d = document.createElement('div');
+        d.className = `wire ${colorCls} ${typeCls}`;
+        
+        // Tính toán vị trí và kích thước cho DIV
+        const left = Math.min(x1, x2);
+        const top = Math.min(y1, y2);
+        const w = Math.abs(x2 - x1);
+        const h = Math.abs(y2 - y1);
+        
+        d.style.left = left + 'px'; d.style.top = top + 'px';
+        
+        // Sử dụng Border để vẽ đường mảnh (tránh lỗi hiển thị khối)
+        if (dir === 'h') { // Ngang
+            d.style.width = w + 'px'; d.style.height = '0px'; 
+            d.style.borderTopWidth = '2px'; d.style.borderLeftWidth = '0px';
+        } else { // Dọc
+            d.style.width = '0px'; d.style.height = h + 'px';
+            d.style.borderLeftWidth = '2px'; d.style.borderTopWidth = '0px';
+        }
+        
+        sldCanvas.appendChild(d);
+    }
+
+    // MAP RENDER
+    function renderMap() {
+        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); mapPolylines.forEach(l=>map.removeLayer(l));
+        mapMarkers={}; mapPolylines=[];
+        
+        allDevices.forEach(d => {
+            if(d.parent && d.geo) {
+                const p = allDevices.find(x=>x.id==d.parent);
+                if(p && p.geo) {
+                    const isLive = p.isEnergized && isConductive(p);
+                    const color = isLive ? '#ff3d00' : '#95a5a6';
+                    const w = isLive ? 4 : 2;
+                    const dash = (d.connection === 'dashed') ? '5, 10' : null;
+                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w, dashArray: dash}).addTo(map));
+                }
             }
         });
 
-        function calculatePower() {
-            localNodes.forEach(n => n.isEnergized = false);
-            localNodes.filter(n => n.type === 'source').forEach(src => { src.isEnergized = true; propagate(src); });
-        }
-        function propagate(parent) {
-            if (parent.isEnergized && isConductive(parent)) {
-                localNodes.filter(n => n.parent === parent.id).forEach(child => { child.isEnergized = true; propagate(child); });
+        allDevices.forEach(d => {
+            if(!d.geo) return;
+            let color = '#666'; 
+            if(d.isEnergized) {
+                if(d.state === 'closed') color = '#d32f2f'; else if (d.type === 'source') color = '#1565c0'; else color = '#27ae60';
             }
-        }
-
-        // --- RENDERERS ---
-        function renderSLD() {
-            sldCanvas.innerHTML = '';
-            // Wire
-            localNodes.forEach(node => {
-                if (node.parent) {
-                    const parent = localNodes.find(n => n.id === node.parent);
-                    if (parent && parent.sld && node.sld) {
-                        const isWireLive = parent.isEnergized && isConductive(parent);
-                        drawWire(parent, node, isWireLive ? 'energized-line' : 'dead-line', node.connection || 'solid');
-                    }
-                }
+            const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
+            const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
+            const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
+            m.on('click', ()=>selectDevice(d,false));
+            m.on('dragend', ()=>{
+                const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
+                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
             });
-            // Node
-            localNodes.forEach(node => {
-                if(!node.sld) return;
-                const el = document.createElement('div');
-                el.className = `node-box type-${node.type}`;
-                el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
-                
-                if (['cb', 'ds', 'fco'].includes(node.type)) el.classList.add(node.state);
-                if (node.isEnergized) el.classList.add('energized-node');
-                
-                let content = `<span>${node.label}</span>`;
-                if (['cb', 'ds', 'fco'].includes(node.type)) {
-                    // Nếu bị Trip do sự cố -> Hiện chữ FAULT
-                    if(node.last_operation === 'fault_trip' && node.state === 'open') {
-                        content += `<br><span style="font-size:9px; color:orange; font-weight:bold;">TRIP ${node.fault_info?.type || ''}</span>`;
-                    } else {
-                        content += `<br><span style="font-size:9px">${node.state==='closed'?'ON':'OFF'}</span>`;
-                    }
-                }
-                if (['bus','wire','cable','underground'].includes(node.type)) content = ''; 
+            mapMarkers[d.id] = m;
+        });
+    }
 
-                el.innerHTML = content;
-                // SỰ KIỆN CLICK -> MỞ MODAL
-                el.onclick = () => window.openControlModal(node.id);
-                sldCanvas.appendChild(el);
-            });
-        }
-
-        function drawWire(p, c, colorCls, typeCls) {
-            const styleCls = 'wire-' + typeCls;
-            const pW = (p.type==='bus') ? 300 : (['source','tr'].includes(p.type)?60:80); 
-            const pH = (p.type==='bus') ? 10 : (['source','tr'].includes(p.type)?60:40);
-            const cW = (c.type==='bus') ? 300 : (['source','tr'].includes(c.type)?60:80); 
-            const cH = (c.type==='bus') ? 10 : (['source','tr'].includes(c.type)?60:40);
-
-            let x1, y1, x2, y2;
-            if (p.type === 'bus') {
-                let idealX = c.sld.x + cW/2;
-                x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH;
-            } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
-
-            if (c.type === 'bus') {
-                let idealX = x1;
-                x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y;
-            } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
-
-            const midY = y1 + (y2 - y1) / 2;
-            createWireSegment(x1, y1, x1, midY, colorCls, styleCls); 
-            createWireSegment(x1, midY, x2, midY, colorCls, styleCls); 
-            createWireSegment(x2, midY, x2, y2, colorCls, styleCls);
-        }
-        
-        function createWireSegment(x, y, w, h, colorCls, styleCls) {
-            if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
-            const d = document.createElement('div');
-            d.className = `wire ${colorCls} ${styleCls}`;
-            d.style.left = Math.min(x, w) + 'px';
-            d.style.top = Math.min(y, h) + 'px';
-            d.style.width = (Math.abs(w-x)||0) + 'px';
-            d.style.height = (Math.abs(h-y)||0) + 'px';
-            if (Math.abs(w-x) > Math.abs(h-y)) {
-                d.style.borderTopWidth = "2px"; d.style.height = "0px";
-            } else {
-                d.style.borderLeftWidth = "2px"; d.style.width = "0px";
-                if (styleCls.includes('dashed')) d.style.borderLeftStyle = 'dashed';
-                else d.style.borderLeftStyle = 'solid';
-                d.style.borderTop = 'none';
-            }
-            sldCanvas.appendChild(d);
-        }
-
-        // MAP RENDERER
-        function renderMap() {
-            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); for(let id in mapLines) map.removeLayer(mapLines[id]);
-            mapMarkers = {}; mapLines = {};
-            localNodes.forEach(node => {
-                if (node.parent && node.geo) {
-                    const parent = localNodes.find(n => n.id === node.parent);
-                    if (parent && parent.geo) {
-                        const isWireLive = parent.isEnergized && isConductive(parent);
-                        const color = isWireLive ? '#ff3d00' : '#95a5a6';
-                        const w = isWireLive ? 4 : 2;
-                        const dash = (node.connection === 'dashed') ? '5, 10' : null;
-                        mapLines[node.id] = L.polyline([[parent.geo.lat, parent.geo.lng], [node.geo.lat, node.geo.lng]], { color: color, weight: w, dashArray: dash }).addTo(map);
-                    }
-                }
-            });
-            localNodes.forEach(node => {
-                if(!node.geo) return;
-                let borderColor = '#666';
-                if (node.isEnergized) {
-                    if (node.state === 'closed') borderColor = '#d32f2f'; else if (node.type === 'source') borderColor = '#1565c0'; else borderColor = '#27ae60';
-                }
-                const bg = node.isEnergized ? '#fff' : '#f0f0f0';
-                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px; min-width:40px;">${node.label}</div>`;
-                const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20], iconAnchor: [30, 10] });
-                const marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
-                marker.on('click', () => window.openControlModal(node.id));
-                mapMarkers[node.id] = marker;
-            });
-        }
-
-        // Mobile Switch
-        window.switchView = function(mode, btn) {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
-            if(mode==='sld') { document.getElementById('sld-panel').classList.add('active-panel'); document.getElementById('map-panel').classList.remove('active-panel'); }
-            else { document.getElementById('sld-panel').classList.remove('active-panel'); document.getElementById('map-panel').classList.add('active-panel'); setTimeout(()=>map.invalidateSize(), 200); }
-        }
-    </script>
+    window.switchTab = function(t){
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.editor-content').forEach(c=>c.classList.remove('active'));
+        if(t==='sld'){document.querySelector('button[onclick="switchTab(\'sld\')"]').classList.add('active');document.getElementById('view-sld').classList.add('active');}
+        else{document.querySelector('button[onclick="switchTab(\'map\')"]').classList.add('active');document.getElementById('view-map').classList.add('active');window.refreshMap();}
+    }
+</script>
 </body>
 </html>
+
