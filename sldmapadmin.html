@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Full Assets</title>
+    <title>Admin Panel - Wire Types</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -30,37 +30,25 @@
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .admin-node:active { cursor: grabbing; }
 
-        /* TRẠNG THÁI NĂNG LƯỢNG */
-        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
-        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; }
-        .dead-line { background-color: #95a5a6 !important; z-index: 1; }
+        /* TRẠNG THÁI MÀU SẮC */
+        .energized-node { background-color: #ffccbc !important; }
+        
+        /* DÂY DẪN */
+        .wire { position: absolute; height: 0; pointer-events: none; transition: border-color 0.2s; z-index: 5; }
+        
+        /* Kiểu dây (Nét liền / Đứt) */
+        .wire-solid { border-top: 2px solid; }
+        .wire-dashed { border-top: 2px dashed; }
 
-        /* STYLE CÁC LOẠI THIẾT BỊ */
+        /* Màu dây (Có điện / Mất điện) */
+        .energized-line { border-color: #ff3d00 !important; z-index: 6; }
+        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        .type-bus { height: 14px !important; width: 250px; background: #2c3e50; border: 1px solid #2c3e50; border-radius: 7px; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; border-color: #c0392b !important; box-shadow: 0 0 8px #ff3d00; }
-        .type-fco { border-top: 4px solid #e74c3c; }
+        .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
+        .type-bus.energized-node { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
         .type-tr { border: 3px double #333; height: 60px; width: 60px; }
         
-        /* STYLE DÂY DẪN (ASSETS) */
-        .type-wire { 
-            height: 6px !important; width: 100px; 
-            background: #34495e; border: none; border-radius: 0;
-            transform: skewX(-15deg); /* Nghiêng nhẹ để phân biệt */
-        }
-        .type-wire.energized-node { background-color: #ff3d00 !important; }
-
-        .type-underground { 
-            height: 8px !important; width: 100px; 
-            background: repeating-linear-gradient(45deg, #795548, #795548 5px, #fff 5px, #fff 10px); 
-            border: 1px solid #5d4037; 
-        }
-        .type-underground.energized-node { 
-            background: repeating-linear-gradient(45deg, #ff3d00, #ff3d00 5px, #ffccbc 5px, #ffccbc 10px) !important; 
-            border-color: #d35400 !important; 
-        }
-
-        .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.2s; }
         #map-canvas { width: 100%; height: 100%; }
         .col { flex: 1; } .row { display: flex; gap: 10px; }
     </style>
@@ -76,39 +64,28 @@
         <div class="form-section">
             <div class="form-header" onclick="toggleForm()"><span><i class="fas fa-edit"></i> Thông tin thiết bị</span><i class="fas fa-chevron-up" id="toggle-icon"></i></div>
             <div class="form-content" id="form-content">
-                <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" placeholder="VD: CAP-01"></div>
-                <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Cáp ngầm trạm 1"></div>
+                <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" placeholder="VD: CB-01"></div>
+                <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Máy cắt tổng"></div>
                 <div class="row">
-                    <div class="col form-group"><label>Loại</label>
-                        <select id="inp-type">
-                            <optgroup label="Đóng cắt">
-                                <option value="cb">CB (Máy cắt)</option>
-                                <option value="fco">FCO (Cầu chì)</option>
-                                <option value="ds">DS (Dao cách ly)</option>
-                            </optgroup>
-                            <optgroup label="Thiết bị chính">
-                                <option value="source">Nguồn (Source)</option>
-                                <option value="bus">Busbar (Thanh cái)</option>
-                                <option value="tr">Máy biến áp</option>
-                            </optgroup>
-                            <optgroup label="Dẫn điện (New)">
-                                <option value="wire">Đường dây (Wire)</option>
-                                <option value="underground">Cáp ngầm (Underground)</option>
-                            </optgroup>
-                            <optgroup label="Phụ tải">
-                                <option value="load">Tải (Load)</option>
-                            </optgroup>
-                        </select>
-                    </div>
+                    <div class="col form-group"><label>Loại</label><select id="inp-type"><option value="cb">CB</option><option value="source">Nguồn</option><option value="bus">Busbar</option><option value="load">Tải</option><option value="ds">Dao CL</option><option value="fco">FCO</option><option value="tr">Biến áp</option></select></div>
                     <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
                 </div>
+                
+                <div class="form-group">
+                    <label>Kiểu dây dẫn từ nguồn cấp</label>
+                    <select id="inp-connection">
+                        <option value="solid">Đường dây nổi (Nét liền)</option>
+                        <option value="dashed">Cáp ngầm (Nét đứt)</option>
+                    </select>
+                </div>
+
                 <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
                 <button type="button" class="btn-extent" onclick="zoomExtent()">Gom về khung nhìn</button>
                 <div class="row" style="margin-top:5px"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
                 <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
             </div>
         </div>
-        <div class="list-header">Danh sách thiết bị</div>
+        <div class="list-header">Danh sách</div>
         <div class="device-list" id="device-list-container"></div>
     </div>
     <div class="main-editor">
@@ -154,8 +131,7 @@
     }
     
     function isConductive(node) {
-        // CÁP, BUSBAR, NGUỒN, BIẾN ÁP, DÂY DẪN luôn dẫn điện
-        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
+        if (['source', 'bus', 'tr', 'load'].includes(node.type)) return true;
         if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
         return false;
     }
@@ -183,37 +159,40 @@
         allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
         sel.value = v;
     }
+    
     window.selectDevice = function(d, z) {
         selectedId = d.id;
         document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
         document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
         updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
+        document.getElementById('inp-connection').value = d.connection || "solid"; // Load kiểu dây
+        
         document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
         document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
         document.getElementById('form-content').classList.remove('hidden');
         renderTable(); renderSLD();
         if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 18); }
     }
-    window.zoomExtent = function() {
-        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
-        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
-        const sX=50-minX, sY=50-minY, u={};
-        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
-        update(ref(db), u).then(()=>{ if(selectedId){const c=allDevices.find(n=>n.id===selectedId);if(c){document.getElementById('inp-x').value=c.sld.x+sX;document.getElementById('inp-y').value=c.sld.y+sY;}}});
-    }
+
     window.resetForm = function() {
-        selectedId = null; document.getElementById('inp-id').value=""; document.getElementById('inp-id').disabled=false;
-        document.getElementById('inp-label').value=""; document.getElementById('inp-parent').value="";
+        selectedId = null; 
+        document.getElementById('inp-id').value = ""; document.getElementById('inp-id').disabled = false;
+        document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
+        document.getElementById('inp-connection').value = "solid";
+        
         const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
         const container = document.getElementById('view-sld');
         document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
         renderTable(); renderSLD(); document.getElementById('inp-id').focus();
     }
+
     window.saveDevice = function() {
-        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
+        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Vui lòng nhập ID!");
         const nd = {
             id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value||null, state: "closed",
+            parent: document.getElementById('inp-parent').value||null, 
+            connection: document.getElementById('inp-connection').value, // Lưu kiểu dây
+            state: "closed",
             sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
             geo: { lat: parseFloat(document.getElementById('inp-lat').value)||0, lng: parseFloat(document.getElementById('inp-lng').value)||0 }
         };
@@ -221,6 +200,13 @@
     }
     window.deleteDevice = function() {
         if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
+    }
+    window.zoomExtent = function() {
+        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
+        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
+        const sX=50-minX, sY=50-minY, u={};
+        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
+        update(ref(db), u);
     }
 
     const sldCanvas = document.getElementById('sld-canvas');
@@ -231,7 +217,8 @@
                 const p = allDevices.find(x => x.id == d.parent);
                 if(p) {
                     const isLive = p.isEnergized && isConductive(p);
-                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line');
+                    // Truyền kiểu dây (solid/dashed) và màu sắc (energized/dead)
+                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line', d.connection || 'solid');
                 }
             }
         });
@@ -239,14 +226,8 @@
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            
-            // Hiển thị nội dung
-            if(['bus','wire','underground'].includes(d.type)) {
-                el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
-            } else {
-                el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
-            }
-
+            if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
+            else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
             if(d.isEnergized) el.classList.add('energized-node'); 
 
             el.onmousedown = function(e) {
@@ -266,15 +247,13 @@
         });
     }
 
-    function drawWire(p, c, cls) {
-        // Cập nhật kích thước cho Cable/Wire
-        let pW = 80; let pH = 50; let cW = 80; let cH = 50;
-        
-        if(p.type==='bus') { pW=300; pH=14; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; } 
-        else if(['wire','underground'].includes(p.type)) { pW=100; pH=20; } // Dài ra
+    function drawWire(p, c, colorCls, typeCls) {
+        // Tên class cho kiểu dây: wire-solid hoặc wire-dashed
+        const styleCls = 'wire-' + typeCls; 
 
-        if(c.type==='bus') { cW=300; cH=14; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; } 
-        else if(['wire','underground'].includes(c.type)) { cW=100; cH=20; }
+        let pW = 80; let pH = 50; let cW = 80; let cH = 50;
+        if(p.type==='bus') { pW=300; pH=14; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; }
+        if(c.type==='bus') { cW=300; cH=14; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; }
 
         let x1, y1, x2, y2;
         if (p.type === 'bus') {
@@ -288,14 +267,32 @@
         } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
 
         const midY = y1 + (y2 - y1) / 2;
-        createWireSegment(x1, y1, x1, midY, cls); createWireSegment(x1, midY, x2, midY, cls); createWireSegment(x2, midY, x2, y2, cls);
+        createWireSegment(x1, y1, x1, midY, colorCls, styleCls); 
+        createWireSegment(x1, midY, x2, midY, colorCls, styleCls); 
+        createWireSegment(x2, midY, x2, y2, colorCls, styleCls);
     }
     
-    function createWireSegment(x, y, w, h, cls) {
+    function createWireSegment(x, y, w, h, colorCls, styleCls) {
         if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
-        const d = document.createElement('div'); d.className = 'wire ' + cls;
+        const d = document.createElement('div'); 
+        d.className = `wire ${colorCls} ${styleCls}`; // Kết hợp class
         d.style.left=Math.min(x,w)+'px'; d.style.top=Math.min(y,h)+'px';
-        d.style.width=(Math.abs(w-x)||3)+'px'; d.style.height=(Math.abs(h-y)||3)+'px';
+        d.style.width=(Math.abs(w-x)||0)+'px'; d.style.height=(Math.abs(h-y)||0)+'px';
+        
+        // Logic vẽ border: Nếu width > height là dây ngang, ngược lại là dây dọc
+        if (Math.abs(w-x) > Math.abs(h-y)) {
+            d.style.borderTopWidth = "2px"; // Dây ngang
+            d.style.height = "0px";
+        } else {
+            d.style.borderLeftWidth = "2px"; // Dây dọc
+            d.style.width = "0px";
+            // Đối với dây dọc, cần chỉnh lại kiểu border cho đúng
+            if (styleCls.includes('dashed')) d.style.borderLeftStyle = 'dashed';
+            else d.style.borderLeftStyle = 'solid';
+            // Reset border top để tránh vẽ 2 lần
+            d.style.borderTop = 'none';
+        }
+        
         sldCanvas.appendChild(d);
     }
 
@@ -308,9 +305,11 @@
                 const p = allDevices.find(x=>x.id==d.parent);
                 if(p && p.geo) {
                     const isLive = p.isEnergized && isConductive(p);
-                    const color = isLive ? '#ff3d00' : '#555';
+                    const color = isLive ? '#ff3d00' : '#95a5a6';
                     const w = isLive ? 4 : 2;
-                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w}).addTo(map));
+                    // Nét đứt trên bản đồ
+                    const dash = (d.connection === 'dashed') ? '5, 10' : null;
+                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w, dashArray: dash}).addTo(map));
                 }
             }
         });
