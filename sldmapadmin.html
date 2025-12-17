@@ -1,129 +1,70 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Admin Panel - Mobile Drag Fix</title>
+    <title>Admin Panel - Final Fixed</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CSS CƠ BẢN */
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        header { background: #2c3e50; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 200; height: 50px; box-sizing: border-box; }
-        .header-title h2 { margin: 0; font-size: 16px; }
-
-        /* LAYOUT */
-        .container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        
-        /* Sidebar Responsive */
-        .sidebar { 
-            width: 320px; background: white; border-right: 1px solid #ddd; 
-            display: flex; flex-direction: column; z-index: 100; 
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
-            transition: transform 0.3s ease;
-        }
-        
-        /* Nút toggle sidebar trên mobile */
-        .sidebar-toggle { display: none; position: absolute; top: 10px; left: 10px; z-index: 1000; background: #fff; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
-
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; transform: translateX(-100%); width: 85%; }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-toggle { display: block; }
-        }
-
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
+        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 360px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-section { border-bottom: 2px solid #f1f1f1; background: #fff; }
-        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; user-select: none; }
-        .form-content { padding: 15px; overflow-y: auto; max-height: 50vh; display: block; }
+        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; font-weight: bold; font-size: 13px; color: #555; display: flex; justify-content: space-between; }
+        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; }
         .form-content.hidden { display: none; }
-
-        .form-group { margin-bottom: 8px; }
-        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; } /* Input to hơn cho mobile */
+        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
+        button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
+        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; }
         
-        .row { display: flex; gap: 10px; } .col { flex: 1; }
-
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; }
-        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; font-size: 13px; }
-        .btn-new { background: #3498db; color: white; } 
-        .btn-save { background: #27ae60; color: white; } 
-        .btn-del { background: #e74c3c; color: white; }
-        .btn-extent { background: #8e44ad; color: white; width: 100%; margin-top:5px; padding: 8px; border: none; cursor: pointer; border-radius: 3px; }
-
-        .device-list { flex: 1; overflow-y: auto; padding: 0; }
-        .device-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .device-list { flex: 1; overflow-y: auto; padding: 0; } 
+        .device-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } 
+        .device-item:hover { background: #f1f8ff; }
         .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-
+        
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .editor-tabs { display: flex; background: #e9ecef; height: 40px; align-items: center; }
-        .tab-btn { padding: 0 20px; height: 100%; cursor: pointer; border: none; background: none; font-weight: bold; color: #666; }
-        .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
-        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; }
-        .editor-content.active { display: block; }
-
-        /* SLD CANVAS */
-        #view-sld { overflow: auto; background: #ccc; touch-action: pan-x pan-y; } 
-        #sld-canvas { 
-            width: 4000px; height: 3000px; 
-            background-color: white;
-            background-image: radial-gradient(#999 1px, transparent 1px); 
-            background-size: 20px 20px; 
-            position: relative; 
-        }
+        .editor-tabs { display: flex; background: #e9ecef; } .tab-btn { padding: 10px 20px; cursor: pointer; border: none; font-weight: bold; color: #666; } .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
+        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; } .editor-content.active { display: block; }
+        #view-sld { overflow: auto; background: #ccc; } 
+        #sld-canvas { width: 4000px; height: 3000px; background-color: white; background-image: radial-gradient(#999 1px, transparent 1px); background-size: 20px 20px; position: relative; }
         
         /* NODE STYLES */
-        .admin-node {
-            position: absolute; width: 80px; height: 50px; 
-            background: white; border: 2px solid #333; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            font-size: 10px; cursor: grab; user-select: none; z-index: 10;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1); border-radius: 2px;
-            /* Quan trọng cho mobile: không cho phép touch mặc định */
-            touch-action: none; 
-        }
-        .admin-node:hover { border-color: #007bff; }
+        .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
-        .admin-node:active { cursor: grabbing; }
-
-        /* COLORS */
         .energized-node { background-color: #ffccbc !important; }
-        .energized-line { border-color: #ff3d00 !important; z-index: 5 !important; }
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
 
-        /* DEVICE TYPES */
         .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        .type-bus { height: 14px !important; width: 250px; background: #2c3e50; border: 1px solid #2c3e50; border-radius: 7px; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; border-color: #c0392b !important; box-shadow: 0 0 10px #ff3d00; }
+        .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
+        .type-bus.energized-node { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
         .type-fco { border-top: 4px solid #e74c3c; }
-        .type-tr { border: 3px double #333; height: 60px; width: 60px; }
-        
-        /* WIRE TYPES */
-        .type-wire { height: 6px !important; width: 100px; background: #34495e; border: none; transform: skewX(-15deg); }
-        .type-wire.energized-node { background-color: #ff3d00 !important; }
-        .type-underground { height: 8px !important; width: 100px; background: repeating-linear-gradient(45deg, #795548, #795548 5px, #fff 5px, #fff 10px); border: 1px solid #5d4037; }
-        .type-underground.energized-node { background: repeating-linear-gradient(45deg, #ff3d00, #ff3d00 5px, #ffccbc 5px, #ffccbc 10px) !important; border-color: #d35400 !important; }
 
-        /* CONNECTION LINES */
-        .wire { position: absolute; height: 0; pointer-events: none; transition: border-color 0.2s; z-index: 5; }
-        .wire-solid { border-top: 2px solid; }
-        .wire-dashed { border-top: 2px dashed; }
+        /* WIRE STYLES (ĐÃ SỬA LỖI HIỂN THỊ KHỐI) */
+        .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; }
+        
+        /* Màu sắc dây */
+        .wire-energized { border-color: #ff3d00 !important; z-index: 5; }
+        .wire-dead { border-color: #95a5a6 !important; }
+
+        /* Kiểu dây (Nét liền / Đứt) */
+        .wire-solid { border-style: solid; }
+        .wire-dashed { border-style: dashed; }
 
         #map-canvas { width: 100%; height: 100%; }
+        .col { flex: 1; } .row { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
 
 <header>
-    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="header-title" style="margin-left: 40px;"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
-    <div style="font-size: 11px; color: #ccc;">
-        <span id="status-msg">Sẵn sàng</span>
-    </div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
+    <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
 </header>
-
 <div class="container">
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar">
         <div class="form-section">
             <div class="form-header" onclick="toggleForm()"><span><i class="fas fa-edit"></i> Thông tin thiết bị</span><i class="fas fa-chevron-up" id="toggle-icon"></i></div>
             <div class="form-content" id="form-content">
@@ -138,15 +79,11 @@
                                 <option value="ds">DS (Dao cách ly)</option>
                             </optgroup>
                             <optgroup label="Thiết bị chính">
-                                <option value="source">Nguồn (Source)</option>
-                                <option value="bus">Busbar (Thanh cái)</option>
+                                <option value="source">Nguồn</option>
+                                <option value="bus">Busbar</option>
                                 <option value="tr">Máy biến áp</option>
                             </optgroup>
-                            <optgroup label="Dẫn điện (Asset)">
-                                <option value="wire">Đường dây (Wire)</option>
-                                <option value="underground">Cáp ngầm</option>
-                            </optgroup>
-                            <optgroup label="Phụ tải">
+                            <optgroup label="Dẫn điện">
                                 <option value="load">Tải (Load)</option>
                             </optgroup>
                         </select>
@@ -155,7 +92,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Kiểu dây dẫn từ nguồn</label>
+                    <label>Kiểu đấu nối</label>
                     <select id="inp-connection">
                         <option value="solid">Đường dây nổi (Nét liền)</option>
                         <option value="dashed">Cáp ngầm (Nét đứt)</option>
@@ -165,10 +102,11 @@
                 <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
                 <button type="button" class="btn-extent" onclick="zoomExtent()">Gom về khung nhìn</button>
                 <div class="row" style="margin-top:5px"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
+                
                 <div class="btn-group">
-                    <button class="btn-new" onclick="resetForm()"><i class="fas fa-plus"></i> Mới</button>
-                    <button class="btn-save" onclick="saveDevice()"><i class="fas fa-save"></i> Lưu</button>
-                    <button class="btn-del" onclick="deleteDevice()"><i class="fas fa-trash"></i> Xóa</button>
+                    <button type="button" class="btn-new" onclick="resetForm()"><i class="fas fa-plus"></i> Mới</button>
+                    <button type="button" class="btn-save" onclick="saveDevice()"><i class="fas fa-save"></i> Lưu</button>
+                    <button type="button" class="btn-del" onclick="deleteDevice()"><i class="fas fa-trash"></i> Xóa</button>
                 </div>
             </div>
         </div>
@@ -176,7 +114,10 @@
         <div class="device-list" id="device-list-container"></div>
     </div>
     <div class="main-editor">
-        <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button><button class="tab-btn" onclick="switchTab('map')">Map Editor</button></div>
+        <div class="editor-tabs">
+            <button type="button" class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button>
+            <button type="button" class="tab-btn" onclick="switchTab('map')">Map Editor</button>
+        </div>
         <div id="view-sld" class="editor-content active"><div id="sld-canvas"></div></div>
         <div id="view-map" class="editor-content"><div id="map-canvas"></div></div>
     </div>
@@ -200,10 +141,13 @@
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
         calculatePower();
+        
+        // Cập nhật mà không làm mất trạng thái cuộn
         const listContainer = document.getElementById('device-list-container');
         const scrollPos = listContainer.scrollTop; 
         renderTable();
         listContainer.scrollTop = scrollPos;
+        
         updateParentSelect();
         renderSLD();
         renderMap();
@@ -231,20 +175,20 @@
         }
     }
 
-    window.toggleSidebar = function() {
-        document.getElementById('sidebar').classList.toggle('open');
-    }
     window.toggleForm = function() { document.getElementById('form-content').classList.toggle('hidden'); }
     
     function renderTable() {
         const container = document.getElementById('device-list-container'); container.innerHTML = '';
         allDevices.forEach(d => {
-            const div = document.createElement('div'); div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
+            const div = document.createElement('div'); 
+            div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
             div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>`;
-            div.onclick = () => selectDevice(d, false); div.ondblclick = () => selectDevice(d, true); 
+            div.onclick = () => selectDevice(d, false); // Single Click
+            div.ondblclick = () => selectDevice(d, true); // Double Click Zoom
             container.appendChild(div);
         });
     }
+
     function updateParentSelect() {
         const sel = document.getElementById('inp-parent'); const v = sel.value; sel.innerHTML = '<option value="">-- Gốc --</option>';
         allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
@@ -255,24 +199,20 @@
         selectedId = d.id;
         document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
         document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
-        updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
+        updateParentSelect(); 
+        document.getElementById('inp-parent').value = d.parent||"";
         document.getElementById('inp-connection').value = d.connection || "solid";
         document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
         document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
         document.getElementById('form-content').classList.remove('hidden');
         renderTable(); renderSLD();
-        
-        // Mobile Sidebar: đóng khi chọn
-        if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
-
         if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 18); }
     }
 
     window.resetForm = function() {
-        selectedId = null; 
+        selectedId = null; // QUAN TRỌNG: Reset ID để không bị khóa ở thiết bị cũ
         document.getElementById('inp-id').value = ""; document.getElementById('inp-id').disabled = false;
         document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
-        document.getElementById('inp-connection').value = "solid";
         
         const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
         const container = document.getElementById('view-sld');
@@ -293,9 +233,11 @@
         };
         set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false)).catch(e=>alert(e.message));
     }
+    
     window.deleteDevice = function() {
         if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
     }
+    
     window.zoomExtent = function() {
         if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
         allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
@@ -304,93 +246,60 @@
         update(ref(db), u);
     }
 
-    // --- SLD RENDER (TOUCH SUPPORTED) ---
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
         sldCanvas.innerHTML = '';
+        // 1. VẼ DÂY
         allDevices.forEach(d => {
             if(d.parent) {
                 const p = allDevices.find(x => x.id == d.parent);
                 if(p) {
                     const isLive = p.isEnergized && isConductive(p);
-                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line', d.connection || 'solid');
+                    // Truyền class màu (wire-energized) và class kiểu (wire-solid/dashed)
+                    const colorCls = isLive ? 'wire-energized' : 'wire-dead';
+                    const typeCls = 'wire-' + (d.connection || 'solid');
+                    drawWire(p, d, colorCls, typeCls);
                 }
             }
         });
+        
+        // 2. VẼ NODE
         allDevices.forEach(d => {
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
             
             if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
-            else if(d.type==='cable' || d.type==='wire' || d.type==='underground') el.innerHTML=`<span style="font-size:9px">${d.label}</span>`;
             else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
 
             if(d.isEnergized) el.classList.add('energized-node'); 
 
-            // LOGIC KÉO THẢ (HỖ TRỢ MOBILE TOUCH)
-            const handleStart = (e) => {
-                // e.preventDefault(); // Không chặn default ở đây để input vẫn focus được nếu cần
-                e.stopPropagation();
-                
+            el.onmousedown = function(e) {
+                e.preventDefault(); e.stopPropagation();
                 if(d.id!==selectedId) selectDevice(d, false);
-                
-                // Lấy tọa độ chuột/ngón tay
-                const pageX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-                const pageY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-                
-                const startNX = d.sld.x; 
-                const startNY = d.sld.y;
-
-                function onMove(ev) {
-                    ev.preventDefault(); // Chặn cuộn trang khi đang kéo
-                    const curX = ev.type.includes('touch') ? ev.touches[0].clientX : ev.clientX;
-                    const curY = ev.type.includes('touch') ? ev.touches[0].clientY : ev.clientY;
-
-                    let nx = startNX + (curX - pageX);
-                    let ny = startNY + (curY - pageY);
-                    
-                    // Snap grid
-                    nx = Math.max(0, Math.round(nx/10)*10); 
-                    ny = Math.max(0, Math.round(ny/10)*10);
-                    
+                const startMX = e.clientX, startMY = e.clientY, startNX = d.sld.x, startNY = d.sld.y;
+                function onMM(ev) {
+                    let nx = startNX + (ev.clientX - startMX), ny = startNY + (ev.clientY - startMY);
+                    nx = Math.max(0, Math.round(nx/10)*10); ny = Math.max(0, Math.round(ny/10)*10);
                     el.style.left=nx+'px'; el.style.top=ny+'px';
-                    document.getElementById('inp-x').value=nx; 
-                    document.getElementById('inp-y').value=ny;
+                    document.getElementById('inp-x').value=nx; document.getElementById('inp-y').value=ny;
                 }
-
-                function onEnd() {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onEnd);
-                    document.removeEventListener('touchmove', onMove);
-                    document.removeEventListener('touchend', onEnd);
-                    saveDevice();
-                }
-
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onEnd);
-                document.addEventListener('touchmove', onMove, { passive: false });
-                document.addEventListener('touchend', onEnd);
+                document.addEventListener('mousemove', onMM);
+                document.onmouseup = function() { document.removeEventListener('mousemove', onMM); el.onmouseup=null; saveDevice(); };
             };
-
-            el.addEventListener('mousedown', handleStart);
-            el.addEventListener('touchstart', handleStart, { passive: false });
-
             sldCanvas.appendChild(el);
         });
     }
 
+    // HÀM VẼ DÂY FIX LỖI KHỐI
     function drawWire(p, c, colorCls, typeCls) {
-        const styleCls = 'wire-' + typeCls;
-        let pW = 80; let pH = 50; let cW = 80; let cH = 50;
-        
-        if(p.type==='bus') { pW=300; pH=14; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; } 
-        else if(['wire','underground','cable'].includes(p.type)) { pW=100; pH=20; }
-
-        if(c.type==='bus') { cW=300; cH=14; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; } 
-        else if(['wire','underground','cable'].includes(c.type)) { cW=100; cH=20; }
+        let pW = (p.type==='bus') ? 300 : (p.type==='source'||p.type==='tr'?60:80); 
+        let pH = (p.type==='bus') ? 12 : (p.type==='source'||p.type==='tr'?60:50);
+        let cW = (c.type==='bus') ? 300 : (c.type==='source'||c.type==='tr'?60:80); 
+        let cH = (c.type==='bus') ? 12 : (c.type==='source'||c.type==='tr'?60:50);
 
         let x1, y1, x2, y2;
+        // Điểm neo Busbar: Trượt theo phương ngang
         if (p.type === 'bus') {
             let idealX = c.sld.x + cW/2;
             x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH;
@@ -402,25 +311,36 @@
         } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
 
         const midY = y1 + (y2 - y1) / 2;
-        createWireSegment(x1, y1, x1, midY, colorCls, styleCls); 
-        createWireSegment(x1, midY, x2, midY, colorCls, styleCls); 
-        createWireSegment(x2, midY, x2, y2, colorCls, styleCls);
+        // Vẽ 3 đoạn: Dọc 1 -> Ngang -> Dọc 2
+        createWireSegment(x1, y1, x1, midY, colorCls, typeCls, 'v'); 
+        createWireSegment(x1, midY, x2, midY, colorCls, typeCls, 'h'); 
+        createWireSegment(x2, midY, x2, y2, colorCls, typeCls, 'v');
     }
     
-    function createWireSegment(x, y, w, h, colorCls, styleCls) {
-        if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
-        const d = document.createElement('div'); d.className = `wire ${colorCls} ${styleCls}`;
-        d.style.left=Math.min(x,w)+'px'; d.style.top=Math.min(y,h)+'px';
-        d.style.width=(Math.abs(w-x)||0)+'px'; d.style.height=(Math.abs(h-y)||0)+'px';
+    function createWireSegment(x1, y1, x2, y2, colorCls, typeCls, orientation) {
+        // Nếu điểm đầu = điểm cuối thì bỏ qua
+        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         
-        if (Math.abs(w-x) > Math.abs(h-y)) {
-            d.style.borderTopWidth = "2px"; d.style.height = "0px";
+        const d = document.createElement('div');
+        d.className = `wire ${colorCls} ${typeCls}`;
+        
+        // Vị trí
+        d.style.left = Math.min(x1, x2) + 'px';
+        d.style.top = Math.min(y1, y2) + 'px';
+        
+        // Kích thước chuẩn cho đường thẳng
+        if (orientation === 'h') {
+            d.style.width = Math.abs(x2 - x1) + 'px';
+            d.style.height = '0px'; // Chiều cao 0, dùng border để vẽ nét
+            d.style.borderTopWidth = '2px'; 
+            d.style.borderLeftWidth = '0px';
         } else {
-            d.style.borderLeftWidth = "2px"; d.style.width = "0px";
-            if (styleCls.includes('dashed')) d.style.borderLeftStyle = 'dashed';
-            else d.style.borderLeftStyle = 'solid';
-            d.style.borderTop = 'none';
+            d.style.height = Math.abs(y2 - y1) + 'px';
+            d.style.width = '0px'; // Chiều rộng 0
+            d.style.borderLeftWidth = '2px';
+            d.style.borderTopWidth = '0px';
         }
+        
         sldCanvas.appendChild(d);
     }
 
@@ -443,10 +363,8 @@
 
         allDevices.forEach(d => {
             if(!d.geo) return;
-            let color = '#666'; 
-            if(d.isEnergized) {
-                if(d.state === 'closed') color = '#d32f2f'; else if (d.type === 'source') color = '#1565c0'; else color = '#27ae60';
-            }
+            let color = d.isEnergized ? '#ff3d00' : '#666'; 
+            if(d.isEnergized && d.state==='closed') color = '#d32f2f'; 
             const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
             const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
             const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
