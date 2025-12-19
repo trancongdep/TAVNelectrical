@@ -13,24 +13,23 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
-        /* --- 2. HEADER (Top Bar) --- */
+        /* HEADER */
         .app-header {
             height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
-        .menu-toggle { font-size: 22px; cursor: pointer; display: none; } /* Ẩn trên desktop */
+        .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
         .logo i { color: #f1c40f; }
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
-        /* --- 3. MAIN LAYOUT --- */
+        /* LAYOUT */
         .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
 
-        /* SIDEBAR MENU (Style cũ bạn thích) */
+        /* SIDEBAR */
         .app-sidebar {
             width: 250px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
-            transition: all 0.3s ease; z-index: 1500;
-            border-right: 1px solid #34495e;
+            transition: all 0.3s ease; z-index: 1500; border-right: 1px solid #34495e;
         }
         .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; }
         .menu-item { 
@@ -40,34 +39,28 @@
         }
         .menu-item:hover { background-color: #34495e; }
         .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
-        .menu-item i { width: 25px; text-align: center; }
-        
         .menu-footer { 
             margin-top: auto; padding: 20px; font-size: 12px; color: #95a5a6; 
             text-align: center; border-top: 1px solid #34495e; background: #233242; 
         }
 
-        /* CONTENT AREA */
+        /* CONTENT */
         .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
-        
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
         #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
 
-        /* --- 4. MOBILE RESPONSIVE (Sidebar Drawer) --- */
+        /* MOBILE RESPONSIVE */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; backdrop-filter: blur(2px); }
         
         @media (max-width: 1024px) {
-            .menu-toggle { display: block; } /* Hiện nút 3 gạch */
-            .app-sidebar { 
-                position: absolute; height: 100%; top: 0; left: -250px; /* Ẩn sang trái */
-                box-shadow: 2px 0 15px rgba(0,0,0,0.5); 
-            }
-            .app-sidebar.show { left: 0; } /* Trượt ra */
+            .menu-toggle { display: block; }
+            .app-sidebar { position: absolute; height: 100%; top: 0; left: -250px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
+            .app-sidebar.show { left: 0; }
             .overlay.show { display: block; }
         }
 
-        /* --- 5. ELEMENT STYLES --- */
+        /* ELEMENT STYLES */
         .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
         .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
@@ -97,7 +90,7 @@
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
 
-        /* --- MODAL STYLE (PIN INPUT) --- */
+        /* MODAL LOTO */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
@@ -140,14 +133,12 @@
                 </li>
             </ul>
             <div class="menu-footer">
-                &copy; 2025 TaVietnam<br>Version 3.5 (LOTO Secure)
+                &copy; 2025 TaVietnam<br>Version 3.6 (MasterKey)
             </div>
         </nav>
-        
         <div class="overlay" onclick="toggleSidebar()"></div>
 
         <main class="app-content">
-            
             <div id="sld-panel" class="active-view">
                 <div class="panel-info">
                     <strong style="color:#2c3e50">TRẠNG THÁI</strong>
@@ -169,8 +160,7 @@
     <div id="lotoModal" class="loto-modal">
         <div class="loto-box">
             <div id="lotoTitle" class="loto-title">Thao tác thiết bị</div>
-            <div id="lotoContent">
-                </div>
+            <div id="lotoContent"></div>
         </div>
     </div>
 
@@ -182,6 +172,9 @@
         const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // --- CẤU HÌNH MASTER KEY ---
+        const MASTER_KEY = "9999"; 
 
         // CLOCK
         setInterval(() => {
@@ -205,8 +198,6 @@
         window.switchView = (mode, btn) => {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
-            
-            // Đóng sidebar trên mobile
             if(window.innerWidth <= 1024) window.toggleSidebar();
 
             if(mode === 'sld') {
@@ -219,7 +210,6 @@
             }
         }
 
-        // --- LOGIC ĐIỆN & LOTO ---
         function isConductive(node) {
             if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
             if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
@@ -257,7 +247,6 @@
             }
         });
 
-        // --- XỬ LÝ CLICK THIẾT BỊ ---
         window.handleDeviceClick = function(id) {
             const node = localNodes.find(n => n.id === id);
             if (!['cb', 'ds', 'fco'].includes(node.type)) return;
@@ -283,10 +272,9 @@
             div.innerHTML += `<button class="btn-action btn-cancel" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
         }
 
-        // --- PIN FORM ---
         window.showPinForm = function(mode) {
             const div = document.getElementById('lotoContent');
-            const title = mode === 'lock' ? "Tạo mã PIN (4 số)" : "Nhập mã PIN mở khóa";
+            const title = mode === 'lock' ? "Thiết lập PIN" : "Nhập PIN mở khóa";
             const btnText = mode === 'lock' ? "XÁC NHẬN KHÓA" : "XÁC NHẬN MỞ";
             
             div.innerHTML = `
@@ -302,7 +290,7 @@
 
         window.submitPin = function(mode) {
             const pin = document.getElementById('pinInput').value;
-            if (!pin || pin.length !== 4) return alert("Vui lòng nhập đủ 4 số PIN!");
+            if (!pin) return alert("Vui lòng nhập mã PIN!");
 
             const node = localNodes.find(n => n.id === currentTargetId);
             
@@ -314,11 +302,14 @@
                 document.getElementById('lotoModal').style.display = 'none';
             } 
             else if (mode === 'unlock') {
-                if (node.lotoPin && node.lotoPin === pin) {
+                // KIỂM TRA PIN HOẶC MASTER KEY
+                if ((node.lotoPin && node.lotoPin === pin) || pin === MASTER_KEY) {
                     update(ref(db, 'system_nodes/' + currentTargetId), { 
                         state: 'open', lotoPin: null, lotoTime: null
                     });
-                    alert("Mở khóa thành công!");
+                    if(pin === MASTER_KEY) alert("Đã mở khóa bằng MASTER KEY!");
+                    else alert("Mở khóa thành công!");
+                    
                     document.getElementById('lotoModal').style.display = 'none';
                 } else {
                     alert("SAI MÃ PIN! Vui lòng thử lại.");
@@ -332,7 +323,6 @@
             document.getElementById('lotoModal').style.display = 'none';
         }
 
-        // --- RENDER ---
         function renderSLD() {
             sldCanvas.innerHTML = '';
             localNodes.forEach(node => {
