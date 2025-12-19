@@ -2,11 +2,11 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Smart Street View</title>
+    <title>Admin Panel - TAVIETNAM (Split View Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* --- CORE CSS --- */
+        /* CSS CHUNG */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
@@ -17,18 +17,16 @@
         .form-content { padding: 15px; overflow-y: auto; flex: 1; }
         .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
-        
-        /* BUTTONS */
         .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
-        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; border-radius: 3px; color: white; }
+        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; color: white; border-radius: 3px;}
         .device-list { flex: 1; overflow-y: auto; border-top: 1px solid #eee; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
 
-        /* EDITOR AREA */
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
+        /* EDITOR */
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
-        .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; }
+        .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; }
         .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
         .tab-content { display: none; width: 100%; height: 100%; position: relative; }
         .tab-content.active { display: block; }
@@ -37,39 +35,41 @@
         #sld-container { width: 100%; height: 100%; overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
 
-        /* SPLIT MAP VIEW */
+        /* --- SPLIT VIEW CSS --- */
         #split-wrapper { display: flex; width: 100%; height: 100%; overflow: hidden; }
-        #map-container { flex-grow: 1; position: relative; min-width: 200px; }
+        
+        #map-container { flex-grow: 1; position: relative; min-width: 0; width: 100%; transition: width 0.3s; }
         #map-canvas { width: 100%; height: 100%; }
-        
-        #resizer { width: 8px; background: #ccc; cursor: col-resize; display: none; align-items: center; justify-content: center; z-index: 1000; border-left: 1px solid #999; border-right: 1px solid #999; }
-        #resizer:hover, #resizer.active { background: #3498db; }
-        
-        #street-view-container { width: 0px; background: #222; display: none; position: relative; }
-        /* Div chứa Google Street View Panorama */
-        #pano { width: 100%; height: 100%; }
 
+        /* Nút bật/tắt Street View */
         .street-toggle-btn {
-            position: absolute; top: 10px; right: 60px; z-index: 1000;
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
             background: white; padding: 8px 12px; border: 2px solid #f1c40f;
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
         }
+        .street-toggle-btn:hover { background: #fef9e7; }
         .street-toggle-btn.active { background: #f1c40f; color: #333; }
 
-        /* KHOẢNG CÁCH LABEL TRÊN MAP */
-        .dist-label { background: rgba(255,255,255,0.8); border: 1px solid #333; padding: 2px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        /* Khung bên phải (Street View) */
+        #street-view-container { 
+            width: 0px; background: #222; display: none; position: relative; border-left: 4px solid #333;
+        }
+        
+        /* Iframe hoặc thông báo */
+        #sv-content { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; text-align: center; padding: 20px; }
+        #sv-iframe { width: 100%; height: 100%; border: none; display: none; }
+        
+        .btn-open-ext { background: #3498db; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px; display: inline-block; }
 
-        /* STYLES NODE/WIRE */
+        /* Node/Wire Styles (Giữ nguyên) */
         .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; }
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; background: #e3f2fd; }
-        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
-        
+        .energized-node { background-color: #ffccbc !important; }
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-        .energized-line { border-color: #ff3d00 !important; z-index: 5 !important; }
+        .energized-line { border-color: #ff3d00 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-        
         .type-bus { height: 12px !important; width: 250px; background: #2c3e50; border-radius: 6px; border:none; }
         .type-bus.energized-node { background-color: #ff3d00 !important; }
         .type-source { border-radius: 50%; width: 60px; height: 60px; }
@@ -115,14 +115,22 @@
         <div id="tab-map" class="tab-content">
             <div id="split-wrapper">
                 <div id="map-container">
-                    <button class="street-toggle-btn" onclick="toggleStreetView()">
-                        <i class="fas fa-street-view"></i> Street View
+                    <button class="street-toggle-btn" onclick="toggleSplitView()">
+                        <i class="fas fa-columns"></i> Bật/Tắt Street View
                     </button>
                     <div id="map-canvas"></div>
                 </div>
-                <div id="resizer"><i class="fas fa-grip-lines-vertical"></i></div>
+                
                 <div id="street-view-container">
-                    <div id="pano"></div> </div>
+                    <div id="sv-content">
+                        <i class="fas fa-street-view" style="font-size:40px; margin-bottom:10px"></i>
+                        <p>Google yêu cầu API Key để nhúng.<br>Bạn có thể mở Street View miễn phí tại tab mới:</p>
+                        <a href="#" id="btn-open-map" class="btn-open-ext" target="_blank">Mở Google Maps</a>
+                        <br>
+                        <p style="font-size:11px; color:#666">Hoặc nhập API Key vào code để xem trực tiếp tại đây.</p>
+                    </div>
+                    <iframe id="sv-iframe" src=""></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -133,148 +141,89 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // --- CHỖ ĐIỀN API KEY CỦA BẠN (QUAN TRỌNG) ---
+    // Nếu không có Key, hãy để trống "" -> Hệ thống sẽ dùng chế độ mở Tab mới (Miễn phí)
+    const GMAP_API_KEY = ""; 
+
     const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
     let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
-    
-    // --- GOOGLE MAPS LOADER (Dùng callback để init) ---
-    // QUAN TRỌNG: Bạn cần thay YOUR_API_KEY bằng key thật của Google Maps có bật Maps JavaScript API và Street View API
-    // Nếu không có Key, phần bên phải sẽ bị lỗi hoặc hiện watermark
-    const GMAP_API_KEY = "YOUR_API_KEY_HERE"; 
-    
-    // Tải thư viện Google Maps động
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAP_API_KEY}&callback=initGoogleMaps&v=weekly`;
-    script.async = true;
-    document.head.appendChild(script);
+    let pegmanMarker = null;
 
-    let panorama, svService;
-    let pegmanMarker = null; // Marker hiển thị vị trí người/xe chụp ảnh
-    let connectionLine = null; // Đường nối từ thiết bị đến pegman
-
-    window.initGoogleMaps = function() {
-        console.log("Google Maps Loaded");
-        svService = new google.maps.StreetViewService();
-        panorama = new google.maps.StreetViewPanorama(document.getElementById("pano"), {
-            pov: { heading: 0, pitch: 0 },
-            zoom: 1
-        });
-    }
-
-    // --- LEAFLET MAP SETUP ---
+    // MAP SETUP
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
     const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [streetLayer] });
     L.control.layers({"Đường phố": streetLayer, "Vệ tinh": satLayer}).addTo(map);
 
     // --- SPLIT VIEW LOGIC ---
-    let isStreetViewOpen = false;
+    let isSplitOpen = false;
     
-    window.toggleStreetView = function() {
-        if (!svService) { alert("Đang tải Google Maps API, vui lòng đợi..."); return; }
-        
-        isStreetViewOpen = !isStreetViewOpen;
+    window.toggleSplitView = function() {
+        isSplitOpen = !isSplitOpen;
         const btn = document.querySelector('.street-toggle-btn');
-        const resizer = document.getElementById('resizer');
-        const svContainer = document.getElementById('street-view-container');
-        const mapContainer = document.getElementById('map-container');
+        const mapBox = document.getElementById('map-container');
+        const svBox = document.getElementById('street-view-container');
 
-        if (isStreetViewOpen) {
-            btn.classList.add('active'); btn.innerHTML = '<i class="fas fa-times"></i> Đóng';
-            resizer.style.display = 'flex'; svContainer.style.display = 'block';
-            mapContainer.style.width = '50%'; svContainer.style.width = '50%';
+        if (isSplitOpen) {
+            btn.classList.add('active');
+            mapBox.style.width = '50%';
+            svBox.style.display = 'block';
+            svBox.style.width = '50%';
             
-            // Nếu đang chọn thiết bị, tìm ảnh gần nhất
-            if(selectedId) {
-                const lat = parseFloat(document.getElementById('inp-lat').value);
-                const lng = parseFloat(document.getElementById('inp-lng').value);
-                findNearestStreetView({lat, lng});
-            }
+            // Tạo Pegman (Người hình nhân) ở giữa bản đồ
+            const center = map.getCenter();
+            createPegman(center.lat, center.lng);
+            updateRightPanel(center.lat, center.lng);
         } else {
-            btn.classList.remove('active'); btn.innerHTML = '<i class="fas fa-street-view"></i> Street View';
-            resizer.style.display = 'none'; svContainer.style.display = 'none';
-            mapContainer.style.width = '100%';
-            
-            // Xóa các marker hỗ trợ StreetView
+            btn.classList.remove('active');
+            mapBox.style.width = '100%';
+            svBox.style.display = 'none';
             if(pegmanMarker) map.removeLayer(pegmanMarker);
-            if(connectionLine) map.removeLayer(connectionLine);
         }
         setTimeout(() => map.invalidateSize(), 300);
     }
 
-    // --- TÌM STREET VIEW GẦN NHẤT & VẼ TRÊN MAP ---
-    function findNearestStreetView(location) {
-        if (!isStreetViewOpen || !svService) return;
-
-        // Tìm panorama trong bán kính 50m
-        svService.getPanorama({ location: location, radius: 50 }, (data, status) => {
-            if (status === "OK") {
-                const svLocation = data.location.latLng; // Vị trí xe chụp ảnh
-                const svLat = svLocation.lat();
-                const svLng = svLocation.lng();
-
-                // 1. Hiển thị Panorama
-                panorama.setPano(data.location.pano);
-                panorama.setPov({
-                    heading: calculateHeading(svLat, svLng, location.lat, location.lng),
-                    pitch: 0
-                });
-                panorama.setVisible(true);
-
-                // 2. Vẽ Pegman (Người hình nhân) lên Leaflet Map
-                if(pegmanMarker) map.removeLayer(pegmanMarker);
-                const pegmanIcon = L.divIcon({
-                    html: '<i class="fas fa-street-view" style="font-size:24px; color:#f39c12; text-shadow: 2px 2px 4px #000;"></i>',
-                    className: '', iconSize: [24, 24], iconAnchor: [12, 24]
-                });
-                pegmanMarker = L.marker([svLat, svLng], {icon: pegmanIcon}).addTo(map);
-
-                // 3. Vẽ đường nối & Tính khoảng cách
-                if(connectionLine) map.removeLayer(connectionLine);
-                
-                const dist = map.distance([location.lat, location.lng], [svLat, svLng]);
-                const tooltipContent = `Cách: ${dist.toFixed(1)}m`;
-
-                connectionLine = L.polyline([[location.lat, location.lng], [svLat, svLng]], {
-                    color: '#f1c40f', weight: 2, dashArray: '5, 5'
-                }).addTo(map).bindTooltip(tooltipContent, {permanent: true, direction: 'center'}).openTooltip();
-
-            } else {
-                console.log("Không tìm thấy ảnh Street View gần đây.");
-                // Có thể hiển thị thông báo nhẹ hoặc để màn hình đen
+    function createPegman(lat, lng) {
+        if(pegmanMarker) map.removeLayer(pegmanMarker);
+        
+        const pegmanIcon = L.divIcon({
+            html: '<i class="fas fa-street-view" style="font-size:30px; color:#f1c40f; text-shadow: 2px 2px 4px #000; cursor:grab"></i>',
+            className: '', iconSize: [30, 30], iconAnchor: [15, 30]
+        });
+        
+        pegmanMarker = L.marker([lat, lng], {icon: pegmanIcon, draggable: true}).addTo(map);
+        
+        // Khi kéo Pegman -> Cập nhật Street View
+        pegmanMarker.on('dragend', function(e) {
+            const pos = e.target.getLatLng();
+            updateRightPanel(pos.lat, pos.lng);
+            // Nếu đang chọn thiết bị, hỏi có muốn cập nhật tọa độ thiết bị theo Pegman không
+            if(selectedId) {
+                if(confirm("Cập nhật tọa độ thiết bị theo vị trí Pegman?")) {
+                    document.getElementById('inp-lat').value = pos.lat.toFixed(6);
+                    document.getElementById('inp-lng').value = pos.lng.toFixed(6);
+                    saveDevice();
+                }
             }
         });
     }
 
-    function calculateHeading(lat1, lng1, lat2, lng2) {
-        // Tính góc hướng từ điểm A sang điểm B (để camera quay về phía thiết bị)
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const lat1Rad = lat1 * Math.PI / 180;
-        const lat2Rad = lat2 * Math.PI / 180;
-        const y = Math.sin(dLng) * Math.cos(lat2Rad);
-        const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
-        const brng = Math.atan2(y, x) * 180 / Math.PI;
-        return (brng + 360) % 360;
+    function updateRightPanel(lat, lng) {
+        // Cập nhật Link mở tab mới
+        const extLink = document.getElementById('btn-open-map');
+        extLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lng}`;
+
+        // Nếu có API Key -> Dùng Iframe Embed
+        if(GMAP_API_KEY && GMAP_API_KEY.length > 10) {
+            document.getElementById('sv-content').style.display = 'none';
+            const iframe = document.getElementById('sv-iframe');
+            iframe.style.display = 'block';
+            iframe.src = `https://www.google.com/maps/embed/v1/streetview?key=${GMAP_API_KEY}&location=${lat},${lng}`;
+        }
     }
-
-    // --- RESIZER LOGIC ---
-    const resizer = document.getElementById('resizer');
-    const mapBox = document.getElementById('map-container');
-    const svBox = document.getElementById('street-view-container');
-    let isResizing = false;
-
-    resizer.addEventListener('mousedown', () => { isResizing = true; document.body.style.cursor = 'col-resize'; svBox.style.pointerEvents = 'none'; });
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        const w = document.getElementById('split-wrapper').offsetWidth;
-        const p = ((e.clientX - 320) / w) * 100; // 320 is sidebar width
-        if (p > 10 && p < 90) { mapBox.style.width = `${p}%`; svBox.style.width = `${100-p}%`; map.invalidateSize(); }
-    });
-    document.addEventListener('mouseup', () => { 
-        if(isResizing) { isResizing = false; document.body.style.cursor = 'default'; svBox.style.pointerEvents = 'auto'; map.invalidateSize(); } 
-    });
 
     // --- FIREBASE LOGIC ---
     onValue(ref(db, 'system_nodes'), (snapshot) => {
@@ -290,13 +239,11 @@
         const sources = allDevices.filter(n => n.type === 'source');
         sources.forEach(src => { src.isEnergized = true; propagate(src); });
     }
-    
     function isConductive(node) {
         if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
         if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
         return false;
     }
-
     function propagate(parent) {
         if (parent.isEnergized && isConductive(parent)) {
             allDevices.filter(n => n.parent === parent.id).forEach(c => { c.isEnergized = true; propagate(c); });
@@ -332,9 +279,14 @@
         
         if(mapMarkers[d.id]) { 
             mapMarkers[d.id].openPopup(); 
-            if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 19);
-            // Cập nhật Street View khi chọn thiết bị
-            if(d.geo) findNearestStreetView(d.geo);
+            if(z && d.geo) {
+                map.flyTo([d.geo.lat, d.geo.lng], 19);
+                // Nếu đang mở Split View -> Di chuyển Pegman đến đó
+                if(isSplitOpen) {
+                    createPegman(d.geo.lat, d.geo.lng);
+                    updateRightPanel(d.geo.lat, d.geo.lng);
+                }
+            }
         }
     }
 
@@ -346,7 +298,6 @@
         document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
         renderTable(); renderSLD(); document.getElementById('inp-id').focus();
     }
-
     window.saveDevice = function() {
         const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
         const nd = {
@@ -358,9 +309,7 @@
         };
         set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false)).catch(e=>alert(e.message));
     }
-    window.deleteDevice = function() {
-        if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
-    }
+    window.deleteDevice = function() { if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); } }
     window.zoomExtent = function() {
         if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
         allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
@@ -399,23 +348,27 @@
 
     function drawWire(p, c, cls, type) {
         let pW=80, pH=50, cW=80, cH=50;
-        if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable'].includes(p.type)){ pW=100; pH=20; }
-        if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable'].includes(c.type)){ cW=100; cH=20; }
+        if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable','underground'].includes(p.type)){ pW=100; pH=20; }
+        if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable','underground'].includes(c.type)){ cW=100; cH=20; }
 
         let x1, y1, x2, y2;
-        if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
-        if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+        if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
+        else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
+        if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
+        else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
 
         const midY = y1 + (y2 - y1) / 2;
-        createSeg(x1, y1, x1, midY, cls, 'wire-'+type, 'v'); createSeg(x1, midY, x2, midY, cls, 'wire-'+type, 'h'); createSeg(x2, midY, x2, y2, cls, 'wire-'+type, 'v');
+        createWire(x1, y1, x1, midY, cls, 'wire-'+type, 'v'); 
+        createWire(x1, midY, x2, midY, cls, 'wire-'+type, 'h'); 
+        createWire(x2, midY, x2, y2, cls, 'wire-'+type, 'v');
     }
     
-    function createSeg(x, y, w, h, cls, style, dir) {
-        if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
+    function createWire(x1, y1, x2, y2, cls, style, dir) {
+        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         const d = document.createElement('div'); d.className = `wire ${cls} ${style}`;
-        d.style.left=Math.min(x,w)+'px'; d.style.top=Math.min(y,h)+'px';
-        if(dir==='h') { d.style.width=Math.abs(x-w)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; }
-        else { d.style.width='0'; d.style.height=Math.abs(y-h)+'px'; d.style.borderLeftWidth='2px'; }
+        d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
+        if(dir==='h') { d.style.width=Math.abs(x2-x1)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; d.style.borderLeftWidth='0'; }
+        else { d.style.width='0'; d.style.height=Math.abs(y2-y1)+'px'; d.style.borderLeftWidth='2px'; d.style.borderTopWidth='0'; }
         sldCanvas.appendChild(d);
     }
 
@@ -431,7 +384,7 @@
                     const color = isLive ? '#ff3d00' : '#95a5a6';
                     const w = isLive ? 4 : 2;
                     const dash = (d.connection === 'dashed') ? '5, 10' : null;
-                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w, dashArray:dash}).addTo(map));
+                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w, dashArray: dash}).addTo(map));
                 }
             }
         });
@@ -439,16 +392,16 @@
         allDevices.forEach(d => {
             if(!d.geo) return;
             let color = '#666'; 
-            if(d.isEnergized) { if(d.state==='closed') color='#d32f2f'; else if(d.type==='source') color='#1565c0'; else color='#27ae60'; }
+            if(d.isEnergized) {
+                if(d.state === 'closed') color = '#d32f2f'; else if (d.type === 'source') color = '#1565c0'; else color = '#27ae60';
+            }
             const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
             const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
             const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
             m.on('click', ()=>selectDevice(d,false));
             m.on('dragend', ()=>{
                 const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
-                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); 
-                updateStreetViewIframe(pos); // Cập nhật Street View khi kéo marker
-                saveDevice();
+                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
             });
             mapMarkers[d.id] = m;
         });
