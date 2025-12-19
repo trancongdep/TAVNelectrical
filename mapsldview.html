@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,67 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TAVIETNAM Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CẤU HÌNH CHUNG --- */
+        /* --- 1. CORE CSS --- */
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; color: #333; }
+        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
-        /* HEADER */
+        /* --- 2. HEADER (Top Bar) --- */
         .app-header {
-            height: 50px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
+            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
         }
-        .logo { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .menu-toggle { font-size: 22px; cursor: pointer; display: none; } /* Ẩn trên desktop */
+        .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
         .logo i { color: #f1c40f; }
-
-        /* BODY */
-        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
-        /* SIDEBAR (Desktop) */
+        /* --- 3. MAIN LAYOUT --- */
+        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        /* SIDEBAR MENU (Style cũ bạn thích) */
         .app-sidebar {
-            width: 220px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; z-index: 1500;
+            width: 250px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
+            transition: all 0.3s ease; z-index: 1500;
+            border-right: 1px solid #34495e;
         }
-        .menu-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; display: flex; align-items: center; gap: 10px; font-size: 14px; transition: 0.2s; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; }
+        .menu-item { 
+            padding: 15px 20px; cursor: pointer; border-left: 4px solid transparent; 
+            display: flex; align-items: center; gap: 12px; font-size: 15px; transition: 0.2s; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
         .menu-item:hover { background-color: #34495e; }
         .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
-        .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; text-align: center; border-top: 1px solid #34495e; color: #95a5a6; }
+        .menu-item i { width: 25px; text-align: center; }
+        
+        .menu-footer { 
+            margin-top: auto; padding: 20px; font-size: 12px; color: #95a5a6; 
+            text-align: center; border-top: 1px solid #34495e; background: #233242; 
+        }
 
-        /* CONTENT */
-        .app-content { flex: 1; position: relative; }
+        /* CONTENT AREA */
+        .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
+        
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
         #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
 
-        /* --- 2. MOBILE CONFIG --- */
-        .menu-toggle { display: none; font-size: 20px; cursor: pointer; }
-        .mobile-nav { display: none; }
-
+        /* --- 4. MOBILE RESPONSIVE (Sidebar Drawer) --- */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; backdrop-filter: blur(2px); }
+        
         @media (max-width: 1024px) {
-            .app-sidebar { display: none; } 
-            .menu-toggle { display: block; }
-            .mobile-nav {
-                display: flex; position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
-                background: white; border-top: 1px solid #ddd; z-index: 9999;
-                justify-content: space-around; align-items: center;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            .menu-toggle { display: block; } /* Hiện nút 3 gạch */
+            .app-sidebar { 
+                position: absolute; height: 100%; top: 0; left: -250px; /* Ẩn sang trái */
+                box-shadow: 2px 0 15px rgba(0,0,0,0.5); 
             }
-            .nav-btn { flex: 1; text-align: center; color: #7f8c8d; font-size: 11px; cursor: pointer; padding: 8px 0; }
-            .nav-btn i { font-size: 20px; display: block; margin-bottom: 4px; }
-            .nav-btn.active { color: #007bff; font-weight: bold; }
-            #sld-panel, #map-panel { height: calc(100% - 60px); }
+            .app-sidebar.show { left: 0; } /* Trượt ra */
+            .overlay.show { display: block; }
         }
 
-        /* --- 3. ELEMENT STYLES --- */
-        .panel-overlay { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; pointer-events: none; }
-        .legend-row { display: flex; align-items: center; margin-bottom: 5px; font-size: 12px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+        /* --- 5. ELEMENT STYLES --- */
+        .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
+        .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
         .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         
-        /* States */
         .closed { border-color: #d32f2f !important; color: #d32f2f; }
         .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
         .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
@@ -74,7 +82,6 @@
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
-        /* Wires */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
@@ -82,7 +89,6 @@
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
 
-        /* Types */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
         .type-bus.safe-node { background-color: #2ecc71 !important; }
@@ -91,45 +97,61 @@
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
 
-        /* MODAL LOTO & PIN */
+        /* --- MODAL STYLE (PIN INPUT) --- */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .loto-box { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
+        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
         
-        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
-        .btn-cancel { background: #95a5a6; color: white; }
+        .loto-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.98); }
+        .btn-cancel { background: #95a5a6; color: white; margin-top: 15px; }
         
-        /* PIN Input Styles */
-        .pin-container { margin: 15px 0; }
-        .pin-input { width: 100%; padding: 12px; font-size: 20px; text-align: center; letter-spacing: 5px; border: 2px solid #ddd; border-radius: 5px; outline: none; transition: border 0.3s; }
+        /* PIN INPUT */
+        .pin-container { margin: 20px 0; }
+        .pin-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border 0.3s; font-weight: bold; color: #2c3e50; }
         .pin-input:focus { border-color: #3498db; }
-        .pin-msg { font-size: 13px; color: #666; margin-bottom: 5px; }
+        .pin-msg { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <header class="app-header">
-        <div class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</div>
-        <div style="font-size:12px; opacity:0.8"><span id="clock">00:00</span></div>
+        <div class="header-left">
+            <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
+            <div class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</div>
+        </div>
+        <div class="user-profile">
+            <i class="fas fa-user-shield"></i> <span id="clock">00:00</span>
+        </div>
     </header>
 
     <div class="app-body">
-        <nav class="app-sidebar">
-            <div class="menu-item active" onclick="switchView('sld', this)">
-                <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
-            </div>
-            <div class="menu-item" onclick="switchView('map', this)">
-                <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
-            </div>
+        <nav class="app-sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="menu-item active" onclick="switchView('sld', this)">
+                    <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
+                </li>
+                <li class="menu-item" onclick="switchView('map', this)">
+                    <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+                </li>
+                <li class="menu-item" onclick="alert('Chức năng báo cáo đang phát triển')">
+                    <i class="fas fa-file-alt"></i> Lịch sử LOTO
+                </li>
+            </ul>
             <div class="menu-footer">
-                Version 3.3 (LOTO Secure)<br>Updated: 19/12/2025
+                &copy; 2025 TaVietnam<br>Version 3.5 (LOTO Secure)
             </div>
         </nav>
+        
+        <div class="overlay" onclick="toggleSidebar()"></div>
 
         <main class="app-content">
+            
             <div id="sld-panel" class="active-view">
                 <div class="panel-info">
-                    <strong>CHÚ THÍCH</strong>
+                    <strong style="color:#2c3e50">TRẠNG THÁI</strong>
+                    <div style="height:5px"></div>
                     <div class="legend-row"><div class="dot" style="background:#ff3d00"></div>Có điện (Live)</div>
                     <div class="legend-row"><div class="dot" style="background:#2ecc71"></div>An toàn (Safe)</div>
                     <div class="legend-row"><div class="dot" style="background:#95a5a6"></div>Mất điện (Dead)</div>
@@ -144,18 +166,9 @@
         </main>
     </div>
 
-    <div class="mobile-nav">
-        <div class="nav-btn active" onclick="switchView('sld', this)">
-            <i class="fas fa-project-diagram"></i> SLD
-        </div>
-        <div class="nav-btn" onclick="switchView('map', this)">
-            <i class="fas fa-map-marked-alt"></i> MAP
-        </div>
-    </div>
-
     <div id="lotoModal" class="loto-modal">
         <div class="loto-box">
-            <h3 id="lotoTitle" style="margin-top:0; color:#2c3e50">Thao tác</h3>
+            <div id="lotoTitle" class="loto-title">Thao tác thiết bị</div>
             <div id="lotoContent">
                 </div>
         </div>
@@ -183,11 +196,19 @@
         L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
         let mapMarkers = {}, mapLines = {}, currentTargetId = null;
 
-        // UI SWITCH
+        // UI Logic
+        window.toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('show');
+            document.querySelector('.overlay').classList.toggle('show');
+        }
+
         window.switchView = (mode, btn) => {
-            document.querySelectorAll('.menu-item, .nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
             
+            // Đóng sidebar trên mobile
+            if(window.innerWidth <= 1024) window.toggleSidebar();
+
             if(mode === 'sld') {
                 document.getElementById('sld-panel').classList.add('active-view');
                 document.getElementById('map-panel').classList.remove('active-view');
@@ -207,8 +228,6 @@
 
         function calculateSystemState() {
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
-            
-            // 1. Energized (Red)
             const pQueue = localNodes.filter(n => n.type === 'source');
             pQueue.forEach(n => n.isEnergized = true);
             while(pQueue.length > 0) {
@@ -219,8 +238,6 @@
                     });
                 }
             }
-
-            // 2. Safe (Green) - Từ điểm khóa
             const sQueue = localNodes.filter(n => n.state === 'locked');
             sQueue.forEach(n => n.isSafe = true);
             while(sQueue.length > 0) {
@@ -246,39 +263,36 @@
             if (!['cb', 'ds', 'fco'].includes(node.type)) return;
 
             currentTargetId = id;
-            document.getElementById('lotoTitle').innerText = `${node.label}`;
+            document.getElementById('lotoTitle').innerText = `${node.label} (${node.id})`;
             showActionButtons(node);
             document.getElementById('lotoModal').style.display = 'flex';
         }
 
         function showActionButtons(node) {
             const div = document.getElementById('lotoContent');
-            div.innerHTML = ''; // Reset
+            div.innerHTML = '';
 
             if (node.state === 'closed') {
-                // Đang Đóng -> Chỉ được Cắt
                 div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
             } else if (node.state === 'open') {
-                // Đang Cắt -> Được Đóng hoặc Khóa
                 div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="updateState('closed')"><i class="fas fa-bolt"></i> ĐÓNG ĐIỆN (CLOSE)</button>`;
                 div.innerHTML += `<button class="btn-action" style="background:#f39c12" onclick="showPinForm('lock')"><i class="fas fa-lock"></i> KHÓA & TREO THẺ</button>`;
             } else if (node.state === 'locked') {
-                // Đang Khóa -> Phải Mở khóa
                 div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA (UNLOCK)</button>`;
             }
             div.innerHTML += `<button class="btn-action btn-cancel" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
         }
 
-        // --- LOGIC PIN FORM ---
+        // --- PIN FORM ---
         window.showPinForm = function(mode) {
             const div = document.getElementById('lotoContent');
-            const title = mode === 'lock' ? "Thiết lập PIN bảo vệ" : "Nhập PIN mở khóa";
+            const title = mode === 'lock' ? "Tạo mã PIN (4 số)" : "Nhập mã PIN mở khóa";
             const btnText = mode === 'lock' ? "XÁC NHẬN KHÓA" : "XÁC NHẬN MỞ";
             
             div.innerHTML = `
                 <div class="pin-msg">${title}</div>
                 <div class="pin-container">
-                    <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="----" inputmode="numeric">
+                    <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric">
                 </div>
                 <button class="btn-action" style="background:#3498db" onclick="submitPin('${mode}')">${btnText}</button>
                 <button class="btn-action btn-cancel" onclick="handleDeviceClick('${currentTargetId}')">Quay lại</button>
@@ -288,33 +302,26 @@
 
         window.submitPin = function(mode) {
             const pin = document.getElementById('pinInput').value;
-            if (!pin || pin.length !== 4) return alert("Vui lòng nhập 4 số PIN!");
+            if (!pin || pin.length !== 4) return alert("Vui lòng nhập đủ 4 số PIN!");
 
             const node = localNodes.find(n => n.id === currentTargetId);
             
             if (mode === 'lock') {
-                // LƯU TRẠNG THÁI KHÓA + PIN
                 update(ref(db, 'system_nodes/' + currentTargetId), { 
-                    state: 'locked',
-                    lotoPin: pin,
-                    lotoTime: Date.now()
+                    state: 'locked', lotoPin: pin, lotoTime: Date.now()
                 });
-                alert("Đã khóa thiết bị an toàn!");
+                alert("Đã khóa LOTO thành công!");
                 document.getElementById('lotoModal').style.display = 'none';
             } 
             else if (mode === 'unlock') {
-                // KIỂM TRA PIN
                 if (node.lotoPin && node.lotoPin === pin) {
-                    // Mở khóa thành công -> Về trạng thái Open
                     update(ref(db, 'system_nodes/' + currentTargetId), { 
-                        state: 'open',
-                        lotoPin: null,
-                        lotoTime: null
+                        state: 'open', lotoPin: null, lotoTime: null
                     });
                     alert("Mở khóa thành công!");
                     document.getElementById('lotoModal').style.display = 'none';
                 } else {
-                    alert("SAI MÃ PIN! Không thể mở khóa.");
+                    alert("SAI MÃ PIN! Vui lòng thử lại.");
                     document.getElementById('pinInput').value = '';
                 }
             }
@@ -338,10 +345,8 @@
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
-                
                 if(['cb','ds','fco'].includes(node.type)) el.classList.add(node.state);
                 
-                // Màu sắc ưu tiên
                 if(node.isEnergized) el.classList.add('energized-node');
                 else if(node.isSafe) el.classList.add('safe-node');
 
@@ -403,7 +408,6 @@
                         let color = '#95a5a6';
                         if(p.isEnergized && isConductive(p)) color = '#ff3d00';
                         else if(p.isSafe || p.state === 'locked') color = '#2ecc71';
-                        
                         const dash = (node.connection === 'dashed') ? '5, 10' : null;
                         mapLines[node.id] = L.polyline([[p.geo.lat,p.geo.lng], [node.geo.lat,node.geo.lng]], {color:color, weight:3, dashArray:dash}).addTo(map);
                     }
