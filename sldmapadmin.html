@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công cụ Số hóa (No Storage Version)</title>
+    <title>Công cụ Số hóa (v1.1 - No Storage)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
@@ -40,14 +40,18 @@
         #debug-console { background: #222; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 5px; margin-top: 20px; height: 150px; overflow-y: auto; border: 1px solid #444; }
         .log-error { color: #ff5555; }
         .log-success { color: #55ff55; }
+        /* Version Tag */
+        #version-tag { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; z-index: 9999; pointer-events: none; }
     </style>
 </head>
 <body>
 
+<div id="version-tag">Version 1.1</div>
+
 <div id="container">
     <div id="map-container"><div id="map"></div></div>
     <div id="sidebar">
-        <h3><i class="bi bi-tools"></i> Nhập Liệu (Bản Free)</h3>
+        <h3><i class="bi bi-tools"></i> Nhập Liệu (v1.1)</h3>
         
         <div class="card">
             <h4>1. Nhập từ Street View</h4>
@@ -78,7 +82,7 @@
                 <button type="submit" class="btn btn-success" id="btn-save">Lưu dữ liệu</button>
             </form>
         </div>
-        <div id="debug-console"><div>> Sẵn sàng...</div></div>
+        <div id="debug-console"><div>> System v1.1 Ready...</div></div>
     </div>
 </div>
 
@@ -121,7 +125,7 @@
     try {
         app = initializeApp(firebaseConfig);
         db = getFirestore(app);
-        logToScreen("Đã kết nối Firestore (Chế độ lưu ảnh trực tiếp)", "success");
+        logToScreen("Kết nối Firebase thành công (v1.1)", "success");
     } catch (e) {
         logToScreen("Lỗi Config: " + e.message, "error");
     }
@@ -245,10 +249,11 @@
                 notes: document.getElementById('notes').value,
                 // Lưu thẳng chuỗi ảnh vào đây
                 imageBase64: base64Img, 
-                createdAt: new Date()
+                createdAt: new Date(),
+                appVersion: "1.1" // Ghi dấu phiên bản vào Database
             });
 
-            logToScreen("LƯU THÀNH CÔNG!", "success");
+            logToScreen("LƯU THÀNH CÔNG (v1.1)!", "success");
             alert("Đã lưu!");
             document.getElementById('notes').value = '';
             document.getElementById('preview-area').style.display = 'none';
