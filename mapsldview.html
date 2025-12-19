@@ -1,72 +1,108 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor</title>
+    <title>TAVIETNAM Monitor v3.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. RESET & CORE CSS --- */
+        /* --- 1. CORE CSS --- */
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
+        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; color: #333; }
         
-        /* --- 2. HEADER --- */
+        /* HEADER */
         .app-header {
-            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
+            height: 50px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
         }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .menu-toggle { font-size: 20px; cursor: pointer; display: none; }
-        .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .logo { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
         .logo i { color: #f1c40f; }
-        .user-profile { font-size: 14px; display: flex; align-items: center; gap: 8px; }
-        
-        /* --- 3. LAYOUT --- */
-        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
 
-        /* SIDEBAR MENU */
+        /* BODY LAYOUT */
+        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+        
+        /* SIDEBAR (Desktop) */
         .app-sidebar {
-            width: 240px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
-            transition: transform 0.3s ease; z-index: 1500;
+            width: 220px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; z-index: 1500;
         }
-        .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 20px; flex: 1;}
-        .menu-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .menu-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; display: flex; align-items: center; gap: 10px; font-size: 14px; transition: 0.2s; }
         .menu-item:hover { background-color: #34495e; }
         .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
-        
-        /* FOOTER VERSION */
-        .menu-footer { 
-            padding: 20px; font-size: 11px; color: #95a5a6; 
-            text-align: center; border-top: 1px solid #34495e; 
-            background: #233242;
-        }
+        .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; text-align: center; border-top: 1px solid #34495e; color: #95a5a6; }
 
-        .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
-        
-        /* PANEL */
+        /* CONTENT */
+        .app-content { flex: 1; position: relative; }
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
-        
         #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
 
-        /* MOBILE RESPONSIVE */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; }
+        /* --- 2. FLOATING LEGEND (BẢNG CHÚ THÍCH THÔNG MINH) --- */
+        .floating-legend {
+            position: absolute; top: 15px; left: 15px; 
+            background: rgba(255, 255, 255, 0.98); 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+            z-index: 1000; 
+            width: 200px;
+            transition: all 0.3s ease;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+        }
         
+        /* Header của Legend (Luôn hiện) */
+        .legend-header {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            font-size: 13px; font-weight: 700; color: #2c3e50;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .legend-header:hover { background: #e9ecef; }
+        
+        /* Nội dung Legend (Ẩn khi thu gọn) */
+        .legend-body { padding: 10px 15px; }
+        .legend-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; }
+        .legend-row:last-child { margin-bottom: 0; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1); }
+
+        /* Trạng thái thu gọn */
+        .floating-legend.collapsed { width: 140px; }
+        .floating-legend.collapsed .legend-body { display: none; }
+        .floating-legend.collapsed .legend-header { border-bottom: none; }
+        .toggle-icon { transition: transform 0.3s; }
+        .floating-legend.collapsed .toggle-icon { transform: rotate(-180deg); }
+
+        /* --- 3. MOBILE CONFIG --- */
+        .menu-toggle { display: none; font-size: 20px; cursor: pointer; }
+        .mobile-nav { display: none; }
+
         @media (max-width: 1024px) {
+            .app-sidebar { display: none; } /* Ẩn sidebar desktop */
             .menu-toggle { display: block; }
-            .app-sidebar { position: absolute; height: 100%; left: -240px; } 
-            .app-sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
-            .overlay.show { display: block; }
+            
+            /* Menu đáy cho mobile */
+            .mobile-nav {
+                display: flex; position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
+                background: white; border-top: 1px solid #ddd; z-index: 9999;
+                justify-content: space-around; align-items: center;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            }
+            .nav-btn { flex: 1; text-align: center; color: #7f8c8d; font-size: 11px; cursor: pointer; padding: 8px 0; }
+            .nav-btn i { font-size: 20px; display: block; margin-bottom: 4px; }
+            .nav-btn.active { color: #007bff; font-weight: bold; }
+            
+            /* Điều chỉnh panel cho mobile */
+            #sld-panel, #map-panel { height: calc(100% - 60px); }
+            
+            /* Thu nhỏ legend trên mobile */
+            .floating-legend { top: 10px; left: 10px; width: 160px; }
         }
 
         /* --- 4. ELEMENT STYLES --- */
-        .panel-info { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
-        .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
         .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         
@@ -74,7 +110,6 @@
         .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
         .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
 
-        /* COLOR & WIRE */
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
@@ -103,47 +138,60 @@
 <body>
 
     <header class="app-header">
-        <div class="header-left">
-            <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
-            <div class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</div>
-        </div>
-        <div class="user-profile">
-            <i class="fas fa-user-circle"></i> Vận hành
-        </div>
+        <div class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</div>
+        <div style="font-size:12px; opacity:0.8"><span id="clock">00:00</span></div>
     </header>
 
     <div class="app-body">
-        <nav class="app-sidebar" id="sidebar">
-            <ul class="sidebar-menu">
-                <li class="menu-item active" onclick="switchView('sld', this)">
-                    <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
-                </li>
-                <li class="menu-item" onclick="switchView('map', this)">
-                    <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
-                </li>
-            </ul>
+        <nav class="app-sidebar">
+            <div class="menu-item active" onclick="switchView('sld', this)">
+                <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
+            </div>
+            <div class="menu-item" onclick="switchView('map', this)">
+                <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+            </div>
             <div class="menu-footer">
-                &copy; 2025 TaVietnam Tech<br>
-                <span id="app-version" style="color: #f1c40f; font-weight: bold;">Loading...</span>
+                Version 3.1<br>Updated: 19/12/2025
             </div>
         </nav>
-        <div class="overlay" onclick="toggleSidebar()"></div>
 
         <main class="app-content">
+            
             <div id="sld-panel" class="active-view">
-                <div class="panel-info">
-                    <strong>CHÚ THÍCH</strong>
-                    <div class="legend-row"><div class="dot" style="background:#ff3d00"></div>Có điện (Live)</div>
-                    <div class="legend-row"><div class="dot" style="background:#2ecc71"></div>An toàn (Safe)</div>
-                    <div class="legend-row"><div class="dot" style="background:#95a5a6"></div>Mất điện (Dead)</div>
+                <div class="floating-legend" id="legendBox">
+                    <div class="legend-header" onclick="toggleLegend()">
+                        <span>CHÚ THÍCH</span>
+                        <i class="fas fa-chevron-up toggle-icon"></i>
+                    </div>
+                    <div class="legend-body">
+                        <div class="legend-row"><div class="dot" style="background:#ff3d00"></div>Có điện (Live)</div>
+                        <div class="legend-row"><div class="dot" style="background:#2ecc71"></div>An toàn (LOTO)</div>
+                        <div class="legend-row"><div class="dot" style="background:#95a5a6"></div>Mất điện (Dead)</div>
+                        <div style="margin-top:8px; font-style:italic; font-size:11px; color:#666; border-top:1px solid #eee; padding-top:5px;">
+                            * Click thiết bị để thao tác
+                        </div>
+                    </div>
                 </div>
                 <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
             </div>
 
             <div id="map-panel">
+                <div class="floating-legend" style="right:15px; left:auto;">
+                    <div class="legend-header">BẢN ĐỒ GIS</div>
+                </div>
                 <div id="map" style="width:100%; height:100%"></div>
             </div>
+
         </main>
+    </div>
+
+    <div class="mobile-nav">
+        <div class="nav-btn active" onclick="switchView('sld', this)">
+            <i class="fas fa-project-diagram"></i> SLD
+        </div>
+        <div class="nav-btn" onclick="switchView('map', this)">
+            <i class="fas fa-map-marked-alt"></i> MAP
+        </div>
     </div>
 
     <div id="lotoModal" class="loto-modal">
@@ -158,33 +206,33 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // --- CẬP NHẬT PHIÊN BẢN Ở ĐÂY ---
-        const APP_VERSION = "v3.0.1 (Update 19/12)";
-        document.getElementById('app-version').innerText = APP_VERSION;
-
         const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // CLOCK
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // LEGEND TOGGLE
+        window.toggleLegend = function() {
+            document.getElementById('legendBox').classList.toggle('collapsed');
+        }
+
         let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
-        
         const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
         const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
         const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
         L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
         let mapMarkers = {}, mapLines = {}, currentTargetId = null;
 
-        // UI Logic
-        window.toggleSidebar = () => {
-            document.getElementById('sidebar').classList.toggle('show');
-            document.querySelector('.overlay').classList.toggle('show');
-        }
-
         window.switchView = (mode, btn) => {
-            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if(window.innerWidth <= 1024) window.toggleSidebar();
-
+            document.querySelectorAll('.menu-item, .nav-btn').forEach(b => b.classList.remove('active'));
+            // Highlight cả nút desktop và mobile nếu có
+            if(btn) btn.classList.add('active');
+            
             if(mode === 'sld') {
                 document.getElementById('sld-panel').classList.add('active-view');
                 document.getElementById('map-panel').classList.remove('active-view');
@@ -238,7 +286,7 @@
 
             currentTargetId = id;
             const actions = document.getElementById('lotoActions');
-            document.getElementById('lotoTitle').innerText = `${node.label} (${node.id})`;
+            document.getElementById('lotoTitle').innerText = `${node.label}`;
             actions.innerHTML = '';
 
             if (node.state === 'closed') {
@@ -270,6 +318,7 @@
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                
                 if(['cb','ds','fco'].includes(node.type)) el.classList.add(node.state);
                 if(node.isEnergized) el.classList.add('energized-node');
                 else if(node.isSafe) el.classList.add('safe-node');
@@ -281,6 +330,7 @@
                     if(node.state==='locked') content += ` <i class="fas fa-lock"></i>`;
                 }
                 if(['bus','wire','cable','underground'].includes(node.type)) content = '';
+
                 el.innerHTML = content;
                 el.onclick = () => window.handleDeviceClick(node.id);
                 sldCanvas.appendChild(el);
@@ -291,6 +341,7 @@
             let colorCls = 'dead-line';
             if(p.isEnergized && isConductive(p)) colorCls = 'energized-line';
             else if(p.isSafe || p.state === 'locked') colorCls = 'safe-line';
+
             const typeCls = 'wire-' + (c.connection || 'solid');
             
             let pW=80, pH=50, cW=80, cH=50;
@@ -330,6 +381,7 @@
                         let color = '#95a5a6';
                         if(p.isEnergized && isConductive(p)) color = '#ff3d00';
                         else if(p.isSafe || p.state === 'locked') color = '#2ecc71';
+                        
                         const dash = (node.connection === 'dashed') ? '5, 10' : null;
                         mapLines[node.id] = L.polyline([[p.geo.lat,p.geo.lng], [node.geo.lat,node.geo.lng]], {color:color, weight:3, dashArray:dash}).addTo(map);
                     }
