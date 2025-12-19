@@ -2,418 +2,364 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM (Split View Fix)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ Số hóa Lưới điện (No API Key)</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
     <style>
-        /* CSS CHUNG */
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
-        header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .container { display: flex; flex: 1; overflow: hidden; }
+        #container { display: flex; height: 100vh; }
         
-        /* SIDEBAR */
-        .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .form-content { padding: 15px; overflow-y: auto; flex: 1; }
-        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .row { display: flex; gap: 10px; } .col { flex: 1; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
-        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
-        .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
-        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; color: white; border-radius: 3px;}
-        .device-list { flex: 1; overflow-y: auto; border-top: 1px solid #eee; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        /* Cột bên trái: Bản đồ quản trị (OSM Free) */
+        #map-container { flex: 2; position: relative; }
+        #map { width: 100%; height: 100%; }
 
-        /* EDITOR */
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
-        .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; }
-        .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
-        .tab-content { display: none; width: 100%; height: 100%; position: relative; }
-        .tab-content.active { display: block; }
-
-        /* SLD */
-        #sld-container { width: 100%; height: 100%; overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white; }
-        #sld-canvas { width: 4000px; height: 3000px; position: relative; }
-
-        /* --- SPLIT VIEW CSS --- */
-        #split-wrapper { display: flex; width: 100%; height: 100%; overflow: hidden; }
-        
-        #map-container { flex-grow: 1; position: relative; min-width: 0; width: 100%; transition: width 0.3s; }
-        #map-canvas { width: 100%; height: 100%; }
-
-        /* Nút bật/tắt Street View */
-        .street-toggle-btn {
-            position: absolute; top: 10px; right: 10px; z-index: 1000;
-            background: white; padding: 8px 12px; border: 2px solid #f1c40f;
-            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
+        /* Cột bên phải: Công cụ nhập liệu */
+        #sidebar {
+            flex: 1;
+            min-width: 350px;
+            max-width: 400px;
+            background: #f8f9fa;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
         }
-        .street-toggle-btn:hover { background: #fef9e7; }
-        .street-toggle-btn.active { background: #f1c40f; color: #333; }
 
-        /* Khung bên phải (Street View) */
-        #street-view-container { 
-            width: 0px; background: #222; display: none; position: relative; border-left: 4px solid #333;
-        }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h3 { margin: 0 0 15px 0; font-size: 18px; color: #d32f2f; display: flex; align-items: center; gap: 8px; }
+        h4 { margin: 10px 0 5px 0; font-size: 14px; color: #1a73e8; text-transform: uppercase; }
         
-        /* Iframe hoặc thông báo */
-        #sv-content { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; text-align: center; padding: 20px; }
-        #sv-iframe { width: 100%; height: 100%; border: none; display: none; }
-        
-        .btn-open-ext { background: #3498db; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px; display: inline-block; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        textarea { resize: vertical; }
 
-        /* Node/Wire Styles (Giữ nguyên) */
-        .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; }
-        .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; background: #e3f2fd; }
-        .energized-node { background-color: #ffccbc !important; }
-        .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
-        .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-        .energized-line { border-color: #ff3d00 !important; z-index: 5; }
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-        .type-bus { height: 12px !important; width: 250px; background: #2c3e50; border-radius: 6px; border:none; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; }
-        .type-source { border-radius: 50%; width: 60px; height: 60px; }
-        .type-cable { height: 20px !important; width: 100px; transform: skewX(-15deg); border: 1px dashed #555; background: #eee; }
-        .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00 !important; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: 0.2s; }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn:hover { opacity: 0.9; }
+
+        /* Vùng hiển thị ảnh */
+        #preview-area { display: none; margin-top: 10px; border: 2px dashed #ccc; padding: 5px; text-align: center; }
+        #final-image { max-width: 100%; display: block; }
+
+        /* Modal Crop */
+        #crop-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: none; flex-direction: column; align-items: center; justify_content: center; }
+        .crop-wrapper { width: 90%; height: 80%; }
+        .crop-controls { margin-top: 10px; display: flex; gap: 10px; }
+
+        /* Helper text */
+        .hint { font-size: 11px; color: #666; font-style: italic; }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
-    <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
-</header>
-
-<div class="container">
-    <div class="sidebar">
-        <div class="form-content">
-            <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id"></div>
-            <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type"><option value="cb">CB</option><option value="source">Nguồn</option><option value="bus">Busbar</option><option value="tr">Biến áp</option><option value="fco">FCO</option><option value="ds">Dao CL</option><option value="load">Tải</option><option value="wire">Dây</option><option value="cable">Cáp</option></select></div>
-                <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
-            </div>
-            <div class="form-group"><label>Kiểu dây</label><select id="inp-connection"><option value="solid">Nét liền</option><option value="dashed">Nét đứt</option></select></div>
-            <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
-            <button type="button" class="btn-extent" onclick="zoomExtent()">Gom SLD</button>
-            <div class="row" style="margin-top:10px;"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
-            <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
-        </div>
-        <div class="device-list" id="device-list-container"></div>
+<div id="container">
+    <div id="map-container">
+        <div id="map"></div>
     </div>
 
-    <div class="main-editor">
-        <div class="editor-tabs">
-            <button class="tab-btn active" onclick="switchTab('sld', this)">SLD Editor</button>
-            <button class="tab-btn" onclick="switchTab('map', this)">Map Editor</button>
-        </div>
+    <div id="sidebar">
+        <h3><i class="bi bi-tools"></i> Công cụ Nhập liệu</h3>
 
-        <div id="tab-sld" class="tab-content active">
-            <div id="sld-container"><div id="sld-canvas"></div></div>
-        </div>
-
-        <div id="tab-map" class="tab-content">
-            <div id="split-wrapper">
-                <div id="map-container">
-                    <button class="street-toggle-btn" onclick="toggleSplitView()">
-                        <i class="fas fa-columns"></i> Bật/Tắt Street View
-                    </button>
-                    <div id="map-canvas"></div>
+        <div class="card">
+            <h4>1. Nhập từ Street View</h4>
+            <div class="form-group">
+                <label>Dán URL Google Maps vào đây:</label>
+                <input type="text" id="gmap-url" placeholder="https://www.google.com/maps/@10.7..." onchange="parseGoogleUrl()">
+                <div class="hint">Copy toàn bộ link trên thanh địa chỉ khi đang xem Street View.</div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex:1">
+                    <label>Góc nhìn (Heading °):</label>
+                    <input type="number" id="heading" step="0.1">
                 </div>
-                
-                <div id="street-view-container">
-                    <div id="sv-content">
-                        <i class="fas fa-street-view" style="font-size:40px; margin-bottom:10px"></i>
-                        <p>Google yêu cầu API Key để nhúng.<br>Bạn có thể mở Street View miễn phí tại tab mới:</p>
-                        <a href="#" id="btn-open-map" class="btn-open-ext" target="_blank">Mở Google Maps</a>
-                        <br>
-                        <p style="font-size:11px; color:#666">Hoặc nhập API Key vào code để xem trực tiếp tại đây.</p>
-                    </div>
-                    <iframe id="sv-iframe" src=""></iframe>
+                <div class="form-group" style="flex:1">
+                    <label>Ước lượng xa (m):</label>
+                    <input type="number" id="distance" value="10" min="1">
                 </div>
             </div>
+            <button class="btn btn-secondary" onclick="calculateTarget()">
+                <i class="bi bi-calculator"></i> Tính vị trí Trụ Điện
+            </button>
+        </div>
+
+        <div class="card">
+            <h4>2. Thông tin Trụ</h4>
+            <form id="pole-form">
+                <div class="form-group">
+                    <label>Vị trí trụ (Lat, Lng):</label>
+                    <input type="text" id="pole-coords" readonly style="background: #e9ecef; font-family: monospace;">
+                </div>
+
+                <div class="form-group">
+                    <label>Loại trụ:</label>
+                    <select id="pole-type">
+                        <option value="betong_li_tam">Bê tông ly tâm</option>
+                        <option value="betong_vuong">Bê tông vuông</option>
+                        <option value="thep">Trụ thép</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Điện áp:</label>
+                    <select id="voltage">
+                        <option value="22kV">Trung thế 22kV</option>
+                        <option value="35kV">Trung thế 35kV</option>
+                        <option value="0.4kV">Hạ thế 0.4kV</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Hình ảnh (Chụp màn hình):</label>
+                    <button type="button" class="btn btn-primary" id="btn-capture">
+                        <i class="bi bi-camera"></i> Chọn cửa sổ Google Maps
+                    </button>
+                    <div id="preview-area">
+                        <img id="final-image">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú:</label>
+                    <textarea id="notes" rows="2"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success" id="btn-save">
+                    <i class="bi bi-cloud-upload"></i> Lưu vào Firebase
+                </button>
+            </form>
         </div>
     </div>
 </div>
 
+<div id="crop-modal">
+    <div class="crop-wrapper">
+        <img id="image-to-crop" style="max-width: 100%;">
+    </div>
+    <div class="crop-controls">
+        <button class="btn btn-primary" id="btn-crop-confirm">Cắt & Dùng ảnh này</button>
+        <button class="btn btn-secondary" onclick="closeCropModal()">Hủy</button>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getFirestore, collection, addDoc, GeoPoint } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-    // --- CHỖ ĐIỀN API KEY CỦA BẠN (QUAN TRỌNG) ---
-    // Nếu không có Key, hãy để trống "" -> Hệ thống sẽ dùng chế độ mở Tab mới (Miễn phí)
-    const GMAP_API_KEY = ""; 
+    // 1. FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
+        authDomain: "tavietnam-78ae8.firebaseapp.com",
+        projectId: "tavietnam-78ae8",
+        storageBucket: "tavietnam-78ae8.firebasestorage.app",
+        messagingSenderId: "670121705534",
+        appId: "1:670121705534:web:1027ad98550573ad37116f"
+    };
 
-    const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
-    let pegmanMarker = null;
-
-    // MAP SETUP
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
-    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
-    const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [streetLayer] });
-    L.control.layers({"Đường phố": streetLayer, "Vệ tinh": satLayer}).addTo(map);
-
-    // --- SPLIT VIEW LOGIC ---
-    let isSplitOpen = false;
+    // 2. MAP SETUP (OpenStreetMap - Free)
+    const map = L.map('map').setView([10.7769, 106.7009], 16);
     
-    window.toggleSplitView = function() {
-        isSplitOpen = !isSplitOpen;
-        const btn = document.querySelector('.street-toggle-btn');
-        const mapBox = document.getElementById('map-container');
-        const svBox = document.getElementById('street-view-container');
+    // Layer vệ tinh (Esri Free) để dễ so sánh thực địa
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri'
+    }).addTo(map);
+    
+    // Layer nhãn tên đường
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png').addTo(map);
 
-        if (isSplitOpen) {
-            btn.classList.add('active');
-            mapBox.style.width = '50%';
-            svBox.style.display = 'block';
-            svBox.style.width = '50%';
+    let cameraMarker, poleMarker, connectionLine;
+
+    // 3. LOGIC TÍNH TOÁN VỊ TRÍ (Geodesic)
+    window.parseGoogleUrl = function() {
+        const url = document.getElementById('gmap-url').value;
+        // Regex bắt pattern: @lat,lng,zoom...heading(h)
+        // Ví dụ: ...@10.7713437,106.6918663,3a,75y,125.4h,90t...
+        const regex = /@(-?\d+\.\d+),(-?\d+\.\d+).+?(\d+(\.\d+)?)h/;
+        const match = url.match(regex);
+
+        if (match) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            const heading = parseFloat(match[3]);
+
+            // Cập nhật lên Form
+            document.getElementById('heading').value = heading;
             
-            // Tạo Pegman (Người hình nhân) ở giữa bản đồ
-            const center = map.getCenter();
-            createPegman(center.lat, center.lng);
-            updateRightPanel(center.lat, center.lng);
+            // Vẽ vị trí người đứng (Camera)
+            updateCameraPosition(lat, lng);
+            
+            // Tự động tính luôn nếu đã có distance
+            calculateTarget();
         } else {
-            btn.classList.remove('active');
-            mapBox.style.width = '100%';
-            svBox.style.display = 'none';
-            if(pegmanMarker) map.removeLayer(pegmanMarker);
+            alert("URL không hợp lệ hoặc không chứa thông tin Heading. Hãy chắc chắn bạn copy link khi đang ở chế độ Street View.");
         }
-        setTimeout(() => map.invalidateSize(), 300);
     }
 
-    function createPegman(lat, lng) {
-        if(pegmanMarker) map.removeLayer(pegmanMarker);
+    function updateCameraPosition(lat, lng) {
+        if (cameraMarker) map.removeLayer(cameraMarker);
         
-        const pegmanIcon = L.divIcon({
-            html: '<i class="fas fa-street-view" style="font-size:30px; color:#f1c40f; text-shadow: 2px 2px 4px #000; cursor:grab"></i>',
-            className: '', iconSize: [30, 30], iconAnchor: [15, 30]
-        });
+        cameraMarker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'camera-icon',
+                html: '<i class="bi bi-person-circle" style="font-size: 24px; color: yellow; text-shadow: 0 0 3px black;"></i>',
+                iconSize: [24, 24]
+            })
+        }).addTo(map);
         
-        pegmanMarker = L.marker([lat, lng], {icon: pegmanIcon, draggable: true}).addTo(map);
+        map.setView([lat, lng], 18);
+    }
+
+    // Hàm tính điểm đích từ điểm gốc + góc + khoảng cách
+    window.calculateTarget = function() {
+        if (!cameraMarker) return;
+
+        const camLat = cameraMarker.getLatLng().lat;
+        const camLng = cameraMarker.getLatLng().lng;
+        const bearing = parseFloat(document.getElementById('heading').value); // Độ
+        const dist = parseFloat(document.getElementById('distance').value); // Mét
+
+        if (isNaN(bearing) || isNaN(dist)) return;
+
+        // Công thức tính (Destination point given distance and bearing)
+        const R = 6371e3; // Bán kính trái đất (mét)
+        const φ1 = camLat * Math.PI / 180;
+        const λ1 = camLng * Math.PI / 180;
+        const θ = bearing * Math.PI / 180;
+        const δ = dist / R;
+
+        const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+        const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+
+        const targetLat = φ2 * 180 / Math.PI;
+        const targetLng = λ2 * 180 / Math.PI;
+
+        // Cập nhật marker Cột điện
+        if (poleMarker) map.removeLayer(poleMarker);
+        if (connectionLine) map.removeLayer(connectionLine);
+
+        poleMarker = L.marker([targetLat, targetLng], { draggable: true }).addTo(map);
         
-        // Khi kéo Pegman -> Cập nhật Street View
-        pegmanMarker.on('dragend', function(e) {
+        // Vẽ đường nối từ Camera -> Cột để dễ hình dung
+        connectionLine = L.polyline([
+            [camLat, camLng],
+            [targetLat, targetLng]
+        ], {color: 'red', dashArray: '5, 5'}).addTo(map);
+
+        // Update input
+        document.getElementById('pole-coords').value = `${targetLat.toFixed(6)}, ${targetLng.toFixed(6)}`;
+
+        // Cho phép kéo thả marker cột điện để tinh chỉnh
+        poleMarker.on('dragend', function(e) {
             const pos = e.target.getLatLng();
-            updateRightPanel(pos.lat, pos.lng);
-            // Nếu đang chọn thiết bị, hỏi có muốn cập nhật tọa độ thiết bị theo Pegman không
-            if(selectedId) {
-                if(confirm("Cập nhật tọa độ thiết bị theo vị trí Pegman?")) {
-                    document.getElementById('inp-lat').value = pos.lat.toFixed(6);
-                    document.getElementById('inp-lng').value = pos.lng.toFixed(6);
-                    saveDevice();
-                }
-            }
+            document.getElementById('pole-coords').value = `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`;
+            connectionLine.setLatLngs([[camLat, camLng], pos]);
         });
     }
 
-    function updateRightPanel(lat, lng) {
-        // Cập nhật Link mở tab mới
-        const extLink = document.getElementById('btn-open-map');
-        extLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lng}`;
+    // 4. CHỤP MÀN HÌNH (SCREEN CAPTURE)
+    const btnCapture = document.getElementById('btn-capture');
+    const cropModal = document.getElementById('crop-modal');
+    const imageToCrop = document.getElementById('image-to-crop');
+    let cropper;
 
-        // Nếu có API Key -> Dùng Iframe Embed
-        if(GMAP_API_KEY && GMAP_API_KEY.length > 10) {
-            document.getElementById('sv-content').style.display = 'none';
-            const iframe = document.getElementById('sv-iframe');
-            iframe.style.display = 'block';
-            iframe.src = `https://www.google.com/maps/embed/v1/streetview?key=${GMAP_API_KEY}&location=${lat},${lng}`;
+    btnCapture.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: "screen" } });
+            const track = stream.getVideoTracks()[0];
+            const imageCapture = new ImageCapture(track);
+            const bitmap = await imageCapture.grabFrame();
+            track.stop();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            canvas.getContext('2d').drawImage(bitmap, 0, 0);
+
+            imageToCrop.src = canvas.toDataURL('image/png');
+            cropModal.style.display = 'flex';
+
+            if(cropper) cropper.destroy();
+            cropper = new Cropper(imageToCrop, { viewMode: 1, autoCropArea: 0.5 });
+        } catch (err) {
+            console.error(err);
         }
-    }
-
-    // --- FIREBASE LOGIC ---
-    onValue(ref(db, 'system_nodes'), (snapshot) => {
-        const data = snapshot.val();
-        allDevices = data ? Object.values(data) : [];
-        calculatePower();
-        renderTable(); renderSLD(); renderMap();
-        document.getElementById('status-msg').innerText = "Đã đồng bộ"; document.getElementById('status-msg').style.color = "#2ecc71";
     });
 
-    function calculatePower() {
-        allDevices.forEach(n => n.isEnergized = false);
-        const sources = allDevices.filter(n => n.type === 'source');
-        sources.forEach(src => { src.isEnergized = true; propagate(src); });
-    }
-    function isConductive(node) {
-        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
-        if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
-        return false;
-    }
-    function propagate(parent) {
-        if (parent.isEnergized && isConductive(parent)) {
-            allDevices.filter(n => n.parent === parent.id).forEach(c => { c.isEnergized = true; propagate(c); });
-        }
-    }
-
-    window.toggleForm = function() { document.getElementById('form-content').classList.toggle('hidden'); }
-    function renderTable() {
-        const container = document.getElementById('device-list-container'); container.innerHTML = '';
-        allDevices.forEach(d => {
-            const div = document.createElement('div'); div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
-            div.innerHTML = `<div><strong>${d.id}</strong><br><span style="color:#666">${d.label}</span></div>`;
-            div.onclick = () => selectDevice(d, false); div.ondblclick = () => selectDevice(d, true); 
-            container.appendChild(div);
-        });
-    }
-    function updateParentSelect() {
-        const sel = document.getElementById('inp-parent'); const v = sel.value; sel.innerHTML = '<option value="">-- Gốc --</option>';
-        allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
-        sel.value = v;
-    }
-    
-    window.selectDevice = function(d, z) {
-        selectedId = d.id;
-        document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
-        document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
-        updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
-        document.getElementById('inp-connection').value = d.connection || "solid";
-        document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
-        document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
+    document.getElementById('btn-crop-confirm').addEventListener('click', () => {
+        if(!cropper) return;
+        const finalImgData = cropper.getCroppedCanvas({ width: 800 }).toDataURL('image/jpeg', 0.8);
         
-        renderTable(); renderSLD();
-        
-        if(mapMarkers[d.id]) { 
-            mapMarkers[d.id].openPopup(); 
-            if(z && d.geo) {
-                map.flyTo([d.geo.lat, d.geo.lng], 19);
-                // Nếu đang mở Split View -> Di chuyển Pegman đến đó
-                if(isSplitOpen) {
-                    createPegman(d.geo.lat, d.geo.lng);
-                    updateRightPanel(d.geo.lat, d.geo.lng);
-                }
+        const imgEl = document.getElementById('final-image');
+        imgEl.src = finalImgData;
+        imgEl.dataset.base64 = finalImgData;
+        document.getElementById('preview-area').style.display = 'block';
+        window.closeCropModal();
+    });
+
+    window.closeCropModal = function() {
+        cropModal.style.display = 'none';
+        if(cropper) cropper.destroy();
+    }
+
+    // 5. LƯU FIREBASE
+    document.getElementById('pole-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save');
+        btn.textContent = "Đang lưu..."; btn.disabled = true;
+
+        const coordVal = document.getElementById('pole-coords').value;
+        if(!coordVal) { alert("Chưa có tọa độ cột!"); btn.textContent = "Lưu vào Firebase"; btn.disabled = false; return; }
+
+        const [lat, lng] = coordVal.split(',').map(n => parseFloat(n));
+        const base64Img = document.getElementById('final-image').dataset.base64;
+
+        try {
+            let imageUrl = null;
+            if (base64Img) {
+                const imgRef = ref(storage, `poles_survey/${Date.now()}.jpg`);
+                await uploadString(imgRef, base64Img, 'data_url');
+                imageUrl = await getDownloadURL(imgRef);
             }
-        }
-    }
 
-    window.resetForm = function() {
-        selectedId = null; document.getElementById('inp-id').value=""; document.getElementById('inp-id').disabled=false;
-        document.getElementById('inp-label').value=""; document.getElementById('inp-parent').value="";
-        const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
-        const container = document.getElementById('sld-container');
-        document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
-        renderTable(); renderSLD(); document.getElementById('inp-id').focus();
-    }
-    window.saveDevice = function() {
-        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
-        const nd = {
-            id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value||null, connection: document.getElementById('inp-connection').value,
-            state: "closed",
-            sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
-            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||0, lng: parseFloat(document.getElementById('inp-lng').value)||0 }
-        };
-        set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false)).catch(e=>alert(e.message));
-    }
-    window.deleteDevice = function() { if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); } }
-    window.zoomExtent = function() {
-        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
-        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
-        const sX=50-minX, sY=50-minY, u={};
-        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
-        update(ref(db), u);
-    }
-
-    const sldCanvas = document.getElementById('sld-canvas');
-    function renderSLD() {
-        sldCanvas.innerHTML = '';
-        allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) { const isLive = p.isEnergized && isConductive(p); drawWire(p, d, isLive?'energized-line':'dead-line', d.connection||'solid'); } } });
-        allDevices.forEach(d => {
-            const el = document.createElement('div');
-            el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
-            el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            if(['bus','wire','cable','underground'].includes(d.type)) el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
-            else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
-            if(d.isEnergized) el.classList.add('energized-node'); 
-            el.onmousedown = function(e) {
-                e.preventDefault(); e.stopPropagation();
-                if(d.id!==selectedId) selectDevice(d, false);
-                const startMX = e.clientX, startMY = e.clientY, startNX = d.sld.x, startNY = d.sld.y;
-                function onMM(ev) {
-                    let nx = startNX + (ev.clientX - startMX), ny = startNY + (ev.clientY - startMY);
-                    nx = Math.max(0, Math.round(nx/10)*10); ny = Math.max(0, Math.round(ny/10)*10);
-                    el.style.left=nx+'px'; el.style.top=ny+'px';
-                    document.getElementById('inp-x').value=nx; document.getElementById('inp-y').value=ny;
-                }
-                document.addEventListener('mousemove', onMM);
-                document.onmouseup = function() { document.removeEventListener('mousemove', onMM); el.onmouseup=null; saveDevice(); };
-            };
-            sldCanvas.appendChild(el);
-        });
-    }
-
-    function drawWire(p, c, cls, type) {
-        let pW=80, pH=50, cW=80, cH=50;
-        if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable','underground'].includes(p.type)){ pW=100; pH=20; }
-        if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable','underground'].includes(c.type)){ cW=100; cH=20; }
-
-        let x1, y1, x2, y2;
-        if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
-        else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
-        if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
-        else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
-
-        const midY = y1 + (y2 - y1) / 2;
-        createWire(x1, y1, x1, midY, cls, 'wire-'+type, 'v'); 
-        createWire(x1, midY, x2, midY, cls, 'wire-'+type, 'h'); 
-        createWire(x2, midY, x2, y2, cls, 'wire-'+type, 'v');
-    }
-    
-    function createWire(x1, y1, x2, y2, cls, style, dir) {
-        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-        const d = document.createElement('div'); d.className = `wire ${cls} ${style}`;
-        d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
-        if(dir==='h') { d.style.width=Math.abs(x2-x1)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; d.style.borderLeftWidth='0'; }
-        else { d.style.width='0'; d.style.height=Math.abs(y2-y1)+'px'; d.style.borderLeftWidth='2px'; d.style.borderTopWidth='0'; }
-        sldCanvas.appendChild(d);
-    }
-
-    function renderMap() {
-        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); mapPolylines.forEach(l=>map.removeLayer(l));
-        mapMarkers={}; mapPolylines=[];
-        
-        allDevices.forEach(d => {
-            if(d.parent && d.geo) {
-                const p = allDevices.find(x=>x.id==d.parent);
-                if(p && p.geo) {
-                    const isLive = p.isEnergized && isConductive(p);
-                    const color = isLive ? '#ff3d00' : '#95a5a6';
-                    const w = isLive ? 4 : 2;
-                    const dash = (d.connection === 'dashed') ? '5, 10' : null;
-                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:w, dashArray: dash}).addTo(map));
-                }
-            }
-        });
-
-        allDevices.forEach(d => {
-            if(!d.geo) return;
-            let color = '#666'; 
-            if(d.isEnergized) {
-                if(d.state === 'closed') color = '#d32f2f'; else if (d.type === 'source') color = '#1565c0'; else color = '#27ae60';
-            }
-            const html = `<div style="background:${d.isEnergized?'#fff':'#eee'}; border:2px solid ${color}; padding:2px; font-weight:bold; font-size:10px; text-align:center;">${d.label}</div>`;
-            const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
-            const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
-            m.on('click', ()=>selectDevice(d,false));
-            m.on('dragend', ()=>{
-                const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
-                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
+            await addDoc(collection(db, "power_poles"), {
+                location: new GeoPoint(lat, lng),
+                type: document.getElementById('pole-type').value,
+                voltage: document.getElementById('voltage').value,
+                notes: document.getElementById('notes').value,
+                imageUrl: imageUrl,
+                createdAt: new Date()
             });
-            mapMarkers[d.id] = m;
-        });
-    }
 
-    window.switchTab = function(t, btn){
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + t).classList.add('active');
-        if(t==='map') setTimeout(()=>map.invalidateSize(), 200);
-    }
+            alert("Đã lưu thành công!");
+            document.getElementById('notes').value = '';
+            document.getElementById('preview-area').style.display = 'none';
+            // Không xóa tọa độ để tiện nhập trụ tiếp theo gần đó
+        } catch (error) {
+            alert("Lỗi: " + error.message);
+        } finally {
+            btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Lưu vào Firebase';
+            btn.disabled = false;
+        }
+    });
 </script>
+
 </body>
 </html>
