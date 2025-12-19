@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công cụ Số hóa Lưới điện (Debug Mode)</title>
+    <title>Công cụ Số hóa (No Storage Version)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
@@ -11,164 +11,81 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        
         #container { display: flex; height: 100vh; }
-        
-        /* Cột bên trái: Bản đồ quản trị (OSM Free) */
         #map-container { flex: 2; position: relative; }
         #map { width: 100%; height: 100%; }
-
-        /* Cột bên phải: Công cụ nhập liệu */
         #sidebar {
-            flex: 1;
-            min-width: 350px;
-            max-width: 400px;
-            background: #f8f9fa;
-            border-left: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            padding: 15px;
+            flex: 1; min-width: 350px; max-width: 400px;
+            background: #f8f9fa; border-left: 1px solid #ddd;
+            display: flex; flex-direction: column; padding: 15px;
             overflow-y: auto;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
         }
-
         .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
         h3 { margin: 0 0 15px 0; font-size: 18px; color: #d32f2f; display: flex; align-items: center; gap: 8px; }
         h4 { margin: 10px 0 5px 0; font-size: 14px; color: #1a73e8; text-transform: uppercase; }
-        
         .form-group { margin-bottom: 10px; }
         label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
         input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
-        textarea { resize: vertical; }
-
-        .btn { width: 100%; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: 0.2s; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; }
         .btn-primary { background: #1a73e8; color: white; }
         .btn-success { background: #2e7d32; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
-        .btn:hover { opacity: 0.9; }
-
-        /* Vùng hiển thị ảnh */
         #preview-area { display: none; margin-top: 10px; border: 2px dashed #ccc; padding: 5px; text-align: center; }
         #final-image { max-width: 100%; display: block; }
-
         /* Modal Crop */
         #crop-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: none; flex-direction: column; align-items: center; justify_content: center; }
         .crop-wrapper { width: 90%; height: 80%; }
         .crop-controls { margin-top: 10px; display: flex; gap: 10px; }
-
-        /* Helper text */
-        .hint { font-size: 11px; color: #666; font-style: italic; }
-
-        /* Debug Console trên giao diện */
-        #debug-console {
-            background: #222;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 11px;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-            height: 150px;
-            overflow-y: auto;
-            border: 1px solid #444;
-        }
+        /* Debug Console */
+        #debug-console { background: #222; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 5px; margin-top: 20px; height: 150px; overflow-y: auto; border: 1px solid #444; }
         .log-error { color: #ff5555; }
-        .log-info { color: #88ccff; }
         .log-success { color: #55ff55; }
     </style>
 </head>
 <body>
 
 <div id="container">
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
-
+    <div id="map-container"><div id="map"></div></div>
     <div id="sidebar">
-        <h3><i class="bi bi-tools"></i> Công cụ Nhập liệu</h3>
-
+        <h3><i class="bi bi-tools"></i> Nhập Liệu (Bản Free)</h3>
+        
         <div class="card">
             <h4>1. Nhập từ Street View</h4>
             <div class="form-group">
-                <label>Dán URL Google Maps vào đây:</label>
-                <input type="text" id="gmap-url" placeholder="https://www.google.com/maps/@10.7..." onchange="parseGoogleUrl()">
-                <div class="hint">Copy toàn bộ link trên thanh địa chỉ khi đang xem Street View.</div>
+                <label>URL Google Maps:</label>
+                <input type="text" id="gmap-url" placeholder="Paste link..." onchange="parseGoogleUrl()">
             </div>
-            
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex:1">
-                    <label>Góc nhìn (Heading °):</label>
-                    <input type="number" id="heading" step="0.1">
-                </div>
-                <div class="form-group" style="flex:1">
-                    <label>Ước lượng xa (m):</label>
-                    <input type="number" id="distance" value="10" min="1">
-                </div>
+                <div class="form-group" style="flex:1"><label>Góc (Heading):</label><input type="number" id="heading" step="0.1"></div>
+                <div class="form-group" style="flex:1"><label>Xa (m):</label><input type="number" id="distance" value="10" min="1"></div>
             </div>
-            <button class="btn btn-secondary" onclick="calculateTarget()">
-                <i class="bi bi-calculator"></i> Tính vị trí Trụ Điện
-            </button>
+            <button class="btn btn-secondary" onclick="calculateTarget()">Tính vị trí</button>
         </div>
 
         <div class="card">
-            <h4>2. Thông tin Trụ</h4>
+            <h4>2. Thông tin & Ảnh</h4>
             <form id="pole-form">
+                <div class="form-group"><label>Tọa độ:</label><input type="text" id="pole-coords" readonly style="background:#e9ecef"></div>
+                <div class="form-group"><label>Loại:</label><select id="pole-type"><option value="betong_li_tam">Bê tông ly tâm</option><option value="thep">Trụ thép</option></select></div>
+                
                 <div class="form-group">
-                    <label>Vị trí trụ (Lat, Lng):</label>
-                    <input type="text" id="pole-coords" readonly style="background: #e9ecef; font-family: monospace;">
+                    <label>Ảnh (Sẽ nén nhỏ để lưu DB):</label>
+                    <button type="button" class="btn btn-primary" id="btn-capture"><i class="bi bi-camera"></i> Chọn cửa sổ Maps</button>
+                    <div id="preview-area"><img id="final-image"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Loại trụ:</label>
-                    <select id="pole-type">
-                        <option value="betong_li_tam">Bê tông ly tâm</option>
-                        <option value="betong_vuong">Bê tông vuông</option>
-                        <option value="thep">Trụ thép</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Điện áp:</label>
-                    <select id="voltage">
-                        <option value="22kV">Trung thế 22kV</option>
-                        <option value="35kV">Trung thế 35kV</option>
-                        <option value="0.4kV">Hạ thế 0.4kV</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Hình ảnh (Chụp màn hình):</label>
-                    <button type="button" class="btn btn-primary" id="btn-capture">
-                        <i class="bi bi-camera"></i> Chọn cửa sổ Google Maps
-                    </button>
-                    <div id="preview-area">
-                        <img id="final-image">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Ghi chú:</label>
-                    <textarea id="notes" rows="2"></textarea>
-                </div>
-
-                <button type="submit" class="btn btn-success" id="btn-save">
-                    <i class="bi bi-cloud-upload"></i> Lưu vào Firebase
-                </button>
+                <div class="form-group"><label>Ghi chú:</label><textarea id="notes" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-success" id="btn-save">Lưu dữ liệu</button>
             </form>
         </div>
-
-        <div id="debug-console">
-            <div>> Hệ thống sẵn sàng...</div>
-        </div>
+        <div id="debug-console"><div>> Sẵn sàng...</div></div>
     </div>
 </div>
 
 <div id="crop-modal">
-    <div class="crop-wrapper">
-        <img id="image-to-crop" style="max-width: 100%;">
-    </div>
+    <div class="crop-wrapper"><img id="image-to-crop" style="max-width: 100%;"></div>
     <div class="crop-controls">
-        <button class="btn btn-primary" id="btn-crop-confirm">Cắt & Dùng ảnh này</button>
+        <button class="btn btn-primary" id="btn-crop-confirm">Xác nhận</button>
         <button class="btn btn-secondary" onclick="closeCropModal()">Hủy</button>
     </div>
 </div>
@@ -177,23 +94,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
 <script type="module">
+    // Chỉ Import Firestore, KHÔNG import Storage
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, GeoPoint } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-    // --- HÀM GHI LOG RA MÀN HÌNH ---
     function logToScreen(msg, type = 'info') {
-        const consoleDiv = document.getElementById('debug-console');
-        const entry = document.createElement('div');
-        entry.textContent = `> ${msg}`;
-        if(type === 'error') entry.className = 'log-error';
-        if(type === 'success') entry.className = 'log-success';
-        consoleDiv.appendChild(entry);
-        consoleDiv.scrollTop = consoleDiv.scrollHeight;
-        console.log(msg); // Vẫn log ra F12
+        const d = document.getElementById('debug-console');
+        const e = document.createElement('div');
+        e.textContent = `> ${msg}`;
+        if(type === 'error') e.className = 'log-error';
+        if(type === 'success') e.className = 'log-success';
+        d.appendChild(e);
+        d.scrollTop = d.scrollHeight;
     }
 
-    // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
         authDomain: "tavietnam-78ae8.firebaseapp.com",
@@ -203,99 +117,69 @@
         appId: "1:670121705534:web:1027ad98550573ad37116f"
     };
 
-    let app, db, storage;
-
+    let app, db;
     try {
         app = initializeApp(firebaseConfig);
         db = getFirestore(app);
-        storage = getStorage(app);
-        logToScreen("Đã kết nối Firebase thành công.", "success");
+        logToScreen("Đã kết nối Firestore (Chế độ lưu ảnh trực tiếp)", "success");
     } catch (e) {
-        logToScreen("Lỗi kết nối Firebase: " + e.message, "error");
+        logToScreen("Lỗi Config: " + e.message, "error");
     }
 
-    // 2. MAP SETUP
+    // --- MAP LOGIC ---
     const map = L.map('map').setView([10.7769, 106.7009], 16);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri'
-    }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png').addTo(map);
 
     let cameraMarker, poleMarker, connectionLine;
 
-    // 3. LOGIC TÍNH TOÁN
     window.parseGoogleUrl = function() {
         const url = document.getElementById('gmap-url').value;
-        const regex = /@(-?\d+\.\d+),(-?\d+\.\d+).+?(\d+(\.\d+)?)h/;
-        const match = url.match(regex);
-
+        const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+).+?(\d+(\.\d+)?)h/);
         if (match) {
-            const lat = parseFloat(match[1]);
-            const lng = parseFloat(match[2]);
-            const heading = parseFloat(match[3]);
-            document.getElementById('heading').value = heading;
-            updateCameraPosition(lat, lng);
+            updateCameraPosition(parseFloat(match[1]), parseFloat(match[2]));
+            document.getElementById('heading').value = match[3];
             calculateTarget();
-            logToScreen(`Đã lấy tọa độ camera: ${lat}, ${lng}`, 'info');
-        } else {
-            logToScreen("URL không hợp lệ. Hãy kiểm tra lại.", "error");
-            alert("URL không hợp lệ.");
-        }
+        } else { alert("Link không đúng định dạng Street View"); }
     }
 
     function updateCameraPosition(lat, lng) {
         if (cameraMarker) map.removeLayer(cameraMarker);
-        cameraMarker = L.marker([lat, lng], {
-            icon: L.divIcon({
-                className: 'camera-icon',
-                html: '<i class="bi bi-person-circle" style="font-size: 24px; color: yellow; text-shadow: 0 0 3px black;"></i>',
-                iconSize: [24, 24]
-            })
-        }).addTo(map);
+        cameraMarker = L.marker([lat, lng]).addTo(map).bindPopup("Camera").openPopup();
         map.setView([lat, lng], 18);
     }
 
     window.calculateTarget = function() {
-        if (!cameraMarker) {
-            logToScreen("Chưa có vị trí Camera (Bước 1).", "error");
-            return;
-        }
-
-        const camLat = cameraMarker.getLatLng().lat;
-        const camLng = cameraMarker.getLatLng().lng;
-        const bearing = parseFloat(document.getElementById('heading').value);
+        if (!cameraMarker) return logToScreen("Chưa nhập link Google Maps", "error");
+        const cam = cameraMarker.getLatLng();
+        const bear = parseFloat(document.getElementById('heading').value);
         const dist = parseFloat(document.getElementById('distance').value);
-
-        if (isNaN(bearing) || isNaN(dist)) return;
-
-        const R = 6371e3;
-        const φ1 = camLat * Math.PI / 180;
-        const λ1 = camLng * Math.PI / 180;
-        const θ = bearing * Math.PI / 180;
-        const δ = dist / R;
+        
+        const R = 6371e3; 
+        const rad = Math.PI / 180;
+        const φ1 = cam.lat * rad, λ1 = cam.lng * rad, θ = bear * rad, δ = dist / R;
 
         const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
         const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
 
-        const targetLat = φ2 * 180 / Math.PI;
-        const targetLng = λ2 * 180 / Math.PI;
+        const tLat = φ2 / rad, tLng = λ2 / rad;
 
         if (poleMarker) map.removeLayer(poleMarker);
         if (connectionLine) map.removeLayer(connectionLine);
 
-        poleMarker = L.marker([targetLat, targetLng], { draggable: true }).addTo(map);
-        connectionLine = L.polyline([[camLat, camLng], [targetLat, targetLng]], {color: 'red', dashArray: '5, 5'}).addTo(map);
-        document.getElementById('pole-coords').value = `${targetLat.toFixed(6)}, ${targetLng.toFixed(6)}`;
-
-        poleMarker.on('dragend', function(e) {
-            const pos = e.target.getLatLng();
-            document.getElementById('pole-coords').value = `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`;
-            connectionLine.setLatLngs([[camLat, camLng], pos]);
+        poleMarker = L.marker([tLat, tLng], {draggable:true}).addTo(map);
+        connectionLine = L.polyline([cam, [tLat, tLng]], {color:'red', dashArray:'5,5'}).addTo(map);
+        
+        document.getElementById('pole-coords').value = `${tLat.toFixed(6)}, ${tLng.toFixed(6)}`;
+        poleMarker.on('dragend', e => {
+            const p = e.target.getLatLng();
+            document.getElementById('pole-coords').value = `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
+            connectionLine.setLatLngs([cam, p]);
         });
-        logToScreen("Đã tính toán vị trí trụ.", "success");
+        logToScreen("Đã tính vị trí. Hãy kéo chấm đỏ nếu cần chỉnh.");
     }
 
-    // 4. CHỤP MÀN HÌNH
+    // --- CAPTURE & RESIZE LOGIC ---
     const btnCapture = document.getElementById('btn-capture');
     const cropModal = document.getElementById('crop-modal');
     const imageToCrop = document.getElementById('image-to-crop');
@@ -303,126 +187,78 @@
 
     btnCapture.addEventListener('click', async () => {
         try {
-            logToScreen("Đang yêu cầu quyền quay màn hình...");
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: "screen" } });
+            const stream = await navigator.mediaDevices.getDisplayMedia({video:{mediaSource:"screen"}});
             const track = stream.getVideoTracks()[0];
-            const imageCapture = new ImageCapture(track);
-            const bitmap = await imageCapture.grabFrame();
+            const bmp = await new ImageCapture(track).grabFrame();
             track.stop();
-
-            const canvas = document.createElement('canvas');
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            canvas.getContext('2d').drawImage(bitmap, 0, 0);
-
-            imageToCrop.src = canvas.toDataURL('image/png');
+            
+            const cvs = document.createElement('canvas');
+            cvs.width = bmp.width; cvs.height = bmp.height;
+            cvs.getContext('2d').drawImage(bmp, 0, 0);
+            
+            imageToCrop.src = cvs.toDataURL('image/png');
             cropModal.style.display = 'flex';
-
             if(cropper) cropper.destroy();
             cropper = new Cropper(imageToCrop, { viewMode: 1, autoCropArea: 0.5 });
-            logToScreen("Đã chụp, đang chờ cắt ảnh...");
-        } catch (err) {
-            logToScreen("Lỗi chụp màn hình: " + err.message, "error");
-        }
+        } catch (e) { logToScreen("Không chụp được: " + e.message, "error"); }
     });
 
     document.getElementById('btn-crop-confirm').addEventListener('click', () => {
         if(!cropper) return;
-        const finalImgData = cropper.getCroppedCanvas({ width: 800 }).toDataURL('image/jpeg', 0.8);
-        const imgEl = document.getElementById('final-image');
-        imgEl.src = finalImgData;
-        imgEl.dataset.base64 = finalImgData;
+        // QUAN TRỌNG: Resize nhỏ xuống 500px để file nhẹ (< 1MB)
+        const canvas = cropper.getCroppedCanvas({ width: 500 });
+        // Nén JPEG chất lượng 0.6
+        const base64 = canvas.toDataURL('image/jpeg', 0.6);
+        
+        document.getElementById('final-image').src = base64;
+        document.getElementById('final-image').dataset.base64 = base64;
         document.getElementById('preview-area').style.display = 'block';
         window.closeCropModal();
-        logToScreen("Đã xử lý ảnh xong.", "success");
+        logToScreen("Đã nén ảnh xong. Sẵn sàng lưu.");
     });
 
-    window.closeCropModal = function() {
-        cropModal.style.display = 'none';
-        if(cropper) cropper.destroy();
-    }
+    window.closeCropModal = () => { cropModal.style.display = 'none'; if(cropper) cropper.destroy(); }
 
-    // 5. LƯU FIREBASE (CÓ TIMEOUT & ERROR LOG)
+    // --- SAVE TO FIRESTORE DIRECTLY ---
     document.getElementById('pole-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btn-save');
+        const coords = document.getElementById('pole-coords').value;
         
-        const coordVal = document.getElementById('pole-coords').value;
-        if(!coordVal) { 
-            alert("Chưa có tọa độ cột!"); 
-            logToScreen("Lỗi: Thiếu tọa độ.", "error");
-            return; 
-        }
-
-        // Bắt đầu lưu
-        btn.textContent = "Đang xử lý..."; 
-        btn.disabled = true;
-        logToScreen("--- BẮT ĐẦU LƯU DỮ LIỆU ---");
-
-        // Set timeout 15 giây để tránh treo mãi
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Quá thời gian chờ (15s). Kiểm tra mạng hoặc Firebase Rules.")), 15000)
-        );
-
-        const saveProcess = async () => {
-            const [lat, lng] = coordVal.split(',').map(n => parseFloat(n));
-            const base64Img = document.getElementById('final-image').dataset.base64;
-            let imageUrl = null;
-
-            // Bước 1: Upload Ảnh
-            if (base64Img) {
-                logToScreen("Đang upload ảnh lên Storage...");
-                const imgRef = ref(storage, `poles_survey/${Date.now()}.jpg`);
-                try {
-                    await uploadString(imgRef, base64Img, 'data_url');
-                    logToScreen("Upload ảnh thành công. Đang lấy URL...", "success");
-                    imageUrl = await getDownloadURL(imgRef);
-                } catch (err) {
-                    throw new Error("Lỗi Upload ảnh: " + err.message + " (Kiểm tra Rules Storage)");
-                }
-            }
-
-            // Bước 2: Lưu Firestore
-            logToScreen("Đang ghi dữ liệu vào Firestore...");
-            try {
-                await addDoc(collection(db, "power_poles"), {
-                    location: new GeoPoint(lat, lng),
-                    type: document.getElementById('pole-type').value,
-                    voltage: document.getElementById('voltage').value,
-                    notes: document.getElementById('notes').value,
-                    imageUrl: imageUrl,
-                    createdAt: new Date()
-                });
-            } catch (err) {
-                throw new Error("Lỗi ghi Firestore: " + err.message + " (Kiểm tra Rules Firestore)");
-            }
-
-            return "OK";
-        };
+        if(!coords) return alert("Chưa có tọa độ!");
+        
+        btn.textContent = "Đang lưu..."; btn.disabled = true;
+        logToScreen("Đang gửi dữ liệu lên Firestore...");
 
         try {
-            // Chạy đua giữa saveProcess và timeout
-            await Promise.race([saveProcess(), timeoutPromise]);
+            const [lat, lng] = coords.split(',').map(Number);
+            const base64Img = document.getElementById('final-image').dataset.base64 || null;
+
+            // Kiểm tra dung lượng ảnh
+            if(base64Img && base64Img.length > 900000) {
+                throw new Error("Ảnh quá lớn (>1MB). Hãy cắt nhỏ hơn nữa!");
+            }
+
+            await addDoc(collection(db, "power_poles"), {
+                location: new GeoPoint(lat, lng),
+                type: document.getElementById('pole-type').value,
+                notes: document.getElementById('notes').value,
+                // Lưu thẳng chuỗi ảnh vào đây
+                imageBase64: base64Img, 
+                createdAt: new Date()
+            });
 
             logToScreen("LƯU THÀNH CÔNG!", "success");
-            alert("Đã lưu thành công!");
-            
-            // Reset form
+            alert("Đã lưu!");
             document.getElementById('notes').value = '';
             document.getElementById('preview-area').style.display = 'none';
-            document.getElementById('final-image').src = '';
-            delete document.getElementById('final-image').dataset.base64;
-
-        } catch (error) {
-            console.error(error);
-            logToScreen(error.message, "error");
-            alert("Lỗi: " + error.message);
+        } catch (err) {
+            logToScreen("Lỗi: " + err.message, "error");
+            alert("Lỗi: " + err.message);
         } finally {
-            btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Lưu vào Firebase';
-            btn.disabled = false;
+            btn.textContent = "Lưu dữ liệu"; btn.disabled = false;
         }
     });
 </script>
-
 </body>
 </html>
