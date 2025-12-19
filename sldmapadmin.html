@@ -1,49 +1,97 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Satellite & Zoom</title>
+    <title>Admin Panel - TAVIETNAM (Tabbed View)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* --- CORE CSS --- */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; }
-        header { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .container { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 360px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .form-section { border-bottom: 2px solid #f1f1f1; background: #fff; }
-        .form-header { padding: 10px 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #555; user-select: none; }
-        .form-content { padding: 15px; overflow-y: auto; max-height: 60vh; display: block; }
-        .form-content.hidden { display: none; }
-        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 8px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-        .btn-new { background: #3498db; color: white; } .btn-save { background: #27ae60; color: white; } .btn-del { background: #e74c3c; color: white; }
-        .btn-extent { background: #8e44ad; color: white; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; border-radius: 3px; }
-        .device-list { flex: 1; overflow-y: auto; padding: 0; } .device-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .editor-tabs { display: flex; background: #e9ecef; } .tab-btn { padding: 10px 20px; cursor: pointer; border: none; font-weight: bold; color: #666; } .tab-btn.active { background: white; color: #007bff; border-top: 3px solid #007bff; }
-        .editor-content { flex: 1; position: relative; display: none; overflow: hidden; } .editor-content.active { display: block; }
-        #view-sld { overflow: auto; background: #ccc; } 
-        #sld-canvas { width: 4000px; height: 3000px; background-color: white; background-image: radial-gradient(#999 1px, transparent 1px); background-size: 20px 20px; position: relative; }
         
-        .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-        .admin-node:hover { border-color: #007bff; }
-        .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
-        .admin-node:active { cursor: grabbing; }
+        header { 
+            background: #2c3e50; color: white; padding: 0 20px; height: 50px;
+            display: flex; justify-content: space-between; align-items: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;
+        }
+        
+        .container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* SIDEBAR (CÔNG CỤ) */
+        .sidebar { 
+            width: 320px; background: white; border-right: 1px solid #ddd; 
+            display: flex; flex-direction: column; z-index: 100; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
+        }
+        .form-content { padding: 15px; overflow-y: auto; flex: 1; }
+        .form-group { margin-bottom: 8px; } 
+        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .row { display: flex; gap: 10px; } .col { flex: 1; }
+        
+        /* BUTTONS */
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
+        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
+        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; font-size: 11px; }
 
-        .energized-node { background-color: #ffccbc !important; }
-        .energized-line { background-color: #ff3d00 !important; z-index: 5 !important; }
-        .dead-line { background-color: #95a5a6 !important; z-index: 1; }
+        /* DANH SÁCH */
+        .device-list { flex: 1; overflow-y: auto; border-top: 1px solid #eee; } 
+        .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } 
+        .device-item:hover { background: #f1f8ff; }
+        .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
 
-        .type-source { border-radius: 50%; border-color: #1565c0; background: #e3f2fd; width: 60px; height: 60px; }
-        .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; box-shadow: 0 0 10px #ff3d00; }
-        .type-fco { border-top: 4px solid #e74c3c; }
-        .type-tr { border: 3px double #333; height: 60px; width: 60px; }
+        /* MAIN EDITOR (TABBED) */
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
+        
+        /* TAB HEADER */
+        .editor-tabs { 
+            display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc;
+        }
+        .tab-btn { 
+            padding: 0 25px; cursor: pointer; border: none; background: none; 
+            font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .tab-btn:hover { background: #b2bec3; }
+        .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
 
-        .wire { position: absolute; height: 3px; transform-origin: 0 0; pointer-events: none; transition: background-color 0.2s; }
+        /* TAB CONTENT */
+        .tab-content { display: none; width: 100%; height: 100%; position: relative; }
+        .tab-content.active { display: block; }
+
+        /* SLD CANVAS */
+        #sld-container { width: 100%; height: 100%; overflow: auto; position: relative; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white;}
+        #sld-canvas { width: 4000px; height: 3000px; position: relative; }
+
+        /* MAP CANVAS */
         #map-canvas { width: 100%; height: 100%; }
-        .col { flex: 1; } .row { display: flex; gap: 10px; }
+
+        /* STREET VIEW BUTTON ON MAP */
+        .street-view-btn {
+            position: absolute; top: 10px; right: 60px; z-index: 1000;
+            background: white; padding: 8px 12px; border: 2px solid #f1c40f;
+            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
+        }
+        .street-view-btn:hover { background: #fef9e7; }
+
+        /* STYLES CHO NODE & WIRE (Giữ nguyên) */
+        .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
+        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
+        
+        .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
+        .wire-solid { border-style: solid; }
+        .wire-dashed { border-style: dashed; }
+        .energized-line { border-color: #ff3d00 !important; z-index: 5 !important; }
+        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+
+        .type-bus { height: 12px !important; width: 250px; background: #2c3e50; border: none; border-radius: 6px; }
+        .type-bus.energized-node { background-color: #ff3d00 !important; }
+        .type-source { border-radius: 50%; width: 60px; height: 60px; }
+        .type-cable { height: 20px !important; width: 100px; transform: skewX(-15deg); border: 1px dashed #555; background: #eee; }
+        .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00 !important; }
     </style>
 </head>
 <body>
@@ -52,38 +100,81 @@
     <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
     <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
 </header>
+
 <div class="container">
     <div class="sidebar">
-        <div class="form-section">
-            <div class="form-header" onclick="toggleForm()"><span><i class="fas fa-edit"></i> Thông tin thiết bị</span><i class="fas fa-chevron-up" id="toggle-icon"></i></div>
-            <div class="form-content" id="form-content">
-                <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" placeholder="VD: CB-01"></div>
-                <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Máy cắt tổng"></div>
-                <div class="row">
-                    <div class="col form-group"><label>Loại</label><select id="inp-type"><option value="cb">CB</option><option value="source">Nguồn</option><option value="bus">Busbar</option><option value="load">Tải</option><option value="ds">Dao CL</option><option value="fco">FCO</option></select></div>
-                    <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
-                </div>
-                
-                <div class="form-group"><label>Kiểu đấu nối</label>
-                    <select id="inp-connection">
-                        <option value="solid">Đường dây nổi</option>
-                        <option value="dashed">Cáp ngầm</option>
+        <div style="padding: 10px; background: #f8f9fa; font-weight: bold; border-bottom: 1px solid #ddd;">
+            <i class="fas fa-edit"></i> THUỘC TÍNH
+        </div>
+        <div class="form-content">
+            <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" placeholder="VD: CB-01"></div>
+            <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Máy cắt tổng"></div>
+            
+            <div class="row">
+                <div class="col form-group"><label>Loại</label>
+                    <select id="inp-type">
+                        <optgroup label="Thiết bị">
+                            <option value="cb">CB (Máy cắt)</option>
+                            <option value="source">Nguồn</option>
+                            <option value="bus">Busbar</option>
+                            <option value="tr">Biến áp</option>
+                            <option value="fco">FCO</option>
+                            <option value="ds">Dao cách ly</option>
+                            <option value="load">Tải</option>
+                        </optgroup>
+                        <optgroup label="Dây dẫn">
+                            <option value="wire">Đường dây</option>
+                            <option value="cable">Cáp ngầm</option>
+                        </optgroup>
                     </select>
                 </div>
+                <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
+            </div>
 
-                <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
-                <button type="button" class="btn-extent" onclick="zoomExtent()">Gom về khung nhìn</button>
-                <div class="row" style="margin-top:5px"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
-                <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
+            <div class="form-group"><label>Kiểu đấu nối</label>
+                <select id="inp-connection">
+                    <option value="solid">Nét liền (Dây nổi)</option>
+                    <option value="dashed">Nét đứt (Cáp ngầm)</option>
+                </select>
+            </div>
+
+            <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
+            <button type="button" class="btn-extent" onclick="zoomExtent()">Gom SLD về giữa</button>
+            
+            <div class="row" style="margin-top:10px;">
+                <div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div>
+                <div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="btn-new" onclick="resetForm()">Mới</button>
+                <button type="button" class="btn-save" onclick="saveDevice()">Lưu</button>
+                <button type="button" class="btn-del" onclick="deleteDevice()">Xóa</button>
             </div>
         </div>
-        <div class="list-header">Danh sách thiết bị</div>
         <div class="device-list" id="device-list-container"></div>
     </div>
+
     <div class="main-editor">
-        <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld')">SLD Editor</button><button class="tab-btn" onclick="switchTab('map')">Map Editor</button></div>
-        <div id="view-sld" class="editor-content active"><div id="sld-canvas"></div></div>
-        <div id="view-map" class="editor-content"><div id="map-canvas"></div></div>
+        <div class="editor-tabs">
+            <button class="tab-btn active" onclick="switchTab('sld', this)">
+                <i class="fas fa-project-diagram"></i> SƠ ĐỒ ĐƠN TUYẾN (SLD)
+            </button>
+            <button class="tab-btn" onclick="switchTab('map', this)">
+                <i class="fas fa-map-marked-alt"></i> BẢN ĐỒ (MAP)
+            </button>
+        </div>
+
+        <div id="tab-sld" class="tab-content active">
+            <div id="sld-container"><div id="sld-canvas"></div></div>
+        </div>
+
+        <div id="tab-map" class="tab-content">
+            <button class="street-view-btn" onclick="openGoogleStreetView()">
+                <i class="fas fa-street-view"></i> Xem Street View
+            </button>
+            <div id="map-canvas"></div>
+        </div>
     </div>
 </div>
 
@@ -98,37 +189,57 @@
 
     let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
     
-    // --- CẤU HÌNH MAP NÂNG CAO (SATELLITE + ZOOM 22) ---
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 22, maxNativeZoom: 19, attribution: '© OpenStreetMap'
-    });
-    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 22, maxNativeZoom: 18, attribution: '© Esri'
-    });
-
+    // --- CẤU HÌNH MAP VỆ TINH ---
+    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
+    
     const map = L.map('map-canvas', {
         center: [10.8231, 106.6297], zoom: 18,
-        layers: [streetLayer] // Mặc định là đường phố
+        layers: [streetLayer] // Mặc định đường phố
     });
+    L.control.layers({"Đường phố": streetLayer, "Vệ tinh (Ảnh thực)": satLayer}).addTo(map);
 
-    // Thêm nút chuyển đổi lớp bản đồ
-    const baseMaps = { "Đường phố": streetLayer, "Vệ tinh (Nhà xưởng)": satLayer };
-    L.control.layers(baseMaps).addTo(map);
+    // --- TAB SWITCHER ---
+    window.switchTab = function(tabName, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById('tab-' + tabName).classList.add('active');
+        
+        if(tabName === 'map') {
+            setTimeout(() => map.invalidateSize(), 200); // Fix lỗi map không full
+        }
+    }
 
-    window.refreshMap = function() { setTimeout(() => { map.invalidateSize(); }, 200); }
+    // --- GOOGLE STREET VIEW FUNCTION ---
+    window.openGoogleStreetView = function() {
+        const lat = document.getElementById('inp-lat').value;
+        const lng = document.getElementById('inp-lng').value;
+        if(lat && lng) {
+            // Mở link Google Maps ở chế độ StreetView tại tọa độ này
+            const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+            window.open(url, '_blank');
+        } else {
+            alert("Vui lòng chọn một thiết bị hoặc click trên bản đồ để lấy tọa độ trước.");
+        }
+    }
 
+    // --- DATA & LOGIC ---
     onValue(ref(db, 'system_nodes'), (snapshot) => {
         const data = snapshot.val();
         allDevices = data ? Object.values(data) : [];
         calculatePower();
+        
         const listContainer = document.getElementById('device-list-container');
         const scrollPos = listContainer.scrollTop; 
         renderTable();
         listContainer.scrollTop = scrollPos;
+        
         updateParentSelect();
         renderSLD();
         renderMap();
-        document.getElementById('status-msg').innerText = `Đã tải ${allDevices.length} thiết bị`;
+        document.getElementById('status-msg').innerText = "Đã đồng bộ";
         document.getElementById('status-msg').style.color = "#2ecc71";
     });
 
@@ -167,6 +278,7 @@
         allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.id} (${d.label})`, d.id)); });
         sel.value = v;
     }
+    
     window.selectDevice = function(d, z) {
         selectedId = d.id;
         document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
@@ -175,26 +287,28 @@
         document.getElementById('inp-connection').value = d.connection || "solid";
         document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
         document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
-        document.getElementById('form-content').classList.remove('hidden');
+        
         renderTable(); renderSLD();
-        if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 20); } // Zoom 20
+        
+        // Highlight trên Map
+        if(mapMarkers[d.id]) { 
+            mapMarkers[d.id].openPopup(); 
+            if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 19); 
+        }
     }
-    window.zoomExtent = function() {
-        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
-        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
-        const sX=50-minX, sY=50-minY, u={};
-        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
-        update(ref(db), u).then(()=>{ if(selectedId){const c=allDevices.find(n=>n.id===selectedId);if(c){document.getElementById('inp-x').value=c.sld.x+sX;document.getElementById('inp-y').value=c.sld.y+sY;}}});
-    }
+
     window.resetForm = function() {
-        selectedId = null; document.getElementById('inp-id').value=""; document.getElementById('inp-id').disabled=false;
-        document.getElementById('inp-label').value=""; document.getElementById('inp-parent').value="";
-        document.getElementById('inp-connection').value="solid";
+        selectedId = null; 
+        document.getElementById('inp-id').value = ""; document.getElementById('inp-id').disabled = false;
+        document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
+        
         const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
-        const container = document.getElementById('view-sld');
+        const container = document.getElementById('sld-container');
         document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
+        
         renderTable(); renderSLD(); document.getElementById('inp-id').focus();
     }
+
     window.saveDevice = function() {
         const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
         const nd = {
@@ -210,6 +324,13 @@
     window.deleteDevice = function() {
         if(selectedId && confirm(`Xóa ${selectedId}?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); }
     }
+    window.zoomExtent = function() {
+        if(allDevices.length===0) return; let minX=Infinity, minY=Infinity;
+        allDevices.forEach(d=>{ if(d.sld.x<minX)minX=d.sld.x; if(d.sld.y<minY)minY=d.sld.y; });
+        const sX=50-minX, sY=50-minY, u={};
+        allDevices.forEach(d=>{ u['system_nodes/'+d.id+'/sld/x']=d.sld.x+sX; u['system_nodes/'+d.id+'/sld/y']=d.sld.y+sY; });
+        update(ref(db), u);
+    }
 
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
@@ -219,7 +340,9 @@
                 const p = allDevices.find(x => x.id == d.parent);
                 if(p) {
                     const isLive = p.isEnergized && isConductive(p);
-                    drawWire(p, d, isLive ? 'energized-line' : 'dead-line', d.connection || 'solid');
+                    const color = isLive ? 'energized-line' : 'dead-line';
+                    const type = 'wire-' + (d.connection || 'solid');
+                    drawWire(p, d, color, type);
                 }
             }
         });
@@ -227,8 +350,11 @@
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
+            
             if(d.type==='bus') el.innerHTML=`<span style="color:white;font-size:9px">${d.id}</span>`;
+            else if(d.type==='cable'||d.type==='wire') el.innerHTML=`<span style="font-size:9px">${d.label}</span>`;
             else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
+
             if(d.isEnergized) el.classList.add('energized-node'); 
 
             el.onmousedown = function(e) {
@@ -248,41 +374,29 @@
         });
     }
 
-    function drawWire(p, c, colorCls, typeCls) {
-        const styleCls = 'wire-' + typeCls;
-        let pW = 80; let pH = 50; let cW = 80; let cH = 50;
-        if(p.type==='bus') { pW=300; pH=14; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; }
-        if(c.type==='bus') { cW=300; cH=14; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; }
+    function drawWire(p, c, color, type) {
+        let pW=80, pH=50, cW=80, cH=50;
+        if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable'].includes(p.type)){ pW=100; pH=20; }
+        if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable'].includes(c.type)){ cW=100; cH=20; }
 
         let x1, y1, x2, y2;
-        if (p.type === 'bus') {
-            let idealX = c.sld.x + cW/2;
-            x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH;
-        } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
-
-        if (c.type === 'bus') {
-            let idealX = x1;
-            x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y;
-        } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+        if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
+        else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
+        if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
+        else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
 
         const midY = y1 + (y2 - y1) / 2;
-        createWireSegment(x1, y1, x1, midY, colorCls, styleCls, 'v'); 
-        createWireSegment(x1, midY, x2, midY, colorCls, styleCls, 'h'); 
-        createWireSegment(x2, midY, x2, y2, colorCls, styleCls, 'v');
+        createWire(x1, y1, x1, midY, color, type, 'v'); 
+        createWire(x1, midY, x2, midY, color, type, 'h'); 
+        createWire(x2, midY, x2, y2, color, type, 'v');
     }
     
-    function createWireSegment(x1, y1, x2, y2, colorCls, styleCls, dir) {
+    function createWire(x1, y1, x2, y2, color, type, dir) {
         if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-        const d = document.createElement('div'); d.className = `wire ${colorCls} ${styleCls}`;
+        const d = document.createElement('div'); d.className = `wire ${color} ${type}`;
         d.style.left=Math.min(x1,x2)+'px'; d.style.top=Math.min(y1,y2)+'px';
-        
-        if (dir === 'h') {
-            d.style.width = Math.abs(x2 - x1) + 'px'; d.style.height = '0px';
-            d.style.borderTopWidth = "2px"; d.style.borderLeftWidth = "0px";
-        } else {
-            d.style.width = '0px'; d.style.height = Math.abs(y2 - y1) + 'px';
-            d.style.borderLeftWidth = "2px"; d.style.borderTopWidth = "0px";
-        }
+        if(dir==='h') { d.style.width=Math.abs(x2-x1)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; }
+        else { d.style.width='0'; d.style.height=Math.abs(y2-y1)+'px'; d.style.borderLeftWidth='2px'; }
         sldCanvas.appendChild(d);
     }
 
@@ -319,13 +433,6 @@
             });
             mapMarkers[d.id] = m;
         });
-    }
-
-    window.switchTab = function(t){
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-        document.querySelectorAll('.editor-content').forEach(c=>c.classList.remove('active'));
-        if(t==='sld'){document.querySelector('button[onclick="switchTab(\'sld\')"]').classList.add('active');document.getElementById('view-sld').classList.add('active');}
-        else{document.querySelector('button[onclick="switchTab(\'map\')"]').classList.add('active');document.getElementById('view-map').classList.add('active');window.refreshMap();}
     }
 </script>
 </body>
