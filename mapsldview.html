@@ -4,114 +4,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM - LOTO System</title>
+    <title>TAVIETNAM Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* CSS CƠ BẢN */
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
-        #sld-panel { width: 50%; height: 100%; background: #ffffff; border-right: 1px solid #ccc; position: relative; overflow: auto; }
-        #map-panel { width: 50%; height: 100%; position: relative; }
+        /* --- 1. RESET & CORE CSS --- */
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
-        /* Mobile Config */
-        @media (max-width: 1024px) {
-            body { flex-direction: column; }
-            #sld-panel, #map-panel { width: 100%; height: calc(100% - 60px); display: none; border: none; position: absolute; top: 0; left: 0; }
-            .active-panel { display: block !important; z-index: 10; }
-            .mobile-nav { display: flex !important; }
+        /* --- 2. HEADER --- */
+        .app-header {
+            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
         }
-        .mobile-nav { display: none; position: absolute; bottom: 0; width: 100%; height: 60px; background: white; border-top: 1px solid #ddd; z-index: 9999; justify-content: space-around; align-items: center; }
-        .nav-btn { flex: 1; text-align: center; color: #7f8c8d; font-size: 11px; cursor: pointer; padding: 8px 0; }
-        .nav-btn.active { color: #007bff; font-weight: bold; background: #f8f9fa; }
-        .nav-btn i { font-size: 20px; display: block; margin-bottom: 4px; }
-
-        /* OVERLAY */
-        .panel-overlay { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; pointer-events: none; }
-        .legend-item { display: flex; align-items: center; margin-top: 5px; font-size: 12px; font-weight: 500; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
-
-        /* NODE STYLES */
-        .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .menu-toggle { font-size: 20px; cursor: pointer; display: none; }
+        .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .logo i { color: #f1c40f; }
+        .user-profile { font-size: 14px; display: flex; align-items: center; gap: 8px; }
         
-        /* Trạng thái */
+        /* --- 3. LAYOUT --- */
+        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        /* SIDEBAR MENU */
+        .app-sidebar {
+            width: 240px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
+            transition: transform 0.3s ease; z-index: 1500;
+        }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 20px; flex: 1;}
+        .menu-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .menu-item:hover { background-color: #34495e; }
+        .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
+        
+        /* FOOTER VERSION */
+        .menu-footer { 
+            padding: 20px; font-size: 11px; color: #95a5a6; 
+            text-align: center; border-top: 1px solid #34495e; 
+            background: #233242;
+        }
+
+        .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
+        
+        /* PANEL */
+        #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
+        #sld-panel.active-view, #map-panel.active-view { display: block; }
+        
+        #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
+
+        /* MOBILE RESPONSIVE */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; }
+        
+        @media (max-width: 1024px) {
+            .menu-toggle { display: block; }
+            .app-sidebar { position: absolute; height: 100%; left: -240px; } 
+            .app-sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
+            .overlay.show { display: block; }
+        }
+
+        /* --- 4. ELEMENT STYLES --- */
+        .panel-info { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
+        .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+
+        .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
+        .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        
         .closed { border-color: #d32f2f !important; color: #d32f2f; }
         .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
-        
-        /* LOTO: Màu Vàng cảnh báo */
-        .locked { border-color: #f39c12 !important; color: #f39c12; background-color: #fcf3cf !important; border-style: solid !important; border-width: 3px !important; }
-        
-        /* MÀU SẮC ĐIỆN & AN TOÀN */
-        .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 8px rgba(255, 61, 0, 0.4); }
-        .safe-node { background-color: #d5f5e3 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.4); border-color: #27ae60 !important; }
+        .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
 
-        /* DÂY DẪN */
+        /* COLOR & WIRE */
+        .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
+        .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
+
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
+        .energized-line { border-color: #ff3d00 !important; z-index: 6; }
+        .safe-line { border-color: #2ecc71 !important; z-index: 5; }
+        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
-        
-        /* Màu Dây */
-        .energized-line { border-color: #ff3d00 !important; z-index: 6; }
-        .safe-line { border-color: #2ecc71 !important; z-index: 5; } /* Xanh an toàn */
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
 
-        /* Loại thiết bị */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
-        .type-bus span { display: none; } 
-        .type-bus.energized-node { background-color: #ff3d00 !important; }
-        .type-bus.safe-node { background-color: #2ecc71 !important; } /* Busbar an toàn */
-        
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
+        .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
-        .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; font-size: 9px; transform: skewX(-10deg); }
+        .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
 
-        /* MODAL LOTO */
-        .loto-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 99999; justify-content: center; align-items: center;
-        }
-        .loto-box {
-            background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out;
-        }
+        /* Modal LOTO */
+        .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
+        .loto-box { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-        .loto-title { font-weight: bold; font-size: 18px; margin-bottom: 15px; color: #2c3e50; }
-        .loto-actions { display: flex; flex-direction: column; gap: 10px; }
-        .btn-action { padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-close-pow { background: #e74c3c; } /* Đóng điện */
-        .btn-lock { background: #f39c12; } /* Khóa LOTO */
-        .btn-cancel { background: #95a5a6; }
-        .btn-unlock { background: #27ae60; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
     </style>
 </head>
 <body>
 
+    <header class="app-header">
+        <div class="header-left">
+            <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
+            <div class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</div>
+        </div>
+        <div class="user-profile">
+            <i class="fas fa-user-circle"></i> Vận hành
+        </div>
+    </header>
+
+    <div class="app-body">
+        <nav class="app-sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="menu-item active" onclick="switchView('sld', this)">
+                    <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
+                </li>
+                <li class="menu-item" onclick="switchView('map', this)">
+                    <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+                </li>
+            </ul>
+            <div class="menu-footer">
+                &copy; 2025 TaVietnam Tech<br>
+                <span id="app-version" style="color: #f1c40f; font-weight: bold;">Loading...</span>
+            </div>
+        </nav>
+        <div class="overlay" onclick="toggleSidebar()"></div>
+
+        <main class="app-content">
+            <div id="sld-panel" class="active-view">
+                <div class="panel-info">
+                    <strong>CHÚ THÍCH</strong>
+                    <div class="legend-row"><div class="dot" style="background:#ff3d00"></div>Có điện (Live)</div>
+                    <div class="legend-row"><div class="dot" style="background:#2ecc71"></div>An toàn (Safe)</div>
+                    <div class="legend-row"><div class="dot" style="background:#95a5a6"></div>Mất điện (Dead)</div>
+                </div>
+                <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
+            </div>
+
+            <div id="map-panel">
+                <div id="map" style="width:100%; height:100%"></div>
+            </div>
+        </main>
+    </div>
+
     <div id="lotoModal" class="loto-modal">
         <div class="loto-box">
-            <div id="lotoTitle" class="loto-title">Thao tác thiết bị</div>
-            <div id="lotoActions" class="loto-actions">
-                </div>
+            <h3 id="lotoTitle" style="margin-top:0; color:#2c3e50">Thao tác</h3>
+            <div id="lotoActions"></div>
         </div>
-    </div>
-
-    <div id="sld-panel" class="active-panel">
-        <div class="panel-overlay">
-            <strong style="color:#2c3e50">SƠ ĐỒ NGUYÊN LÝ</strong>
-            <div class="legend-item"><span class="dot" style="background:#ff3d00"></span>Có điện (Live)</div>
-            <div class="legend-item"><span class="dot" style="background:#2ecc71"></span>An toàn (LOTO)</div>
-            <div class="legend-item"><span class="dot" style="background:#95a5a6"></span>Mất điện (Dead)</div>
-        </div>
-        <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
-    </div>
-
-    <div id="map-panel">
-        <div class="panel-overlay" style="right: 15px; left: auto; top: 15px;"><strong>BẢN ĐỒ GIS</strong></div>
-        <div id="map" style="width:100%; height:100%"></div>
-    </div>
-
-    <div class="mobile-nav">
-        <div class="nav-btn active" onclick="switchView('sld', this)"><i class="fas fa-project-diagram"></i> SLD</div>
-        <div class="nav-btn" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> MAP</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -119,58 +158,67 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // --- CẬP NHẬT PHIÊN BẢN Ở ĐÂY ---
+        const APP_VERSION = "v3.0.1 (Update 19/12)";
+        document.getElementById('app-version').innerText = APP_VERSION;
+
         const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
         let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
         
-        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 22, maxNativeZoom: 19 });
-        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 22, maxNativeZoom: 18 });
-        const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [streetLayer] });
-        L.control.layers({ "Đường phố": streetLayer, "Vệ tinh": satLayer }).addTo(map);
+        const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
+        const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
+        L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
+        let mapMarkers = {}, mapLines = {}, currentTargetId = null;
 
-        let mapMarkers = {}; let mapLines = {};
-        let currentTargetId = null;
+        // UI Logic
+        window.toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('show');
+            document.querySelector('.overlay').classList.toggle('show');
+        }
 
-        // --- 1. LOGIC TRẠNG THÁI ---
+        window.switchView = (mode, btn) => {
+            document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if(window.innerWidth <= 1024) window.toggleSidebar();
+
+            if(mode === 'sld') {
+                document.getElementById('sld-panel').classList.add('active-view');
+                document.getElementById('map-panel').classList.remove('active-view');
+            } else {
+                document.getElementById('sld-panel').classList.remove('active-view');
+                document.getElementById('map-panel').classList.add('active-view');
+                setTimeout(() => map.invalidateSize(), 300);
+            }
+        }
+
         function isConductive(node) {
             if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
-            // CB/DS/FCO chỉ dẫn điện khi Closed (và dĩ nhiên không bị khóa)
             if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
             return false;
         }
 
-        // --- 2. TÍNH TOÁN ĐIỆN & AN TOÀN (2 LỚP MÀU) ---
         function calculateSystemState() {
-            // Bước 1: Reset
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
-
-            // Bước 2: Lan truyền ĐIỆN (Red) từ Nguồn
             const pQueue = localNodes.filter(n => n.type === 'source');
             pQueue.forEach(n => n.isEnergized = true);
-            while (pQueue.length > 0) {
+            while(pQueue.length > 0) {
                 const curr = pQueue.shift();
-                if (isConductive(curr)) {
-                    const kids = localNodes.filter(n => n.parent === curr.id);
-                    kids.forEach(k => { if(!k.isEnergized) { k.isEnergized = true; pQueue.push(k); } });
+                if(isConductive(curr)) {
+                    localNodes.filter(n => n.parent === curr.id).forEach(k => {
+                        if(!k.isEnergized) { k.isEnergized = true; pQueue.push(k); }
+                    });
                 }
             }
-
-            // Bước 3: Lan truyền AN TOÀN (Green) từ điểm Khóa LOTO
-            // Logic: Bắt đầu từ thiết bị bị KHÓA -> truyền xuống dưới nếu chưa có điện
             const sQueue = localNodes.filter(n => n.state === 'locked');
-            sQueue.forEach(n => n.isSafe = true); // Bản thân thiết bị khóa là safe (đã cô lập)
-            
-            while (sQueue.length > 0) {
+            sQueue.forEach(n => n.isSafe = true);
+            while(sQueue.length > 0) {
                 const curr = sQueue.shift();
-                const kids = localNodes.filter(n => n.parent === curr.id);
-                kids.forEach(k => {
-                    // Chỉ lan truyền màu Xanh nếu thiết bị đó KHÔNG CÓ ĐIỆN (Ưu tiên màu đỏ)
-                    if (!k.isEnergized && !k.isSafe) {
-                        k.isSafe = true;
-                        sQueue.push(k);
-                    }
+                localNodes.filter(n => n.parent === curr.id).forEach(k => {
+                    if(!k.isEnergized && !k.isSafe) { k.isSafe = true; sQueue.push(k); }
                 });
             }
         }
@@ -181,53 +229,35 @@
                 localNodes = Object.values(data);
                 calculateSystemState();
                 renderSLD(); renderMap();
-            } else { sldCanvas.innerHTML = '<div style="padding:50px; color:#999">Chưa có dữ liệu.</div>'; }
+            }
         });
 
-        // --- 3. XỬ LÝ LOTO MODAL ---
         window.handleDeviceClick = function(id) {
             const node = localNodes.find(n => n.id === id);
-            if (!['cb', 'ds', 'fco'].includes(node.type)) return; // Chỉ đóng cắt Switch
+            if (!['cb', 'ds', 'fco'].includes(node.type)) return;
 
             currentTargetId = id;
-            const modal = document.getElementById('lotoModal');
-            const title = document.getElementById('lotoTitle');
             const actions = document.getElementById('lotoActions');
-            
-            title.innerText = `${node.type.toUpperCase()}: ${node.label}`;
+            document.getElementById('lotoTitle').innerText = `${node.label} (${node.id})`;
             actions.innerHTML = '';
 
             if (node.state === 'closed') {
-                // Đang đóng -> Chỉ được cắt
-                actions.innerHTML += `<button class="btn-action btn-close-pow" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
+                actions.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
             } else if (node.state === 'open') {
-                // Đang cắt -> Được Đóng hoặc Khóa LOTO
-                actions.innerHTML += `<button class="btn-action btn-close-pow" style="background:#27ae60" onclick="updateState('closed')"><i class="fas fa-bolt"></i> ĐÓNG ĐIỆN (CLOSE)</button>`;
-                actions.innerHTML += `<button class="btn-action btn-lock" onclick="updateState('locked')"><i class="fas fa-lock"></i> KHÓA & TREO THẺ (LOTO)</button>`;
+                actions.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="updateState('closed')"><i class="fas fa-bolt"></i> ĐÓNG ĐIỆN (CLOSE)</button>`;
+                actions.innerHTML += `<button class="btn-action" style="background:#f39c12" onclick="updateState('locked')"><i class="fas fa-lock"></i> KHÓA LOTO</button>`;
             } else if (node.state === 'locked') {
-                // Đang khóa -> Chỉ được Mở khóa (về trạng thái Open)
-                actions.innerHTML += `<button class="btn-action btn-unlock" onclick="updateState('open')"><i class="fas fa-unlock"></i> MỞ KHÓA (UNLOCK)</button>`;
+                actions.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="updateState('open')"><i class="fas fa-unlock"></i> MỞ KHÓA (UNLOCK)</button>`;
             }
-            
-            actions.innerHTML += `<button class="btn-action btn-cancel" onclick="closeModal()">Hủy bỏ</button>`;
-            modal.style.display = 'flex';
-        };
-
-        window.updateState = function(newState) {
-            if (currentTargetId) {
-                update(ref(db, 'system_nodes/' + currentTargetId), { state: newState });
-                closeModal();
-            }
-        };
-        window.closeModal = function() { document.getElementById('lotoModal').style.display = 'none'; };
-
-        window.switchView = function(mode, btn) {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
-            if(mode==='sld') { document.getElementById('sld-panel').classList.add('active-panel'); document.getElementById('map-panel').classList.remove('active-panel'); }
-            else { document.getElementById('sld-panel').classList.remove('active-panel'); document.getElementById('map-panel').classList.add('active-panel'); setTimeout(()=>map.invalidateSize(), 200); }
+            actions.innerHTML += `<button class="btn-action" style="background:#95a5a6" onclick="document.getElementById('lotoModal').style.display='none'">Hủy</button>`;
+            document.getElementById('lotoModal').style.display = 'flex';
         }
 
-        // --- RENDER ---
+        window.updateState = (s) => {
+            update(ref(db, 'system_nodes/' + currentTargetId), { state: s });
+            document.getElementById('lotoModal').style.display = 'none';
+        }
+
         function renderSLD() {
             sldCanvas.innerHTML = '';
             localNodes.forEach(node => {
@@ -240,25 +270,17 @@
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
-                
-                // Class trạng thái
-                if (['cb', 'ds', 'fco'].includes(node.type)) el.classList.add(node.state); // open/closed/locked
-                
-                // Class màu sắc (Ưu tiên: Energized > Safe)
-                if (node.isEnergized) el.classList.add('energized-node');
-                else if (node.isSafe) el.classList.add('safe-node');
+                if(['cb','ds','fco'].includes(node.type)) el.classList.add(node.state);
+                if(node.isEnergized) el.classList.add('energized-node');
+                else if(node.isSafe) el.classList.add('safe-node');
 
                 let content = `<span>${node.label}</span>`;
-                if (['cb', 'ds', 'fco'].includes(node.type)) {
-                    let stText = node.state.toUpperCase();
-                    if(node.state === 'closed') stText = 'ON';
-                    if(node.state === 'open') stText = 'OFF';
-                    content += `<br><span style="font-size:9px">${stText}</span>`;
-                    // Icon khóa
-                    if(node.state === 'locked') content += ` <i class="fas fa-lock" style="font-size:10px"></i>`;
+                if(['cb','ds','fco'].includes(node.type)) {
+                    let st = node.state === 'closed' ? 'ON' : (node.state==='locked'?'LOTO':'OFF');
+                    content += `<br><span style="font-size:9px">${st}</span>`;
+                    if(node.state==='locked') content += ` <i class="fas fa-lock"></i>`;
                 }
-                if (['bus','wire','cable','underground'].includes(node.type)) content = ''; 
-
+                if(['bus','wire','cable','underground'].includes(node.type)) content = '';
                 el.innerHTML = content;
                 el.onclick = () => window.handleDeviceClick(node.id);
                 sldCanvas.appendChild(el);
@@ -266,82 +288,70 @@
         }
 
         function drawWire(p, c) {
-            // Logic màu dây
             let colorCls = 'dead-line';
-            // 1. Dây có điện nếu Cha có điện và Cha dẫn điện
-            if (p.isEnergized && isConductive(p)) colorCls = 'energized-line';
-            // 2. Nếu không có điện, kiểm tra an toàn: Cha an toàn hoặc Cha đang khóa
-            else if (p.isSafe || p.state === 'locked') colorCls = 'safe-line';
-
+            if(p.isEnergized && isConductive(p)) colorCls = 'energized-line';
+            else if(p.isSafe || p.state === 'locked') colorCls = 'safe-line';
             const typeCls = 'wire-' + (c.connection || 'solid');
             
-            // Tính toán tọa độ (Copy logic cũ)
-            let pW = 80; let pH = 50; 
-            if(p.type==='bus') { pW=300; pH=12; } else if(['source','tr'].includes(p.type)) { pW=60; pH=60; } 
-            else if(['wire','underground','cable'].includes(p.type)) { pW=100; pH=20; }
-            let cW = 80; let cH = 50; 
-            if(c.type==='bus') { cW=300; cH=12; } else if(['source','tr'].includes(c.type)) { cW=60; cH=60; } 
-            else if(['wire','underground','cable'].includes(c.type)) { cW=100; cH=20; }
+            let pW=80, pH=50, cW=80, cH=50;
+            if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable','underground'].includes(p.type)){ pW=100; pH=20; }
+            if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable','underground'].includes(c.type)){ cW=100; cH=20; }
 
             let x1, y1, x2, y2;
             if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
             else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
             if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
             else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
-            const midY = y1 + (y2 - y1) / 2;
 
-            createWireSegment(x1, y1, x1, midY, colorCls, typeCls, 'v'); 
-            createWireSegment(x1, midY, x2, midY, colorCls, typeCls, 'h'); 
-            createWireSegment(x2, midY, x2, y2, colorCls, typeCls, 'v');
+            const midY = y1 + (y2 - y1) / 2;
+            createWire(x1, y1, x1, midY, colorCls, typeCls, 'v');
+            createWire(x1, midY, x2, midY, colorCls, typeCls, 'h');
+            createWire(x2, midY, x2, y2, colorCls, typeCls, 'v');
         }
-        
-        function createWireSegment(x1, y1, x2, y2, colorCls, typeCls, dir) {
+
+        function createWire(x1, y1, x2, y2, color, type, dir) {
             if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
             const d = document.createElement('div');
-            d.className = `wire ${colorCls} ${typeCls}`;
+            d.className = `wire ${color} ${type}`;
             d.style.left = Math.min(x1, x2) + 'px'; d.style.top = Math.min(y1, y2) + 'px';
-            if (dir === 'h') { d.style.width = Math.abs(x2 - x1) + 'px'; d.style.height = '0px'; d.style.borderTopWidth = "2px"; d.style.borderLeftWidth = "0px"; } 
-            else { d.style.width = '0px'; d.style.height = Math.abs(y2 - y1) + 'px'; d.style.borderLeftWidth = "2px"; d.style.borderTopWidth = "0px"; }
+            if(dir==='h') { d.style.width=Math.abs(x2-x1)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; d.style.borderLeftWidth='0'; }
+            else { d.style.width='0'; d.style.height=Math.abs(y2-y1)+'px'; d.style.borderLeftWidth='2px'; d.style.borderTopWidth='0'; }
             sldCanvas.appendChild(d);
         }
 
         function renderMap() {
-            for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); for(let id in mapLines) map.removeLayer(mapLines[id]);
-            mapMarkers = {}; mapLines = {};
-            localNodes.forEach(node => {
-                if (node.parent && node.geo) {
-                    const p = localNodes.find(n => n.id === node.parent);
-                    if (p && p.geo) {
-                        // Logic màu Map tương tự SLD
-                        let color = '#95a5a6'; // Dead
-                        if (p.isEnergized && isConductive(p)) color = '#ff3d00'; // Live
-                        else if (p.isSafe || p.state === 'locked') color = '#2ecc71'; // Safe
+            for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
+            for(let k in mapLines) map.removeLayer(mapLines[k]); mapLines={};
 
+            localNodes.forEach(node => {
+                if(node.parent && node.geo) {
+                    const p = localNodes.find(n => n.id === node.parent);
+                    if(p && p.geo) {
+                        let color = '#95a5a6';
+                        if(p.isEnergized && isConductive(p)) color = '#ff3d00';
+                        else if(p.isSafe || p.state === 'locked') color = '#2ecc71';
                         const dash = (node.connection === 'dashed') ? '5, 10' : null;
-                        mapLines[node.id] = L.polyline([[p.geo.lat, p.geo.lng], [node.geo.lat, node.geo.lng]], 
-                            { color: color, weight: 4, dashArray: dash }).addTo(map);
+                        mapLines[node.id] = L.polyline([[p.geo.lat,p.geo.lng], [node.geo.lat,node.geo.lng]], {color:color, weight:3, dashArray:dash}).addTo(map);
                     }
                 }
             });
+
             localNodes.forEach(node => {
                 if(!node.geo) return;
-                let borderColor = '#666';
-                if (node.isEnergized) {
-                    if (node.state === 'closed') borderColor = '#d32f2f'; else if (node.type === 'source') borderColor = '#1565c0'; else borderColor = '#27ae60';
-                } else if (node.isSafe || node.state === 'locked') {
-                    borderColor = '#27ae60'; // Viền xanh an toàn
-                }
+                let color = '#666';
+                if(node.isEnergized) {
+                    if(node.state==='closed') color='#d32f2f'; else if(node.type==='source') color='#1565c0'; else color='#27ae60';
+                } else if(node.isSafe) color='#27ae60';
+                if(node.state==='locked') color='#f39c12';
 
-                let bg = '#f0f0f0';
-                if(node.isEnergized) bg = '#fff';
-                else if(node.isSafe) bg = '#e8f8f5'; // Nền xanh nhạt
-                if(node.state === 'locked') bg = '#fcf3cf'; // Nền vàng nếu đang khóa
+                let bg = node.isEnergized ? '#fff' : (node.isSafe ? '#d5f5e3' : '#f0f0f0');
+                if(node.state==='locked') bg='#fcf3cf';
 
-                const html = `<div style="background:${bg}; border:2px solid ${borderColor}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px; min-width:40px;">${node.label}</div>`;
-                const icon = L.divIcon({ className: '', html: html, iconSize: [60, 20], iconAnchor: [30, 10] });
-                const marker = L.marker([node.geo.lat, node.geo.lng], { icon: icon }).addTo(map);
-                marker.on('click', () => window.handleDeviceClick(node.id));
-                mapMarkers[node.id] = marker;
+                const html = `<div style="background:${bg}; border:2px solid ${color}; border-radius:4px; padding:2px; text-align:center; font-weight:bold; font-size:10px; min-width:40px;">${node.label}</div>`;
+                const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
+                const m = L.marker([node.geo.lat, node.geo.lng], {icon:icon}).addTo(map);
+                m.on('click', () => window.handleDeviceClick(node.id));
+                mapMarkers[node.id] = m;
             });
         }
     </script>
