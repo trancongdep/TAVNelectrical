@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v4.2</title>
+    <title>Admin Panel - TAVIETNAM v4.9</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,10 +12,9 @@
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         
-        /* Grid Selector */
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector label { font-size: 12px; margin-right: 5px; color: #bdc3c7; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; }
+        .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
         .grid-btn:hover { opacity: 0.9; }
         .btn-rename { background: #f39c12; }
@@ -53,7 +53,7 @@
         #sld-container { width: 100%; height: 100%; overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
 
-        /* MAP & SPLIT VIEW */
+        /* MAP */
         #map-wrapper { position: relative; width: 100%; height: 100%; }
         #map-canvas { width: 100%; height: 100%; }
 
@@ -128,7 +128,8 @@
                     <select id="inp-type">
                         <optgroup label="Nguồn điện">
                             <option value="source">Lưới QG (Source)</option>
-                            <option value="gen">Máy phát (Generator)</option> </optgroup>
+                            <option value="gen">Máy phát (Generator)</option>
+                        </optgroup>
                         <optgroup label="Cấu trúc">
                             <option value="pole">Cột điện</option>
                             <option value="bus">Thanh cái</option>
@@ -137,7 +138,7 @@
                             <option value="cb">CB (Máy cắt)</option>
                             <option value="tr">Biến áp</option>
                             <option value="fco">FCO</option>
-                            <option value="ds">Dao cách ly</option>
+                            <option value="ds">Dao CL</option>
                             <option value="load">Tải</option>
                         </optgroup>
                         <optgroup label="Dây dẫn">
@@ -229,9 +230,15 @@
             const data = snapshot.val();
             const select = document.getElementById('grid-select');
             select.innerHTML = '';
-            if (!data) { select.appendChild(new Option("Lưới mặc định", 'default_grid')); } 
-            else { for (let id in data) select.appendChild(new Option(data[id].name, id)); }
+            if (!data) {
+                select.appendChild(new Option("Lưới mặc định", 'default_grid'));
+                currentGridId = 'default_grid';
+            } else {
+                for (let id in data) select.appendChild(new Option(data[id].name, id));
+                if (!data[currentGridId]) currentGridId = Object.keys(data)[0];
+            }
             select.value = currentGridId;
+            localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
         });
     }
@@ -264,7 +271,7 @@
         });
     }
 
-    // --- IMPORT LOGIC ---
+    // --- IMPORT LOGIC (FIXED) ---
     window.openImportModal = () => document.getElementById('importModal').style.display = 'flex';
     window.closeImportModal = () => document.getElementById('importModal').style.display = 'none';
 
@@ -290,16 +297,24 @@
             data.forEach((item, index) => {
                 if (!item.id || !item.type) return;
                 const col = index % 5; const row = Math.floor(index / 5);
+                
+                // FIX: Ưu tiên lấy tọa độ có trong JSON
+                const sldX = (item.sld && item.sld.x) ? item.sld.x : (startX + col * 150);
+                const sldY = (item.sld && item.sld.y) ? item.sld.y : (startY + row * 100);
+                const geoLat = (item.geo && item.geo.lat) ? item.geo.lat : mapCenter.lat;
+                const geoLng = (item.geo && item.geo.lng) ? item.geo.lng : mapCenter.lng;
+
                 updates[`grids/${currentGridId}/nodes/${item.id}`] = {
                     id: item.id,
                     label: item.label || item.id,
                     type: item.type.toLowerCase(),
                     parent: item.parent || null,
-                    capacity: item.capacity || "", // Import công suất
+                    capacity: item.capacity || "",
                     connection: 'solid', state: 'closed',
-                    showOnSLD: true, isGrounded: false,
-                    sld: { x: startX + col * 150, y: startY + row * 100 },
-                    geo: { lat: mapCenter.lat, lng: mapCenter.lng }
+                    showOnSLD: (item.showOnSLD !== false), 
+                    isGrounded: (item.isGrounded === true),
+                    sld: { x: sldX, y: sldY },
+                    geo: { lat: geoLat, lng: geoLng }
                 };
             });
 
@@ -317,7 +332,7 @@
         const lat = document.getElementById('inp-lat').value || map.getCenter().lat;
         const lng = document.getElementById('inp-lng').value || map.getCenter().lng;
         const url = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lng}`;
-        
+
         if (mapWindow && !mapWindow.closed) {
             mapWindow.location.href = url; mapWindow.focus();
         } else {
@@ -330,7 +345,7 @@
     // --- CORE LOGIC ---
     function calculatePower() {
         allDevices.forEach(n => n.isEnergized = false);
-        const sources = allDevices.filter(n => n.type === 'source' || n.type === 'gen'); // Cả Gen cũng là nguồn
+        const sources = allDevices.filter(n => n.type === 'source' || n.type === 'gen');
         sources.forEach(src => { src.isEnergized = true; propagate(src); });
     }
     function isConductive(node) {
