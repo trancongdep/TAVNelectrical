@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.7</title>
+    <title>TAVIETNAM Monitor v4.8</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -24,14 +24,12 @@
         .logo i { color: #f1c40f; }
         
         /* Header Right (Grid Selector) */
-        .header-right { display: flex; align-items: center; gap: 15px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
         .grid-selector select { 
             background: #34495e; color: white; border: 1px solid #7f8c8d; 
             padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; 
-            outline: none; cursor: pointer; min-width: 150px;
+            outline: none; cursor: pointer; max-width: 150px;
         }
-        .grid-selector select:hover { background: #2c3e50; border-color: #f1c40f; }
-
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
         /* LAYOUT */
@@ -68,8 +66,7 @@
             .app-sidebar { position: absolute; height: 100%; top: 0; left: -260px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .app-sidebar.show { left: 0; }
             .overlay.show { display: block; }
-            .user-profile { display: none; } /* Ẩn user trên mobile */
-            .header-right { gap: 5px; } /* Thu gọn khoảng cách */
+            .user-profile { display: none; } 
         }
 
         /* --- ELEMENT STYLES --- */
@@ -87,7 +84,6 @@
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
-        /* WIRE */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
@@ -95,12 +91,10 @@
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
 
-        /* TYPES */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
         
-        /* GENERATOR */
         .type-gen { 
             border-radius: 50% !important; width: 60px !important; height: 60px !important; 
             border: 3px solid #e67e22; background: #fdf2e9; 
@@ -110,21 +104,16 @@
         .type-gen.energized-node { background: #ffccbc !important; border-color: #d35400 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 61, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0); } }
 
-        /* CABLE */
         .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
-        
-        /* POLE */
         .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .type-pole span { display: none; }
         .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
 
-        /* MAP BTNS & LABELS */
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
         .map-label { border: 2px solid #666; border-radius: 4px; padding: 4px; text-align: center; font-weight: bold; font-size: 11px; white-space: nowrap; min-width: 50px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
         
-        /* LOTO MODAL */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
@@ -157,9 +146,13 @@
                 <li class="menu-item" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> Bản đồ GIS</li>
                 <li class="menu-item" onclick="alert('Tính năng đang phát triển')"><i class="fas fa-file-alt"></i> Lịch sử LOTO</li>
             </ul>
+            
             <div class="sidebar-list-title">DANH SÁCH THIẾT BỊ</div>
             <div class="sidebar-device-list" id="sidebarList"></div>
-            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.7 (Grid Selector Fix)</div>
+
+            <div class="menu-footer">
+                © 2025 TaVietnam<br>Version 4.8 (Stable Grid Sync)
+            </div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
 
@@ -175,6 +168,7 @@
                 </div>
                 <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
             </div>
+
             <div id="map-panel">
                 <button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Street View</button>
                 <div id="map" style="width:100%; height:100%"></div>
@@ -211,20 +205,29 @@
         const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
         L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
 
-        // --- GRID LOGIC ---
+        // --- GRID LOGIC (FIX LIST TRỐNG & SYNC) ---
         function loadGrids() {
             onValue(ref(db, 'grids_meta'), (snapshot) => {
                 const data = snapshot.val();
                 const select = document.getElementById('grid-select');
                 select.innerHTML = '';
-                if (!data) { select.appendChild(new Option("Lưới mặc định", 'default_grid')); } 
-                else { for (let id in data) select.appendChild(new Option(data[id].name, id)); }
+                
+                if (!data) {
+                    select.appendChild(new Option("Lưới mặc định", 'default_grid'));
+                    currentGridId = 'default_grid';
+                } else {
+                    for (let id in data) select.appendChild(new Option(data[id].name, id));
+                    // Kiểm tra grid hiện tại có hợp lệ không
+                    if (!data[currentGridId]) {
+                        currentGridId = Object.keys(data)[0]; 
+                        localStorage.setItem('currentGridId', currentGridId);
+                    }
+                }
                 select.value = currentGridId;
-                loadDevices(); // Load devices sau khi grid được load
+                loadDevices(); // Load thiết bị tương ứng
             });
         }
-        
-        // Gắn vào window để HTML gọi được
+
         window.changeGrid = function() {
             currentGridId = document.getElementById('grid-select').value;
             localStorage.setItem('currentGridId', currentGridId);
@@ -238,6 +241,11 @@
                 calculateSystemState();
                 renderSidebarList();
                 renderSLD(); renderMap();
+                
+                // Auto Zoom khi đổi lưới
+                if(localNodes.length > 0 && localNodes[0].geo) {
+                    map.setView([localNodes[0].geo.lat, localNodes[0].geo.lng], 13);
+                }
             });
         }
 
@@ -283,14 +291,8 @@
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
             if(window.innerWidth <= 1024) window.toggleSidebar();
-            if(mode === 'sld') { 
-                document.getElementById('sld-panel').classList.add('active-view'); 
-                document.getElementById('map-panel').classList.remove('active-view'); 
-            } else { 
-                document.getElementById('sld-panel').classList.remove('active-view'); 
-                document.getElementById('map-panel').classList.add('active-view'); 
-                setTimeout(() => map.invalidateSize(), 300);
-            }
+            if(mode === 'sld') { document.getElementById('sld-panel').classList.add('active-view'); document.getElementById('map-panel').classList.remove('active-view'); } 
+            else { document.getElementById('sld-panel').classList.remove('active-view'); document.getElementById('map-panel').classList.add('active-panel'); setTimeout(() => map.invalidateSize(), 300); }
         }
         window.openSmartWindow = function() {
             const center = map.getCenter();
@@ -299,7 +301,7 @@
             else { const w = Math.floor(window.screen.availWidth / 3); mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`); }
         }
 
-        // --- CORE POWER LOGIC ---
+        // --- POWER LOGIC ---
         function isConductive(node) {
             if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole', 'underground'].includes(node.type)) return true;
             if (node.type === 'gen') return node.state === 'on';
@@ -369,7 +371,6 @@
             const div = document.getElementById('lotoContent');
             div.innerHTML = '';
 
-            // GEN
             if (node.type === 'gen') {
                 if (node.state === 'on') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('off')"><i class="fas fa-stop-circle"></i> DỪNG MÁY (STOP)</button>`;
@@ -379,9 +380,7 @@
                 } else if (node.state === 'locked') {
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA LOTO</button>`;
                 }
-            } 
-            // SWITCH
-            else {
+            } else {
                 if (node.state === 'closed') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
                 } else if (node.state === 'open') {
