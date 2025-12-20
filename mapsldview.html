@@ -3,77 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.1 (Generator)</title>
+    <title>TAVIETNAM Monitor v4.2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* GIỮ NGUYÊN CSS CŨ */
+        /* --- 1. CORE CSS --- */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
-        .app-header { height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0; }
+        /* HEADER */
+        .app-header {
+            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
+        }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; font-weight: 500; outline: none; max-width: 150px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; outline: none; max-width: 140px; }
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
+        /* LAYOUT */
         .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
-        .app-sidebar { width: 260px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 1500; border-right: 1px solid #34495e; }
+
+        /* SIDEBAR */
+        .app-sidebar {
+            width: 260px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
+            transition: all 0.3s ease; z-index: 1500; border-right: 1px solid #34495e;
+        }
         .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; flex-shrink: 0; }
         .menu-item { padding: 15px 20px; cursor: pointer; border-left: 4px solid transparent; display: flex; align-items: center; gap: 12px; font-size: 15px; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .menu-item:hover { background-color: #34495e; }
         .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
+        
+        /* Sidebar List */
         .sidebar-list-title { padding: 15px 20px 5px; font-size: 11px; font-weight: bold; color: #95a5a6; text-transform: uppercase; }
         .sidebar-device-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); }
         .dev-item { padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .dev-item:hover { background-color: #34495e; }
         .dev-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
         .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; color: #95a5a6; text-align: center; border-top: 1px solid #34495e; background: #233242; flex-shrink: 0; }
 
+        /* CONTENT */
         .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
         #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
 
+        /* MOBILE RESPONSIVE */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; backdrop-filter: blur(2px); }
+        
         @media (max-width: 1024px) {
             .menu-toggle { display: block; }
             .app-sidebar { position: absolute; height: 100%; top: 0; left: -260px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .app-sidebar.show { left: 0; }
             .overlay.show { display: block; }
-            .user-profile { display: none; }
+            .user-profile { display: none; } 
         }
 
-        .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
+        /* --- ELEMENT STYLES --- */
+        .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; pointer-events: none; }
         .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
         .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         
-        .closed, .on { border-color: #d32f2f !important; color: #d32f2f; }
-        .open, .off { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
+        .closed { border-color: #d32f2f !important; color: #d32f2f; }
+        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
         .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
 
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
+        /* WIRE */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-        .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
+        .wire-solid { border-style: solid; }
+        .wire-dashed { border-style: dashed; }
 
+        /* TYPES */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
-        .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+        .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
+        .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
+        .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
         
-        /* MÁY PHÁT ĐIỆN */
+        /* STYLE MÁY PHÁT ĐIỆN (Fix hiển thị tròn) */
         .type-gen { 
-            border-radius: 50%; width: 60px; height: 60px; 
+            border-radius: 50% !important; width: 60px !important; height: 60px !important; 
             border: 3px solid #e67e22; background: #fdf2e9; 
             display: flex; align-items: center; justify-content: center;
         }
@@ -81,22 +105,12 @@
         .type-gen.energized-node { background: #ffccbc !important; border-color: #d35400 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 61, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0); } }
 
-        .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
-        .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
-        .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
+        /* POLE */
         .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .type-pole span { display: none; }
         .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
 
-        /* LOTO MODAL */
-        .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
-        @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-        .loto-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;}
-        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; transition: 0.2s; }
-        .btn-action:active { transform: scale(0.98); }
-        .pin-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid #ddd; border-radius: 8px; outline: none; margin: 15px 0; }
-        
+        /* STREET VIEW BTN */
         .street-view-btn {
             position: absolute; top: 15px; right: 60px; z-index: 1000;
             background: white; padding: 8px 12px; border: 2px solid #f1c40f;
@@ -110,6 +124,15 @@
             cursor: pointer !important; pointer-events: auto !important;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
         }
+
+        /* LOTO MODAL */
+        .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
+        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
+        @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+        .loto-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.98); }
+        .pin-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid #ddd; border-radius: 8px; outline: none; margin: 15px 0; }
     </style>
 </head>
 <body>
@@ -117,24 +140,41 @@
     <header class="app-header">
         <div class="header-left">
             <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
-            <a href="https://khaosathethongdienapp.web.app" class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</a>
+            <a href="https://khaosathethongdienapp.web.app" class="logo">
+                <i class="fas fa-bolt"></i> SCADA MONITOR
+            </a>
         </div>
+        
         <div class="header-right">
-            <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
-            <div class="user-profile"><i class="fas fa-user-shield"></i> <span id="clock">00:00</span></div>
+            <div class="grid-selector">
+                <select id="grid-select" onchange="changeGrid()"></select>
+            </div>
+            <div class="user-profile">
+                <i class="fas fa-user-shield"></i> <span id="clock">00:00</span>
+            </div>
         </div>
     </header>
 
     <div class="app-body">
         <nav class="app-sidebar" id="sidebar">
             <ul class="sidebar-menu">
-                <li class="menu-item active" onclick="switchView('sld', this)"><i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý</li>
-                <li class="menu-item" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> Bản đồ GIS</li>
-                <li class="menu-item" onclick="alert('Tính năng đang phát triển')"><i class="fas fa-file-alt"></i> Lịch sử LOTO</li>
+                <li class="menu-item active" onclick="switchView('sld', this)">
+                    <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
+                </li>
+                <li class="menu-item" onclick="switchView('map', this)">
+                    <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+                </li>
+                <li class="menu-item" onclick="alert('Chức năng đang phát triển')">
+                    <i class="fas fa-file-alt"></i> Lịch sử LOTO
+                </li>
             </ul>
+            
             <div class="sidebar-list-title">DANH SÁCH THIẾT BỊ</div>
             <div class="sidebar-device-list" id="sidebarList"></div>
-            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.1 (Gen Support)</div>
+
+            <div class="menu-footer">
+                © 2025 TaVietnam<br>Version 4.2 (Gen Fixed)
+            </div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
 
@@ -150,8 +190,11 @@
                 </div>
                 <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
             </div>
+
             <div id="map-panel">
-                <button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Street View</button>
+                <button class="street-view-btn" onclick="openSmartWindow()">
+                    <i class="fas fa-street-view"></i> Street View
+                </button>
                 <div id="map" style="width:100%; height:100%"></div>
             </div>
         </main>
@@ -174,7 +217,10 @@
         const db = getDatabase(app);
         const MASTER_KEY = "9999"; 
 
-        setInterval(() => { const now = new Date(); document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+        }, 1000);
 
         let localNodes = []; let mapMarkers = {}, mapLines = {}; let currentTargetId = null;
         let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
@@ -192,17 +238,22 @@
                 const data = snapshot.val();
                 const select = document.getElementById('grid-select');
                 select.innerHTML = '';
-                if (!data) { select.appendChild(new Option("Lưới mặc định", 'default_grid')); } 
-                else { for (let id in data) select.appendChild(new Option(data[id].name, id)); }
+                if (!data) {
+                    select.appendChild(new Option("Lưới mặc định", 'default_grid'));
+                } else {
+                    for (let id in data) select.appendChild(new Option(data[id].name, id));
+                }
                 select.value = currentGridId;
                 loadDevices();
             });
         }
+
         window.changeGrid = function() {
             currentGridId = document.getElementById('grid-select').value;
             localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
         }
+
         function loadDevices() {
             onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
                 const data = snapshot.val();
@@ -215,24 +266,31 @@
 
         // --- SIDEBAR ---
         function renderSidebarList() {
-            const container = document.getElementById('sidebarList'); container.innerHTML = '';
-            const visibleTypes = ['cb', 'source', 'gen', 'tr', 'load', 'ds', 'fco']; // Thêm 'gen'
+            const container = document.getElementById('sidebarList');
+            container.innerHTML = '';
+            // Thêm 'gen' vào danh sách hiển thị
+            const visibleTypes = ['cb', 'source', 'gen', 'tr', 'load', 'ds', 'fco'];
             const filteredNodes = localNodes.filter(n => visibleTypes.includes(n.type));
             
             filteredNodes.forEach(node => {
-                const div = document.createElement('div'); div.className = 'dev-item';
+                const div = document.createElement('div');
+                div.className = 'dev-item';
                 let color = '#999';
-                if (node.isEnergized) color = '#ff3d00'; else if (node.isSafe) color = '#2ecc71';
+                if (node.isEnergized) color = '#ff3d00';
+                else if (node.isSafe) color = '#2ecc71';
                 if (node.state === 'locked') color = '#f39c12';
 
                 let iconClass = 'fas fa-box';
                 if(node.type==='cb') iconClass='fas fa-toggle-off';
-                if(node.type==='source'||node.type==='gen') iconClass='fas fa-bolt';
+                if(node.type==='source' || node.type==='gen') iconClass='fas fa-bolt';
 
                 div.innerHTML = `
                     <div style="display:flex; align-items:center; gap:10px;">
                         <i class="${iconClass}" style="color:#7f8c8d; width:15px;"></i>
-                        <div><div style="font-weight:bold; color:#ecf0f1">${node.label}</div><div style="font-size:10px; color:#bdc3c7">${node.id}</div></div>
+                        <div>
+                            <div style="font-weight:bold; color:#ecf0f1">${node.label}</div>
+                            <div style="font-size:10px; color:#bdc3c7">${node.id}</div>
+                        </div>
                     </div>
                     <div class="dev-status" style="background:${color}"></div>
                 `;
@@ -249,27 +307,43 @@
             });
         }
 
-        // --- UI ---
-        window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('show'); document.querySelector('.overlay').classList.toggle('show'); }
+        // --- UI UTILS ---
+        window.toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('show');
+            document.querySelector('.overlay').classList.toggle('show');
+        }
+
         window.switchView = (mode, btn) => {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
             if(window.innerWidth <= 1024) window.toggleSidebar();
-            if(mode === 'sld') { document.getElementById('sld-panel').classList.add('active-view'); document.getElementById('map-panel').classList.remove('active-view'); } 
-            else { document.getElementById('sld-panel').classList.remove('active-view'); document.getElementById('map-panel').classList.add('active-panel'); setTimeout(() => map.invalidateSize(), 300); }
+
+            if(mode === 'sld') {
+                document.getElementById('sld-panel').classList.add('active-view');
+                document.getElementById('map-panel').classList.remove('active-view');
+            } else {
+                document.getElementById('sld-panel').classList.remove('active-view');
+                document.getElementById('map-panel').classList.add('active-panel');
+                setTimeout(() => map.invalidateSize(), 300);
+            }
         }
+
         window.openSmartWindow = function() {
             const center = map.getCenter();
             const url = `https://www.google.com/maps?q=&layer=c&cbll=${center.lat},${center.lng}`;
-            if (mapWindow && !mapWindow.closed) { mapWindow.location.href = url; mapWindow.focus(); } 
-            else { const w = Math.floor(window.screen.availWidth / 3); mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`); }
+            if (mapWindow && !mapWindow.closed) {
+                mapWindow.location.href = url; mapWindow.focus();
+            } else {
+                const w = Math.floor(window.screen.availWidth / 3);
+                mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`);
+            }
         }
 
-        // --- POWER LOGIC (Updated for Generator) ---
+        // --- POWER LOGIC (GEN ADDED) ---
         function isConductive(node) {
             if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole', 'underground'].includes(node.type)) return true;
-            // Gen cũng giống Source, nhưng nó có trạng thái ON/OFF
-            if (node.type === 'gen') return node.state === 'on'; 
+            // Gen cũng là nguồn, nhưng phải ON mới dẫn/phát
+            if (node.type === 'gen') return node.state === 'on';
             if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
             return false;
         }
@@ -277,7 +351,7 @@
         function calculateSystemState() {
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
             
-            // 1. Energized: Lưới (luôn có) HOẶC Máy phát (đang ON)
+            // 1. Nguồn: Lưới QG hoặc Máy phát đang chạy
             const pQueue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
             
             pQueue.forEach(n => n.isEnergized = true);
@@ -301,18 +375,18 @@
             }
         }
 
-        // --- ACTION HANDLERS ---
+        // --- CLICK & ACTIONS ---
         window.handleDeviceClick = function(id) {
             const node = localNodes.find(n => n.id === id);
             
             if(node.type === 'pole') {
-                if(confirm(`Thao tác Tiếp địa cho cột ${node.label}?\n\nTrạng thái: ${node.isGrounded?'ĐÃ TIẾP ĐỊA':'CHƯA TIẾP ĐỊA'}`)) {
+                if(confirm(`Tiếp địa cột ${node.label}?\n${node.isGrounded?'Đang Tiếp Địa':'Chưa Tiếp Địa'}`)) {
                     update(ref(db, `grids/${currentGridId}/nodes/${id}`), { isGrounded: !node.isGrounded });
                 }
                 return;
             }
 
-            // Xử lý Máy phát (Gen) và Thiết bị đóng cắt (CB, DS...)
+            // Thêm 'gen' vào danh sách cho phép click
             if (!['cb', 'ds', 'fco', 'gen'].includes(node.type)) return;
 
             currentTargetId = id;
@@ -324,8 +398,8 @@
         function showActionButtons(node) {
             const div = document.getElementById('lotoContent');
             div.innerHTML = '';
-            
-            // LOGIC MÁY PHÁT ĐIỆN
+
+            // LOGIC MÁY PHÁT
             if (node.type === 'gen') {
                 if (node.state === 'on') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('off')"><i class="fas fa-stop-circle"></i> DỪNG MÁY (STOP)</button>`;
@@ -336,7 +410,7 @@
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA LOTO</button>`;
                 }
             } 
-            // LOGIC THIẾT BỊ ĐÓNG CẮT (CB/DS)
+            // LOGIC ĐÓNG CẮT
             else {
                 if (node.state === 'closed') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
@@ -367,7 +441,9 @@
             const pin = document.getElementById('pinInput').value;
             if (!pin) return alert("Vui lòng nhập mã PIN!");
             const node = localNodes.find(n => n.id === currentTargetId);
-            const openState = (node.type === 'gen') ? 'off' : 'open'; // Trạng thái mở khóa
+            
+            // Trạng thái mở khóa: Máy phát thì về OFF, CB thì về OPEN
+            const openState = (node.type === 'gen') ? 'off' : 'open';
 
             if (mode === 'lock') {
                 update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), { state: 'locked', lotoPin: pin, lotoTime: Date.now() });
@@ -393,6 +469,7 @@
             localNodes.forEach(node => {
                 if (node.type === 'pole' && node.showOnSLD === false) return;
                 const el = document.createElement('div');
+                // Thêm type-gen vào đây
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
                 
@@ -402,18 +479,15 @@
                 if(node.isGrounded) el.classList.add('grounded');
 
                 let content = `<span>${node.label}</span>`;
-                
-                // Hiển thị trạng thái
                 if(['cb','ds','fco'].includes(node.type)) {
                     let st = node.state === 'closed' ? 'ON' : (node.state==='locked'?'LOTO':'OFF');
                     content += `<br><span style="font-size:9px">${st}</span>`;
                     if(node.state==='locked') content += ` <i class="fas fa-lock"></i>`;
                 }
-                // Hiển thị Gen
+                // Hiển thị trạng thái máy phát
                 if(node.type === 'gen') {
                     let st = node.state === 'on' ? 'RUN' : (node.state==='locked'?'LOTO':'STOP');
                     content += `<br><span style="font-size:9px; font-weight:bold">${st}</span>`;
-                    if(node.capacity) content += `<br><span style="font-size:8px; color:blue">${node.capacity}</span>`;
                 }
 
                 if(['bus','wire','cable','underground','pole'].includes(node.type)) content = '';
@@ -506,3 +580,4 @@
     </script>
 </body>
 </html>
+
