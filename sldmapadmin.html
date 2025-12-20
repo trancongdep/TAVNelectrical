@@ -1,25 +1,33 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Poles & Grounding</title>
+    <title>Admin Panel - AI Import Ready</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* GIỮ NGUYÊN CSS CŨ */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .grid-selector { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px; }
+        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-weight: bold; }
         .container { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 1; }
-        .form-group { margin-bottom: 8px; } 
-        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
         .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
-        .btn-extent { background: #8e44ad; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; border-radius: 3px; color: white; }
+        .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:15px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-import:hover { background: #71368a; }
+        
+        /* Modal Import */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 500px; height: 400px; display: flex; flex-direction: column; }
+        .json-input { flex: 1; width: 100%; border: 1px solid #ddd; padding: 10px; font-family: monospace; resize: none; margin: 10px 0; }
+        
         .device-list { flex: 1; overflow-y: auto; border-top: 1px solid #eee; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
@@ -31,21 +39,8 @@
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
         #map-wrapper { position: relative; width: 100%; height: 100%; }
         #map-canvas { width: 100%; height: 100%; }
-
-        /* CHECKBOX STYLE */
-        .checkbox-group { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 12px; }
-        .checkbox-group input { width: auto; margin: 0; }
-
-        /* STYLES MỚI CHO CỘT (POLE) */
-        .type-pole { 
-            width: 20px !important; height: 20px !important; 
-            border-radius: 50%; background: #95a5a6; border: 2px solid #7f8c8d; 
-            display: flex; align-items: center; justify-content: center;
-        }
-        .type-pole.grounded { border: 2px solid #2ecc71; background: #d5f5e3; }
-        .type-pole.grounded::after { content: '⏚'; color: #27ae60; font-weight: bold; font-size: 14px; margin-top: -5px; }
-
-        /* STYLES CŨ */
+        
+        /* Styles cũ */
         .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; }
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; background: #e3f2fd; }
         .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
@@ -64,56 +59,41 @@
 
 <header>
     <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
+    <div class="grid-selector">
+        <label>Lưới điện:</label>
+        <select id="grid-select" onchange="changeGrid()"></select>
+        <button onclick="createNewGrid()" style="background:#27ae60; border:none; padding:5px; border-radius:3px; cursor:pointer; color:white"><i class="fas fa-plus"></i></button>
+    </div>
     <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
 </header>
 
 <div class="container">
     <div class="sidebar">
         <div class="form-content">
-            <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id"></div>
+            <div class="form-group"><label>ID Thiết bị</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
             <div class="row">
-                <div class="col form-group"><label>Loại</label>
-                    <select id="inp-type">
-                        <optgroup label="Cấu trúc">
-                            <option value="pole">Cột điện (Pole)</option> <option value="bus">Thanh cái (Busbar)</option>
-                        </optgroup>
-                        <optgroup label="Thiết bị">
-                            <option value="cb">CB (Máy cắt)</option>
-                            <option value="source">Nguồn (Source)</option>
-                            <option value="tr">Máy biến áp</option>
-                            <option value="fco">FCO</option>
-                            <option value="ds">Dao cách ly</option>
-                            <option value="load">Tải</option>
-                        </optgroup>
-                        <optgroup label="Dây dẫn">
-                            <option value="wire">Đường dây</option>
-                            <option value="cable">Cáp ngầm</option>
-                        </optgroup>
-                    </select>
-                </div>
+                <div class="col form-group"><label>Loại</label><select id="inp-type"><option value="cb">CB</option><option value="source">Nguồn</option><option value="bus">Busbar</option><option value="tr">Biến áp</option><option value="fco">FCO</option><option value="ds">Dao CL</option><option value="load">Tải</option><option value="wire">Dây</option><option value="cable">Cáp</option><option value="pole">Cột</option></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
+            <div class="form-group"><label>Kiểu dây</label><select id="inp-connection"><option value="solid">Nét liền</option><option value="dashed">Nét đứt</option></select></div>
             
-            <div class="form-group"><label>Kiểu đấu nối</label>
-                <select id="inp-connection"><option value="solid">Nét liền</option><option value="dashed">Nét đứt</option></select>
+            <div class="row" style="background:#fff; padding:5px; border:1px solid #eee; margin-bottom:10px;">
+                <div class="col"><input type="checkbox" id="inp-showSLD" checked> Hiện SLD</div>
+                <div class="col"><input type="checkbox" id="inp-grounded"> Tiếp địa</div>
             </div>
 
-            <div class="row" style="background:#fff; padding:5px; border:1px solid #eee; border-radius:4px; margin-bottom:10px;">
-                <div class="col checkbox-group">
-                    <input type="checkbox" id="inp-showSLD" checked> 
-                    <label for="inp-showSLD" style="display:inline; margin:0">Hiện trên SLD</label>
-                </div>
-                <div class="col checkbox-group">
-                    <input type="checkbox" id="inp-grounded">
-                    <label for="inp-grounded" style="display:inline; margin:0; color:#27ae60">Tiếp địa (⏚)</label>
-                </div>
+            <div class="btn-group">
+                <button type="button" class="btn-new" onclick="resetForm()">Mới</button>
+                <button type="button" class="btn-save" onclick="saveDevice()">Lưu</button>
+                <button type="button" class="btn-del" onclick="deleteDevice()">Xóa</button>
             </div>
 
-            <div class="row"><div class="col form-group"><label>SLD X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>SLD Y</label><input type="number" id="inp-y"></div></div>
-            <button type="button" class="btn-extent" onclick="zoomExtent()">Gom SLD</button>
-            <div class="row" style="margin-top:10px;"><div class="col form-group"><label>Lat</label><input type="number" id="inp-lat" step="0.000001"></div><div class="col form-group"><label>Lng</label><input type="number" id="inp-lng" step="0.000001"></div></div>
-            <div class="btn-group"><button type="button" class="btn-new" onclick="resetForm()">Mới</button><button type="button" class="btn-save" onclick="saveDevice()">Lưu</button><button type="button" class="btn-del" onclick="deleteDevice()">Xóa</button></div>
+            <button class="btn-import" onclick="openImportModal()">
+                <i class="fas fa-robot"></i> Import JSON từ Gemini AI
+            </button>
+
+            <input type="hidden" id="inp-x"><input type="hidden" id="inp-y"><input type="hidden" id="inp-lat"><input type="hidden" id="inp-lng">
         </div>
         <div class="device-list" id="device-list-container"></div>
     </div>
@@ -124,7 +104,21 @@
             <button class="tab-btn" onclick="switchTab('map', this)">Map Editor</button>
         </div>
         <div id="tab-sld" class="tab-content active"><div id="sld-container"><div id="sld-canvas"></div></div></div>
-        <div id="tab-map" class="tab-content"><div id="map-wrapper"><div id="map-canvas"></div></div></div>
+        <div id="tab-map" class="tab-content">
+            <div id="map-wrapper"><div id="map-canvas"></div></div>
+        </div>
+    </div>
+</div>
+
+<div id="importModal" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-robot"></i> Import Dữ liệu từ AI</h3>
+        <p style="font-size:12px; color:#666">Dán đoạn mã JSON mà Gemini tạo ra vào đây. Hệ thống sẽ tự động tạo các thiết bị.</p>
+        <textarea id="jsonInput" class="json-input" placeholder='[ {"id": "CB1", "label": "Máy cắt 1", "type": "cb", "parent": "BUS1"} ... ]'></textarea>
+        <div style="display:flex; gap:10px; justify-content: flex-end;">
+            <button onclick="closeImportModal()" style="background:#95a5a6; border:none; padding:10px; color:white; cursor:pointer; border-radius:4px;">Hủy</button>
+            <button onclick="processImport()" style="background:#27ae60; border:none; padding:10px; color:white; cursor:pointer; border-radius:4px;">Thực hiện Import</button>
+        </div>
     </div>
 </div>
 
@@ -137,84 +131,187 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let allDevices = []; let selectedId = null; let mapMarkers = {}; let mapPolylines = [];
-    
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
+    let allDevices = []; let selectedId = null; 
+    let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+    let mapMarkers = {}; let mapPolylines = [];
+
+    // MAP
+    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [streetLayer] });
 
-    // --- SAVE LOGIC ---
-    window.saveDevice = function() {
-        const id = document.getElementById('inp-id').value.trim(); if(!id) return alert("Nhập ID");
-        const nd = {
-            id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value||null, connection: document.getElementById('inp-connection').value,
-            state: "closed",
-            // Lưu các thuộc tính mới
-            showOnSLD: document.getElementById('inp-showSLD').checked,
-            isGrounded: document.getElementById('inp-grounded').checked,
-            
-            sld: { x: parseInt(document.getElementById('inp-x').value)||0, y: parseInt(document.getElementById('inp-y').value)||0 },
-            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||0, lng: parseFloat(document.getElementById('inp-lng').value)||0 }
-        };
-        set(ref(db,'system_nodes/'+id), nd).then(()=>selectDevice(nd,false));
+    // --- IMPORT LOGIC ---
+    window.openImportModal = () => document.getElementById('importModal').style.display = 'flex';
+    window.closeImportModal = () => document.getElementById('importModal').style.display = 'none';
+
+    window.processImport = function() {
+        const jsonStr = document.getElementById('jsonInput').value;
+        try {
+            const data = JSON.parse(jsonStr);
+            if (!Array.isArray(data)) throw new Error("Dữ liệu không phải là mảng []");
+
+            const updates = {};
+            let startX = 100, startY = 100;
+            const mapCenter = map.getCenter();
+
+            data.forEach((item, index) => {
+                // Validate data
+                if (!item.id || !item.type) return;
+                
+                // Tự động sắp xếp vị trí (Grid Layout đơn giản để không chồng lên nhau)
+                // Cứ 5 thiết bị xuống dòng
+                const col = index % 5;
+                const row = Math.floor(index / 5);
+                const x = startX + (col * 150);
+                const y = startY + (row * 100);
+
+                updates[`grids/${currentGridId}/nodes/${item.id}`] = {
+                    id: item.id,
+                    label: item.label || item.id,
+                    type: item.type.toLowerCase(),
+                    parent: item.parent || null,
+                    connection: 'solid',
+                    state: 'closed',
+                    showOnSLD: true,
+                    isGrounded: false,
+                    sld: { x: x, y: y },
+                    geo: { lat: mapCenter.lat, lng: mapCenter.lng } // Tạm thời để chung 1 chỗ
+                };
+            });
+
+            update(ref(db), updates).then(() => {
+                alert(`Đã import thành công ${Object.keys(updates).length} thiết bị!`);
+                closeImportModal();
+                document.getElementById('jsonInput').value = '';
+            });
+
+        } catch (e) {
+            alert("Lỗi định dạng JSON: " + e.message);
+        }
     }
 
-    // --- SELECT LOGIC ---
+    // --- GRID LOGIC ---
+    function loadGrids() {
+        onValue(ref(db, 'grids_meta'), (snapshot) => {
+            const data = snapshot.val();
+            const select = document.getElementById('grid-select');
+            select.innerHTML = '';
+            if (!data) {
+                const defId = 'default_grid';
+                set(ref(db, 'grids_meta/' + defId), { name: "Lưới mặc định" });
+                select.appendChild(new Option("Lưới mặc định", defId));
+            } else {
+                for (let id in data) select.appendChild(new Option(data[id].name, id));
+            }
+            select.value = currentGridId;
+            loadDevices();
+        });
+    }
+    window.createNewGrid = function() {
+        const name = prompt("Tên lưới mới:");
+        if (name) {
+            const id = 'grid_' + Date.now();
+            set(ref(db, 'grids_meta/' + id), { name: name });
+            currentGridId = id; localStorage.setItem('currentGridId', id);
+        }
+    }
+    window.changeGrid = function() {
+        currentGridId = document.getElementById('grid-select').value;
+        localStorage.setItem('currentGridId', currentGridId);
+        loadDevices();
+    }
+
+    function loadDevices() {
+        onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
+            const data = snapshot.val();
+            allDevices = data ? Object.values(data) : [];
+            calculatePower(); renderTable(); renderSLD(); renderMap(); updateParentSelect();
+            document.getElementById('status-msg').innerText = "Đã tải: " + currentGridId;
+        });
+    }
+
+    // --- COMMON LOGIC ---
+    function calculatePower() {
+        allDevices.forEach(n => n.isEnergized = false);
+        const sources = allDevices.filter(n => n.type === 'source');
+        sources.forEach(src => { src.isEnergized = true; propagate(src); });
+    }
+    function isConductive(node) {
+        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole'].includes(node.type)) return true;
+        if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
+        return false;
+    }
+    function propagate(parent) {
+        if (parent.isEnergized && isConductive(parent)) {
+            allDevices.filter(n => n.parent === parent.id).forEach(c => { c.isEnergized = true; propagate(c); });
+        }
+    }
+
+    window.saveDevice = function() {
+        let id = selectedId;
+        if (!id) id = 'N' + Date.now().toString().slice(-6);
+        const nd = {
+            id: id, label: document.getElementById('inp-label').value||"NoName", type: document.getElementById('inp-type').value,
+            parent: document.getElementById('inp-parent').value||null, connection: document.getElementById('inp-connection').value,
+            state: "closed", showOnSLD: document.getElementById('inp-showSLD').checked, isGrounded: document.getElementById('inp-grounded').checked,
+            sld: { x: parseInt(document.getElementById('inp-x').value)||100, y: parseInt(document.getElementById('inp-y').value)||100 },
+            geo: { lat: parseFloat(document.getElementById('inp-lat').value)||map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value)||map.getCenter().lng }
+        };
+        set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(()=>selectDevice(nd,false));
+    }
+
+    window.resetForm = function() {
+        selectedId = null; document.getElementById('inp-id').value = "(Tự sinh)";
+        document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
+        const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
+        const container = document.getElementById('sld-container');
+        document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
+        renderTable(); renderSLD();
+    }
+
     window.selectDevice = function(d, z) {
         selectedId = d.id;
-        document.getElementById('inp-id').value = d.id; document.getElementById('inp-id').disabled = true;
-        document.getElementById('inp-label').value = d.label; document.getElementById('inp-type').value = d.type;
-        updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
-        document.getElementById('inp-connection').value = d.connection || "solid";
-        
-        // Load Checkbox
-        document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false); // Mặc định true
+        document.getElementById('inp-id').value = d.id; document.getElementById('inp-label').value = d.label;
+        document.getElementById('inp-type').value = d.type; updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
+        document.getElementById('inp-connection').value = d.connection||"solid";
+        document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
         document.getElementById('inp-grounded').checked = (d.isGrounded === true);
-
         document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
         document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
-        
         renderTable(); renderSLD();
         if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 19); }
     }
 
-    window.resetForm = function() {
-        selectedId = null; document.getElementById('inp-id').value=""; document.getElementById('inp-id').disabled=false;
-        document.getElementById('inp-label').value=""; document.getElementById('inp-parent').value="";
-        document.getElementById('inp-showSLD').checked = true;
-        document.getElementById('inp-grounded').checked = false;
-        renderTable(); renderSLD();
+    window.deleteDevice = function() { if(selectedId && confirm(`Xóa?`)) { remove(ref(db, `grids/${currentGridId}/nodes/${selectedId}`)); resetForm(); } }
+    window.zoomExtent = function() { update(ref(db), {}); } // Dummy update trigger if needed or re-implement logic
+
+    function renderTable() {
+        const container = document.getElementById('device-list-container'); container.innerHTML = '';
+        allDevices.forEach(d => {
+            const div = document.createElement('div'); div.className = `device-item ${d.id === selectedId ? 'selected' : ''}`;
+            div.innerHTML = `<div><strong>${d.label}</strong><br><span style="color:#666;font-size:10px">${d.id}</span></div>`;
+            div.onclick = () => selectDevice(d, false); container.appendChild(div);
+        });
+    }
+    function updateParentSelect() {
+        const sel = document.getElementById('inp-parent'); const v = sel.value; sel.innerHTML = '<option value="">-- Gốc --</option>';
+        allDevices.forEach(d => { if(d.id!==selectedId) sel.appendChild(new Option(`${d.label} (${d.id})`, d.id)); });
+        sel.value = v;
     }
 
-    // --- RENDER SLD (CÓ LỌC HIỂN THỊ) ---
+    // RENDER SLD & MAP (Giữ nguyên logic vẽ)
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
         sldCanvas.innerHTML = '';
-        allDevices.forEach(d => { 
-            // Logic vẽ dây vẫn giữ, kể cả khi cột ẩn thì dây vẫn nối (vẽ ảo)
-            if(d.parent) { 
-                const p = allDevices.find(x=>x.id==d.parent); 
-                if(p) drawWire(p, d); 
-            } 
-        });
-        
+        allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) drawWire(p, d); } });
         allDevices.forEach(d => {
-            // KIỂM TRA: Nếu là Cột điện và tắt hiển thị SLD thì bỏ qua
             if (d.type === 'pole' && d.showOnSLD === false) return;
-
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            
-            // Icon tiếp địa
-            if(d.isGrounded) el.classList.add('grounded');
-
             if(['bus','wire','cable','pole'].includes(d.type)) el.innerHTML=`<span style="color:${d.type==='pole'?'#333':'white'};font-size:9px">${d.id}</span>`;
             else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
-            
             if(d.isEnergized) el.classList.add('energized-node'); 
-            
-            el.onmousedown = function(e) { /* Drag logic cũ */ 
+            el.onmousedown = function(e) {
                 e.preventDefault(); e.stopPropagation();
                 if(d.id!==selectedId) selectDevice(d, false);
                 const startMX = e.clientX, startMY = e.clientY, startNX = d.sld.x, startNY = d.sld.y;
@@ -231,45 +328,68 @@
         });
     }
 
-    // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
-    onValue(ref(db, 'system_nodes'), (snapshot) => {
-        const data = snapshot.val();
-        allDevices = data ? Object.values(data) : [];
-        calculatePower();
-        renderTable(); renderSLD(); renderMap();
-        document.getElementById('status-msg').innerText = "Đã đồng bộ";
-    });
-
-    function calculatePower() {
-        allDevices.forEach(n => n.isEnergized = false);
-        const sources = allDevices.filter(n => n.type === 'source');
-        sources.forEach(src => { src.isEnergized = true; propagate(src); });
-    }
-    function isConductive(node) {
-        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole'].includes(node.type)) return true;
-        if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
-        return false;
-    }
-    function propagate(parent) {
-        if (parent.isEnergized && isConductive(parent)) {
-            allDevices.filter(n => n.parent === parent.id).forEach(c => { c.isEnergized = true; propagate(c); });
-        }
+    function drawWire(p, c) {
+        const cls = (p.isEnergized && isConductive(p)) ? 'energized-line' : 'dead-line';
+        const type = 'wire-' + (c.connection || 'solid');
+        let pW=80, pH=50, cW=80, cH=50;
+        if(p.type==='bus'){ pW=250; pH=12; } if(c.type==='bus'){ cW=250; cH=12; } 
+        let x1, y1, x2, y2;
+        if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
+        else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
+        if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
+        else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+        const midY = y1 + (y2 - y1) / 2;
+        createSeg(x1, y1, x1, midY, cls, type, 'v'); createSeg(x1, midY, x2, midY, cls, type, 'h'); createSeg(x2, midY, x2, y2, cls, type, 'v');
     }
     
-    // Draw Wire / Render Map / Switch Tab ... (Giữ nguyên logic cũ)
-    function drawWire(p, c) { /*... code vẽ dây ...*/ }
-    function renderMap() { /*... code vẽ map ...*/ }
-    window.switchTab = function(t, btn) { /*... switch tab ...*/ 
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active'); document.getElementById('tab-' + t).classList.add('active');
+    function createSeg(x, y, w, h, cls, style, dir) {
+        if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
+        const d = document.createElement('div'); d.className = `wire ${cls} ${style}`;
+        d.style.left=Math.min(x,w)+'px'; d.style.top=Math.min(y,h)+'px';
+        if(dir==='h') { d.style.width=Math.abs(x-w)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; }
+        else { d.style.width='0'; d.style.height=Math.abs(y-h)+'px'; d.style.borderLeftWidth='2px'; }
+        sldCanvas.appendChild(d);
+    }
+
+    function renderMap() {
+        for(let id in mapMarkers) map.removeLayer(mapMarkers[id]); mapPolylines.forEach(l=>map.removeLayer(l));
+        mapMarkers={}; mapPolylines=[];
+        allDevices.forEach(d => {
+            if(d.parent && d.geo) {
+                const p = allDevices.find(x=>x.id==d.parent);
+                if(p && p.geo) {
+                    const isLive = p.isEnergized && isConductive(p);
+                    const color = isLive ? '#ff3d00' : '#95a5a6';
+                    mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]], {color:color, weight:2}).addTo(map));
+                }
+            }
+        });
+        allDevices.forEach(d => {
+            if(!d.geo) return;
+            let color = d.isEnergized ? '#ff3d00' : '#666'; 
+            const html = `<div style="background:#fff; border:2px solid ${color}; padding:2px; font-size:10px; text-align:center;">${d.label}</div>`;
+            const icon = L.divIcon({className:'', html:html, iconSize:[60,20]});
+            const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
+            m.on('click', ()=>selectDevice(d,false));
+            m.on('dragend', ()=>{
+                const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
+                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
+            });
+            mapMarkers[d.id] = m;
+        });
+    }
+
+    window.switchTab = function(t, btn){
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + t).classList.add('active');
         if(t==='map') setTimeout(()=>map.invalidateSize(), 200);
     }
     window.toggleForm = function() { document.getElementById('form-content').classList.toggle('hidden'); }
-    function renderTable() { /*... render list ...*/ }
-    function updateParentSelect() { /*... update select ...*/ }
-    window.deleteDevice = function() { if(selectedId && confirm(`Xóa?`)) { remove(ref(db,'system_nodes/'+selectedId)); resetForm(); } }
-    window.zoomExtent = function() { /*... zoom extent ...*/ }
+
+    // Init Grid
+    loadGrids();
 </script>
 </body>
 </html>
