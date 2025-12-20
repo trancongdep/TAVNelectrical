@@ -3,164 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Công Cụ An Toàn Điện</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Hệ thống Quản lý Kỹ thuật Điện</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --hover-color: #2980b9;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
         body {
-            background-color: #f0f2f5;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
         }
-        .hero-section {
-            background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%);
-            color: white;
-            padding: 40px 0;
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
             margin-bottom: 30px;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .tool-card {
-            transition: all 0.3s ease;
-            border: none;
-            border-radius: 15px;
-            overflow: hidden;
-            height: 100%;
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            margin-bottom: 5px;
         }
-        .tool-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-            cursor: pointer;
+
+        p.subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
         }
-        .card-icon {
-            height: 80px;
+
+        .grid-menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .menu-item {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        /* Phân loại màu sắc cho các nhóm chức năng */
+        .menu-item.map { border-left-color: #e74c3c; } /* Bản đồ - Đỏ */
+        .menu-item.check { border-left-color: #27ae60; } /* Kiểm tra - Xanh lá */
+        .menu-item.doc { border-left-color: #f39c12; } /* Tài liệu/Lệnh - Cam */
+        .menu-item.tool { border-left-color: #8e44ad; } /* Công cụ khác - Tím */
+
+        .menu-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background-color: #fafafa;
+        }
+
+        .icon-box {
+            width: 40px;
+            height: 40px;
+            background-color: #ecf0f1;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #e7f1ff;
-            color: #0d6efd;
-            font-size: 2.5rem;
-            transition: 0.3s;
+            margin-right: 15px;
+            font-size: 18px;
+            color: var(--primary-color);
         }
-        .tool-card:hover .card-icon {
-            background-color: #0d6efd;
-            color: white;
+
+        .text-content {
+            flex: 1;
         }
-        a { text-decoration: none; }
+
+        .title {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .desc {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+
+        /* Responsive cho điện thoại */
+        @media (max-width: 480px) {
+            .grid-menu {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <div class="hero-section text-center">
-        <div class="container">
-            <h1 class="fw-bold"><i class="fas fa-bolt"></i> PORTAL KỸ THUẬT ĐIỆN</h1>
-            <p class="lead mb-0">Hệ thống công cụ hỗ trợ kiểm tra, phân tích và quản lý an toàn</p>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-bolt" style="color: #f1c40f;"></i> Cổng Thông Tin Kỹ Thuật</h1>
+            <p class="subtitle">Truy cập nhanh các công cụ và sơ đồ lưới điện</p>
+        </header>
+
+        <div class="grid-menu">
+            <a href="sldmapadmin.html" class="menu-item map">
+                <div class="icon-box"><i class="fas fa-map-marked-alt"></i></div>
+                <div class="text-content">
+                    <span class="title">Quản trị Bản đồ SLD</span>
+                    <span class="desc">sldmapadmin.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="mapsldview.html" class="menu-item map">
+                <div class="icon-box"><i class="fas fa-eye"></i></div>
+                <div class="text-content">
+                    <span class="title">Xem Bản đồ SLD</span>
+                    <span class="desc">mapsldview.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="Sldtong.html" class="menu-item map">
+                <div class="icon-box"><i class="fas fa-project-diagram"></i></div>
+                <div class="text-content">
+                    <span class="title">Sơ đồ Tuyến Tổng</span>
+                    <span class="desc">Sldtong.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="Mapsld.html" class="menu-item map">
+                <div class="icon-box"><i class="fas fa-map"></i></div>
+                <div class="text-content">
+                    <span class="title">Bản đồ SLD (Gốc)</span>
+                    <span class="desc">Mapsld.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="SinglelineX1.html" class="menu-item map">
+                <div class="icon-box"><i class="fas fa-bezier-curve"></i></div>
+                <div class="text-content">
+                    <span class="title">Sơ đồ đơn tuyến X1</span>
+                    <span class="desc">SinglelineX1.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="CableCheck.html" class="menu-item check">
+                <div class="icon-box"><i class="fas fa-ruler-combined"></i></div>
+                <div class="text-content">
+                    <span class="title">Tính toán/Kiểm tra Cáp</span>
+                    <span class="desc">CableCheck.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="CurveCBcheck.html" class="menu-item check">
+                <div class="icon-box"><i class="fas fa-wave-square"></i></div>
+                <div class="text-content">
+                    <span class="title">Kiểm tra Đặc tuyến CB</span>
+                    <span class="desc">CurveCBcheck.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="Scheck.html" class="menu-item check">
+                <div class="icon-box"><i class="fas fa-calculator"></i></div>
+                <div class="text-content">
+                    <span class="title">Kiểm tra Tiết diện (S)</span>
+                    <span class="desc">Scheck.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="visualcheck.html" class="menu-item check">
+                <div class="icon-box"><i class="fas fa-search"></i></div>
+                <div class="text-content">
+                    <span class="title">Kiểm tra Trực quan</span>
+                    <span class="desc">visualcheck.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="checklist.html" class="menu-item check">
+                <div class="icon-box"><i class="fas fa-tasks"></i></div>
+                <div class="text-content">
+                    <span class="title">Danh sách kiểm tra</span>
+                    <span class="desc">checklist.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="lenhcongtac.html" class="menu-item doc">
+                <div class="icon-box"><i class="fas fa-file-contract"></i></div>
+                <div class="text-content">
+                    <span class="title">Lệnh công tác 1</span>
+                    <span class="desc">lenhcongtac.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="lenhcongtac2.html" class="menu-item doc">
+                <div class="icon-box"><i class="fas fa-file-signature"></i></div>
+                <div class="text-content">
+                    <span class="title">Lệnh công tác 2</span>
+                    <span class="desc">lenhcongtac2.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+
+            <a href="phantich_5why.html" class="menu-item tool">
+                <div class="icon-box"><i class="fas fa-brain"></i></div>
+                <div class="text-content">
+                    <span class="title">Phân tích 5 Why</span>
+                    <span class="desc">phantich_5why.html</span>
+                </div>
+                <i class="fas fa-chevron-right" style="color: #ddd;"></i>
+            </a>
+        </div>
+
+        <div class="footer">
+            &copy; 2024 Electrical Management System
         </div>
     </div>
 
-    <div class="container pb-5">
-        <div class="row g-4">
-
-            <div class="col-12 col-md-6 col-lg-4">
-                <a href="lenhcongtac.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-file-signature"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h5 class="card-title fw-bold text-dark">Lệnh Công Tác</h5>
-                            <p class="card-text text-muted small">Tạo, phê duyệt và quản lý phiếu lệnh công tác điện tử.</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-4">
-                <a href="checklist.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-clipboard-check"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h5 class="card-title fw-bold text-dark">Checklist An Toàn</h5>
-                            <p class="card-text text-muted small">Bảng kiểm tra thiết bị hiện trường (Tủ điện, MBA...).</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-4">
-                <a href="phantich_5why.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-project-diagram"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h5 class="card-title fw-bold text-dark">Phân Tích 5 Why</h5>
-                            <p class="card-text text-muted small">Công cụ tìm nguyên nhân gốc rễ của sự cố.</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-3">
-                <a href="CableCheck.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-code-branch"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h6 class="card-title fw-bold text-dark">Kiểm Tra Cáp</h6>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-3">
-                <a href="CurveCBcheck.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h6 class="card-title fw-bold text-dark">Curve CB Check</h6>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-3">
-                <a href="visualcheck.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-eye"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h6 class="card-title fw-bold text-dark">Visual Check</h6>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-md-6 col-lg-3">
-                <a href="Scheck.html">
-                    <div class="card tool-card shadow-sm">
-                        <div class="card-icon">
-                            <i class="fas fa-search-plus"></i>
-                        </div>
-                        <div class="card-body text-center">
-                            <h6 class="card-title fw-bold text-dark">S Check</h6>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-        </div>
-
-        <div class="text-center mt-5 text-muted small">
-            &copy; 2024 Hệ thống quản lý kỹ thuật. Phiên bản 1.0
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
