@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor</title>
+    <title>TAVIETNAM Monitor v4.0</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,27 +13,35 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
-        /* HEADER */
+        /* --- 2. HEADER --- */
         .app-header {
             height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
+        
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
+        
+        /* Grid Selector trên Header */
+        .grid-selector select {
+            background: #34495e; color: white; border: 1px solid #7f8c8d; 
+            padding: 5px; border-radius: 4px; font-size: 13px; font-weight: 500; outline: none;
+            max-width: 150px;
+        }
+
+        .header-right { display: flex; align-items: center; gap: 15px; }
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
-        /* LAYOUT */
+        /* --- 3. LAYOUT --- */
         .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
 
-        /* --- SIDEBAR (Updated) --- */
+        /* SIDEBAR */
         .app-sidebar {
             width: 260px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column;
             transition: all 0.3s ease; z-index: 1500; border-right: 1px solid #34495e;
         }
-        
-        /* Menu chính */
-        .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-shrink: 0; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; flex-shrink: 0; }
         .menu-item { 
             padding: 15px 20px; cursor: pointer; border-left: 4px solid transparent; 
             display: flex; align-items: center; gap: 12px; font-size: 15px; transition: 0.2s; 
@@ -43,31 +50,14 @@
         .menu-item:hover { background-color: #34495e; }
         .menu-item.active { background-color: #34495e; border-left-color: #3498db; color: #fff; font-weight: 500; }
         
-        /* Danh sách thiết bị (Scrollable) */
-        .sidebar-list-title {
-            padding: 15px 20px 5px; font-size: 12px; font-weight: bold; color: #95a5a6; text-transform: uppercase;
-        }
-        .sidebar-device-list {
-            flex: 1; overflow-y: auto; padding: 0; 
-            background: rgba(0,0,0,0.1); /* Nền tối hơn chút */
-        }
-        /* Scrollbar đẹp cho sidebar */
-        .sidebar-device-list::-webkit-scrollbar { width: 5px; }
-        .sidebar-device-list::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
-
-        .dev-item {
-            padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;
-            display: flex; justify-content: space-between; align-items: center; font-size: 13px;
-            transition: background 0.2s;
-        }
+        /* List thiết bị trong Sidebar */
+        .sidebar-list-title { padding: 15px 20px 5px; font-size: 11px; font-weight: bold; color: #95a5a6; text-transform: uppercase; }
+        .sidebar-device-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); }
+        .dev-item { padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .dev-item:hover { background-color: #34495e; }
-        .dev-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px;}
+        .dev-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-        /* Footer */
-        .menu-footer { 
-            margin-top: auto; padding: 15px; font-size: 11px; color: #95a5a6; 
-            text-align: center; border-top: 1px solid #34495e; background: #233242; flex-shrink: 0;
-        }
+        .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; color: #95a5a6; text-align: center; border-top: 1px solid #34495e; background: #233242; flex-shrink: 0; }
 
         /* CONTENT */
         .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
@@ -83,9 +73,10 @@
             .app-sidebar { position: absolute; height: 100%; top: 0; left: -260px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .app-sidebar.show { left: 0; }
             .overlay.show { display: block; }
+            .user-profile { display: none; } /* Ẩn user trên mobile cho rộng chỗ */
         }
 
-        /* ELEMENT STYLES */
+        /* --- ELEMENT STYLES --- */
         .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; }
         .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
@@ -100,6 +91,7 @@
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
+        /* WIRE */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
@@ -107,26 +99,25 @@
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
 
+        /* TYPES */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
-        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; }
-        .type-bus.safe-node { background-color: #2ecc71 !important; }
+        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
         .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
-        .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
+        
+        /* POLE STYLE */
+        .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
+        .type-pole span { display: none; }
+        .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
 
-        /* LOTO DIALOG */
-        .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
-        @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-        
-        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; transition: 0.2s; }
-        .btn-action:active { transform: scale(0.98); }
-        .btn-cancel { background: #95a5a6; color: white; margin-top: 15px; }
-        .pin-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid #ddd; border-radius: 8px; outline: none; transition: border 0.3s; font-weight: bold; color: #2c3e50; margin: 15px 0; }
-        .pin-input:focus { border-color: #3498db; }
-        
-        /* MAP LABEL */
+        /* MAP ELEMENTS */
+        .street-view-btn {
+            position: absolute; top: 15px; right: 60px; z-index: 1000;
+            background: white; padding: 8px 12px; border: 2px solid #f1c40f;
+            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none;
+        }
         .map-label {
             border: 2px solid #666; border-radius: 4px; padding: 4px; 
             text-align: center; font-weight: bold; font-size: 11px; 
@@ -134,6 +125,15 @@
             cursor: pointer !important; pointer-events: auto !important;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
         }
+
+        /* LOTO MODAL */
+        .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
+        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
+        @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+        .loto-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.98); }
+        .pin-input { width: 100%; padding: 15px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid #ddd; border-radius: 8px; outline: none; margin: 15px 0; }
     </style>
 </head>
 <body>
@@ -145,8 +145,15 @@
                 <i class="fas fa-bolt"></i> SCADA MONITOR
             </a>
         </div>
-        <div class="user-profile">
-            <i class="fas fa-user-shield"></i> <span id="clock">00:00</span>
+        
+        <div class="header-right">
+            <div class="grid-selector">
+                <select id="grid-select" onchange="changeGrid()"></select>
+            </div>
+            
+            <div class="user-profile">
+                <i class="fas fa-user-shield"></i> <span id="clock">00:00</span>
+            </div>
         </div>
     </header>
 
@@ -159,17 +166,16 @@
                 <li class="menu-item" onclick="switchView('map', this)">
                     <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
                 </li>
-                <li class="menu-item" onclick="alert('Chức năng đang phát triển')">
+                <li class="menu-item" onclick="alert('Tính năng đang phát triển')">
                     <i class="fas fa-file-alt"></i> Lịch sử LOTO
                 </li>
             </ul>
             
             <div class="sidebar-list-title">DANH SÁCH THIẾT BỊ</div>
-            <div class="sidebar-device-list" id="sidebarList">
-                </div>
+            <div class="sidebar-device-list" id="sidebarList"></div>
 
             <div class="menu-footer">
-                &copy; 2025 TaVietnam<br>Ver 3.9 (Sidebar List)
+                &copy; 2025 TaVietnam<br>Version 4.0 (Multi-Grid)
             </div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
@@ -177,7 +183,7 @@
         <main class="app-content">
             <div id="sld-panel" class="active-view">
                 <div class="panel-info">
-                    <strong style="color:#2c3e50">TRẠNG THÁI</strong>
+                    <strong>TRẠNG THÁI</strong>
                     <div style="height:5px"></div>
                     <div class="legend-row"><div class="dot" style="background:#ff3d00"></div>Có điện (Live)</div>
                     <div class="legend-row"><div class="dot" style="background:#2ecc71"></div>An toàn (Safe)</div>
@@ -188,6 +194,9 @@
             </div>
 
             <div id="map-panel">
+                <button class="street-view-btn" onclick="openSmartWindow()">
+                    <i class="fas fa-street-view"></i> Street View
+                </button>
                 <div id="map" style="width:100%; height:100%"></div>
             </div>
         </main>
@@ -195,7 +204,7 @@
 
     <div id="lotoModal" class="loto-modal">
         <div class="loto-box">
-            <div id="lotoTitle" style="font-weight:bold; font-size:18px; margin-bottom:15px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:10px;">Thao tác</div>
+            <div id="lotoTitle" class="loto-title">Thao tác thiết bị</div>
             <div id="lotoContent"></div>
         </div>
     </div>
@@ -215,29 +224,58 @@
             document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
         }, 1000);
 
-        let localNodes = []; const sldCanvas = document.getElementById('sld-canvas');
-        const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22, maxNativeZoom:19});
-        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22, maxNativeZoom:18});
+        let localNodes = []; let mapMarkers = {}, mapLines = {}; let currentTargetId = null;
+        let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+        let mapWindow = null;
+
+        const sldCanvas = document.getElementById('sld-canvas');
+        const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22});
         const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
         L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
-        let mapMarkers = {}; let mapLines = {}; let currentTargetId = null;
+
+        // --- GRID LOGIC ---
+        function loadGrids() {
+            onValue(ref(db, 'grids_meta'), (snapshot) => {
+                const data = snapshot.val();
+                const select = document.getElementById('grid-select');
+                select.innerHTML = '';
+                if (!data) {
+                    select.appendChild(new Option("Lưới mặc định", 'default_grid'));
+                } else {
+                    for (let id in data) select.appendChild(new Option(data[id].name, id));
+                }
+                select.value = currentGridId;
+                loadDevices();
+            });
+        }
+
+        window.changeGrid = function() {
+            currentGridId = document.getElementById('grid-select').value;
+            localStorage.setItem('currentGridId', currentGridId);
+            loadDevices();
+        }
+
+        function loadDevices() {
+            onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
+                const data = snapshot.val();
+                localNodes = data ? Object.values(data) : [];
+                calculateSystemState();
+                renderSidebarList();
+                renderSLD(); renderMap();
+            });
+        }
 
         // --- RENDER SIDEBAR LIST ---
         function renderSidebarList() {
             const container = document.getElementById('sidebarList');
             container.innerHTML = '';
-            
-            // Lọc các thiết bị quan trọng (không phải dây hay busbar) để list không quá dài
-            // Hoặc hiển thị tất cả nếu muốn. Ở đây mình hiện CB, Source, TR, Load
             const visibleTypes = ['cb', 'source', 'tr', 'load', 'ds', 'fco'];
-            
             const filteredNodes = localNodes.filter(n => visibleTypes.includes(n.type));
             
             filteredNodes.forEach(node => {
                 const div = document.createElement('div');
                 div.className = 'dev-item';
-                
-                // Xác định màu trạng thái
                 let color = '#999';
                 if (node.isEnergized) color = '#ff3d00';
                 else if (node.isSafe) color = '#2ecc71';
@@ -246,7 +284,6 @@
                 let iconClass = 'fas fa-box';
                 if(node.type==='cb') iconClass='fas fa-toggle-off';
                 if(node.type==='source') iconClass='fas fa-bolt';
-                if(node.type==='load') iconClass='fas fa-home';
 
                 div.innerHTML = `
                     <div style="display:flex; align-items:center; gap:10px;">
@@ -258,28 +295,20 @@
                     </div>
                     <div class="dev-status" style="background:${color}"></div>
                 `;
-                
-                // Click vào item -> Chuyển Map -> Zoom
                 div.onclick = () => {
-                    // Chuyển sang tab Map nếu đang ở SLD
-                    const mapBtn = document.querySelectorAll('.menu-item')[1]; // Nút thứ 2 là Map
-                    if(window.innerWidth <= 1024) window.toggleSidebar(); // Đóng menu mobile
+                    const mapBtn = document.querySelectorAll('.menu-item')[1]; 
+                    if(window.innerWidth <= 1024) window.toggleSidebar();
                     window.switchView('map', mapBtn);
-                    
-                    // Zoom Map
                     if (node.geo) {
                         map.flyTo([node.geo.lat, node.geo.lng], 20);
                         if(mapMarkers[node.id]) mapMarkers[node.id].openPopup();
-                    } else {
-                        alert("Thiết bị chưa có tọa độ GPS!");
                     }
                 };
-                
                 container.appendChild(div);
             });
         }
 
-        // UI Logic
+        // --- UI UTILS ---
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('show');
             document.querySelector('.overlay').classList.toggle('show');
@@ -288,7 +317,8 @@
         window.switchView = (mode, btn) => {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
-            
+            if(window.innerWidth <= 1024) window.toggleSidebar();
+
             if(mode === 'sld') {
                 document.getElementById('sld-panel').classList.add('active-view');
                 document.getElementById('map-panel').classList.remove('active-view');
@@ -299,14 +329,28 @@
             }
         }
 
+        window.openSmartWindow = function() {
+            const center = map.getCenter();
+            const url = `https://www.google.com/maps?q=&layer=c&cbll=${center.lat},${center.lng}`;
+            if (mapWindow && !mapWindow.closed) {
+                mapWindow.location.href = url; mapWindow.focus();
+            } else {
+                const w = Math.floor(window.screen.availWidth / 3);
+                mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`);
+            }
+        }
+
+        // --- LOGIC DIEN & LOTO (Updated for Pole Grounding) ---
         function isConductive(node) {
-            if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'underground'].includes(node.type)) return true;
+            if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole', 'underground'].includes(node.type)) return true;
             if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
             return false;
         }
 
         function calculateSystemState() {
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
+            
+            // 1. Energized (Red)
             const pQueue = localNodes.filter(n => n.type === 'source');
             pQueue.forEach(n => n.isEnergized = true);
             while(pQueue.length > 0) {
@@ -317,7 +361,9 @@
                     });
                 }
             }
-            const sQueue = localNodes.filter(n => n.state === 'locked');
+
+            // 2. Safe (Green) - Locked Device OR Grounded Pole
+            const sQueue = localNodes.filter(n => n.state === 'locked' || n.isGrounded === true);
             sQueue.forEach(n => n.isSafe = true);
             while(sQueue.length > 0) {
                 const curr = sQueue.shift();
@@ -327,20 +373,20 @@
             }
         }
 
-        onValue(ref(db, 'system_nodes'), (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                localNodes = Object.values(data);
-                calculateSystemState();
-                renderSidebarList(); // Cập nhật list bên trái
-                renderSLD(); renderMap();
-            }
-        });
-
-        // HANDLE CLICK & LOTO
+        // HANDLE CLICK
         window.handleDeviceClick = function(id) {
             const node = localNodes.find(n => n.id === id);
+            
+            // Nếu là cột điện -> Hỏi tiếp địa
+            if(node.type === 'pole') {
+                if(confirm(`Thao tác Tiếp địa cho cột ${node.label}?\n\nTrạng thái hiện tại: ${node.isGrounded?'ĐÃ TIẾP ĐỊA':'CHƯA TIẾP ĐỊA'}`)) {
+                    update(ref(db, `grids/${currentGridId}/nodes/${id}`), { isGrounded: !node.isGrounded });
+                }
+                return;
+            }
+
             if (!['cb', 'ds', 'fco'].includes(node.type)) return;
+
             currentTargetId = id;
             document.getElementById('lotoTitle').innerText = `${node.label} (${node.id})`;
             showActionButtons(node);
@@ -378,38 +424,47 @@
             const pin = document.getElementById('pinInput').value;
             if (!pin) return alert("Vui lòng nhập mã PIN!");
             const node = localNodes.find(n => n.id === currentTargetId);
+            
             if (mode === 'lock') {
-                update(ref(db, 'system_nodes/' + currentTargetId), { state: 'locked', lotoPin: pin, lotoTime: Date.now() });
+                update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), { state: 'locked', lotoPin: pin, lotoTime: Date.now() });
                 document.getElementById('lotoModal').style.display = 'none';
-            } else if (mode === 'unlock') {
+            } 
+            else if (mode === 'unlock') {
                 if ((node.lotoPin && node.lotoPin === pin) || pin === MASTER_KEY) {
-                    update(ref(db, 'system_nodes/' + currentTargetId), { state: 'open', lotoPin: null, lotoTime: null });
+                    update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), { state: 'open', lotoPin: null, lotoTime: null });
                     document.getElementById('lotoModal').style.display = 'none';
                 } else { alert("SAI MÃ PIN!"); document.getElementById('pinInput').value = ''; }
             }
         }
 
         window.updateState = (s) => {
-            update(ref(db, 'system_nodes/' + currentTargetId), { state: s });
+            update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), { state: s });
             document.getElementById('lotoModal').style.display = 'none';
         }
 
+        // --- RENDER ---
         function renderSLD() {
             sldCanvas.innerHTML = '';
             localNodes.forEach(node => { if (node.parent) { const p = localNodes.find(n => n.id === node.parent); if (p) drawWire(p, node); } });
             localNodes.forEach(node => {
+                if (node.type === 'pole' && node.showOnSLD === false) return;
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                
                 if(['cb','ds','fco'].includes(node.type)) el.classList.add(node.state);
-                if(node.isEnergized) el.classList.add('energized-node'); else if(node.isSafe) el.classList.add('safe-node');
+                if(node.isEnergized) el.classList.add('energized-node');
+                else if(node.isSafe) el.classList.add('safe-node');
+                if(node.isGrounded) el.classList.add('grounded');
+
                 let content = `<span>${node.label}</span>`;
                 if(['cb','ds','fco'].includes(node.type)) {
                     let st = node.state === 'closed' ? 'ON' : (node.state==='locked'?'LOTO':'OFF');
                     content += `<br><span style="font-size:9px">${st}</span>`;
                     if(node.state==='locked') content += ` <i class="fas fa-lock"></i>`;
                 }
-                if(['bus','wire','cable','underground'].includes(node.type)) content = '';
+                if(['bus','wire','cable','underground','pole'].includes(node.type)) content = '';
+
                 el.innerHTML = content;
                 el.onclick = () => window.handleDeviceClick(node.id);
                 sldCanvas.appendChild(el);
@@ -419,19 +474,21 @@
         function drawWire(p, c) {
             let colorCls = 'dead-line';
             if(p.isEnergized && isConductive(p)) colorCls = 'energized-line';
-            else if(p.isSafe || p.state === 'locked') colorCls = 'safe-line';
+            else if(p.isSafe || p.state === 'locked' || p.isGrounded) colorCls = 'safe-line'; // Thêm check isGrounded
+
             const typeCls = 'wire-' + (c.connection || 'solid');
-            
             let pW=80, pH=50, cW=80, cH=50;
-            if(p.type==='bus'){ pW=300; pH=12; } else if(['source','tr'].includes(p.type)){ pW=60; pH=60; } else if(['wire','cable','underground'].includes(p.type)){ pW=100; pH=20; }
-            if(c.type==='bus'){ cW=300; cH=12; } else if(['source','tr'].includes(c.type)){ cW=60; cH=60; } else if(['wire','cable','underground'].includes(c.type)){ cW=100; cH=20; }
+            if(p.type==='bus'){ pW=300; pH=12; } 
+            if(c.type==='bus'){ cW=300; cH=12; } 
 
             let x1, y1, x2, y2;
             if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
             if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
 
             const midY = y1 + (y2 - y1) / 2;
-            createWire(x1, y1, x1, midY, colorCls, typeCls, 'v'); createWire(x1, midY, x2, midY, colorCls, typeCls, 'h'); createWire(x2, midY, x2, y2, colorCls, typeCls, 'v');
+            createWire(x1, y1, x1, midY, colorCls, typeCls, 'v');
+            createWire(x1, midY, x2, midY, colorCls, typeCls, 'h');
+            createWire(x2, midY, x2, y2, colorCls, typeCls, 'v');
         }
 
         function createWire(x1, y1, x2, y2, color, type, dir) {
@@ -453,7 +510,7 @@
                     if(p && p.geo) {
                         let color = '#95a5a6';
                         if(p.isEnergized && isConductive(p)) color = '#ff3d00';
-                        else if(p.isSafe || p.state === 'locked') color = '#2ecc71';
+                        else if(p.isSafe || p.state === 'locked' || p.isGrounded) color = '#2ecc71';
                         const dash = (node.connection === 'dashed') ? '5, 10' : null;
                         mapLines[node.id] = L.polyline([[p.geo.lat,p.geo.lng], [node.geo.lat,node.geo.lng]], {color:color, weight:3, dashArray:dash}).addTo(map);
                     }
@@ -463,21 +520,34 @@
             localNodes.forEach(node => {
                 if(!node.geo) return;
                 let color = '#666'; let bg = '#f0f0f0';
+                
+                if (node.type === 'pole') {
+                    color = '#7f8c8d'; bg = '#bdc3c7';
+                    if(node.isGrounded) { color='#27ae60'; bg='#d5f5e3'; }
+                    const html = `<div style="background:${bg}; border:2px solid ${color}; width:12px; height:12px; border-radius:50%; box-shadow:1px 1px 3px rgba(0,0,0,0.3); display:flex; justify-content:center; align-items:center; font-size:10px; color:green; font-weight:bold">${node.isGrounded ? '⏚' : ''}</div>`;
+                    const icon = L.divIcon({className:'', html:html, iconSize:[12,12]});
+                    const m = L.marker([node.geo.lat, node.geo.lng], {icon:icon}).addTo(map);
+                    m.on('click', () => window.handleDeviceClick(node.id));
+                    mapMarkers[node.id] = m;
+                    return;
+                }
+
                 if(node.isEnergized) {
-                    bg = '#fff';
                     if(node.state==='closed') color='#d32f2f'; else if(node.type==='source') color='#1565c0'; else color='#27ae60';
+                    bg = '#fff';
                 } else if(node.isSafe) { color='#27ae60'; bg='#d5f5e3'; }
                 if(node.state==='locked') { color='#f39c12'; bg='#fcf3cf'; }
 
                 const html = `<div class="map-label" style="background:${bg}; border:2px solid ${color}; color:${color==='#f39c12'?'#d35400':'#333'}">${node.label}</div>`;
                 const icon = L.divIcon({className:'', html:html, iconSize:[60,20], iconAnchor:[30,10]});
                 const m = L.marker([node.geo.lat, node.geo.lng], {icon:icon}).addTo(map);
-                
                 m.on('click', () => window.handleDeviceClick(node.id));
-                
                 mapMarkers[node.id] = m;
             });
         }
+
+        // Init
+        loadGrids();
     </script>
 </body>
 </html>
