@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.8</title>
+    <title>TAVIETNAM Monitor v5.0</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -22,8 +21,6 @@
         .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
-        
-        /* Header Right (Grid Selector) */
         .header-right { display: flex; align-items: center; gap: 10px; }
         .grid-selector select { 
             background: #34495e; color: white; border: 1px solid #7f8c8d; 
@@ -60,7 +57,6 @@
 
         /* MOBILE RESPONSIVE */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; backdrop-filter: blur(2px); }
-        
         @media (max-width: 1024px) {
             .menu-toggle { display: block; }
             .app-sidebar { position: absolute; height: 100%; top: 0; left: -260px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
@@ -91,10 +87,12 @@
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
 
-        .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
+        /* TYPES */
+        .type-bus { height: 12px !important; background: #2c3e50; border: none; min-width: 100px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
         
+        /* GENERATOR */
         .type-gen { 
             border-radius: 50% !important; width: 60px !important; height: 60px !important; 
             border: 3px solid #e67e22; background: #fdf2e9; 
@@ -107,13 +105,17 @@
         .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
+        
+        /* POLE */
         .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .type-pole span { display: none; }
         .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
 
+        /* MAP ELEMENTS */
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
         .map-label { border: 2px solid #666; border-radius: 4px; padding: 4px; text-align: center; font-weight: bold; font-size: 11px; white-space: nowrap; min-width: 50px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
         
+        /* LOTO MODAL */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
@@ -151,7 +153,7 @@
             <div class="sidebar-device-list" id="sidebarList"></div>
 
             <div class="menu-footer">
-                © 2025 TaVietnam<br>Version 4.8 (Stable Grid Sync)
+                © 2025 TaVietnam<br>Version 5.0 (Full Features)
             </div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
@@ -193,7 +195,10 @@
         const db = getDatabase(app);
         const MASTER_KEY = "9999"; 
 
-        setInterval(() => { const now = new Date(); document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+        }, 1000);
 
         let localNodes = []; let mapMarkers = {}, mapLines = {}; let currentTargetId = null;
         let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
@@ -205,26 +210,24 @@
         const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
         L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
 
-        // --- GRID LOGIC (FIX LIST TRỐNG & SYNC) ---
+        // --- GRID LOGIC ---
         function loadGrids() {
             onValue(ref(db, 'grids_meta'), (snapshot) => {
                 const data = snapshot.val();
                 const select = document.getElementById('grid-select');
                 select.innerHTML = '';
-                
                 if (!data) {
                     select.appendChild(new Option("Lưới mặc định", 'default_grid'));
-                    currentGridId = 'default_grid';
                 } else {
                     for (let id in data) select.appendChild(new Option(data[id].name, id));
-                    // Kiểm tra grid hiện tại có hợp lệ không
+                    // Check if current grid exists
                     if (!data[currentGridId]) {
-                        currentGridId = Object.keys(data)[0]; 
+                        currentGridId = Object.keys(data)[0];
                         localStorage.setItem('currentGridId', currentGridId);
                     }
                 }
                 select.value = currentGridId;
-                loadDevices(); // Load thiết bị tương ứng
+                loadDevices();
             });
         }
 
@@ -242,23 +245,26 @@
                 renderSidebarList();
                 renderSLD(); renderMap();
                 
-                // Auto Zoom khi đổi lưới
+                // Auto Zoom
                 if(localNodes.length > 0 && localNodes[0].geo) {
                     map.setView([localNodes[0].geo.lat, localNodes[0].geo.lng], 13);
                 }
             });
         }
 
-        // --- SIDEBAR ---
+        // --- SIDEBAR LIST ---
         function renderSidebarList() {
-            const container = document.getElementById('sidebarList'); container.innerHTML = '';
+            const container = document.getElementById('sidebarList');
+            container.innerHTML = '';
             const visibleTypes = ['cb', 'source', 'gen', 'tr', 'load', 'ds', 'fco'];
             const filteredNodes = localNodes.filter(n => visibleTypes.includes(n.type));
             
             filteredNodes.forEach(node => {
-                const div = document.createElement('div'); div.className = 'dev-item';
+                const div = document.createElement('div');
+                div.className = 'dev-item';
                 let color = '#999';
-                if (node.isEnergized) color = '#ff3d00'; else if (node.isSafe) color = '#2ecc71';
+                if (node.isEnergized) color = '#ff3d00';
+                else if (node.isSafe) color = '#2ecc71';
                 if (node.state === 'locked') color = '#f39c12';
 
                 let iconClass = 'fas fa-box';
@@ -268,7 +274,10 @@
                 div.innerHTML = `
                     <div style="display:flex; align-items:center; gap:10px;">
                         <i class="${iconClass}" style="color:#7f8c8d; width:15px;"></i>
-                        <div><div style="font-weight:bold; color:#ecf0f1">${node.label}</div><div style="font-size:10px; color:#bdc3c7">${node.id}</div></div>
+                        <div>
+                            <div style="font-weight:bold; color:#ecf0f1">${node.label}</div>
+                            <div style="font-size:10px; color:#bdc3c7">${node.id}</div>
+                        </div>
                     </div>
                     <div class="dev-status" style="background:${color}"></div>
                 `;
@@ -291,14 +300,34 @@
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
             if(btn) btn.classList.add('active');
             if(window.innerWidth <= 1024) window.toggleSidebar();
-            if(mode === 'sld') { document.getElementById('sld-panel').classList.add('active-view'); document.getElementById('map-panel').classList.remove('active-view'); } 
-            else { document.getElementById('sld-panel').classList.remove('active-view'); document.getElementById('map-panel').classList.add('active-panel'); setTimeout(() => map.invalidateSize(), 300); }
+            if(mode === 'sld') { 
+                document.getElementById('sld-panel').classList.add('active-view'); 
+                document.getElementById('map-panel').classList.remove('active-view'); 
+            } else { 
+                document.getElementById('sld-panel').classList.remove('active-view'); 
+                document.getElementById('map-panel').classList.add('active-panel'); 
+                setTimeout(() => map.invalidateSize(), 300);
+            }
         }
         window.openSmartWindow = function() {
             const center = map.getCenter();
             const url = `https://www.google.com/maps?q=&layer=c&cbll=${center.lat},${center.lng}`;
             if (mapWindow && !mapWindow.closed) { mapWindow.location.href = url; mapWindow.focus(); } 
             else { const w = Math.floor(window.screen.availWidth / 3); mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`); }
+        }
+
+        // --- HELPER FOR BUSBAR ---
+        function getBusBounds(busNode) {
+            let minX = busNode.sld.x;
+            let maxX = busNode.sld.x + 100;
+            const children = localNodes.filter(n => n.parent === busNode.id);
+            if (children.length > 0) {
+                const childXs = children.map(c => c.sld.x);
+                minX = Math.min(minX, ...childXs);
+                maxX = Math.max(maxX, ...childXs);
+            }
+            const padding = 20;
+            return { x: minX - padding, y: busNode.sld.y, width: (maxX - minX) + (padding * 2) + 60 };
         }
 
         // --- POWER LOGIC ---
@@ -348,7 +377,7 @@
             }
         }
 
-        // --- ACTION HANDLERS ---
+        // --- CLICK & ACTIONS ---
         window.handleDeviceClick = function(id) {
             const node = localNodes.find(n => n.id === id);
             
@@ -436,7 +465,17 @@
                 if (node.type === 'pole' && node.showOnSLD === false) return;
                 const el = document.createElement('div');
                 el.className = `node-box type-${node.type}`;
-                el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
+                
+                // AUTO RESIZE BUSBAR
+                if (node.type === 'bus') {
+                    const bounds = getBusBounds(node);
+                    el.style.left = bounds.x + 'px';
+                    el.style.top = bounds.y + 'px';
+                    el.style.width = bounds.width + 'px';
+                } else {
+                    el.style.left = node.sld.x + 'px';
+                    el.style.top = node.sld.y + 'px';
+                }
                 
                 if(['cb','ds','fco'].includes(node.type)) el.classList.add(node.state);
                 if(node.isEnergized) el.classList.add('energized-node');
@@ -468,13 +507,42 @@
             else if(p.isSafe || c.isSafe) colorCls = 'safe-line';
 
             const typeCls = 'wire-' + (c.connection || 'solid');
-            let pW=80, pH=50, cW=80, cH=50;
-            if(p.type==='bus'){ pW=300; pH=12; } if(c.type==='bus'){ cW=300; cH=12; } 
+            
+            let pBounds = { x: p.sld.x, y: p.sld.y, w: 80, h: 50 };
+            let cBounds = { x: c.sld.x, y: c.sld.y, w: 80, h: 50 };
+
+            // Dynamic Busbar Bounds
+            if (p.type === 'bus') {
+                const b = getBusBounds(p);
+                pBounds = { x: b.x, y: b.y, w: b.width, h: 12 };
+            } else if (['source','gen','tr'].includes(p.type)) { pBounds.w=60; pBounds.h=60; }
+            
+            if (c.type === 'bus') {
+                const b = getBusBounds(c);
+                cBounds = { x: b.x, y: b.y, w: b.width, h: 12 };
+            } else if (['source','gen','tr'].includes(c.type)) { cBounds.w=60; cBounds.h=60; }
+
             let x1, y1, x2, y2;
-            if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
-            else { x1 = p.sld.x + pW/2; y1 = p.sld.y + pH; }
-            if (c.type === 'bus') { let idealX = x1; x2 = Math.max(c.sld.x, Math.min(c.sld.x + cW, idealX)); y2 = c.sld.y; } 
-            else { x2 = c.sld.x + cW/2; y2 = c.sld.y; }
+            
+            // Logic điểm nối thông minh
+            if (p.type === 'bus') {
+                let idealX = cBounds.x + cBounds.w/2;
+                x1 = Math.max(pBounds.x, Math.min(pBounds.x + pBounds.w, idealX));
+                y1 = pBounds.y + pBounds.h;
+            } else {
+                x1 = pBounds.x + pBounds.w/2;
+                y1 = pBounds.y + pBounds.h;
+            }
+
+            if (c.type === 'bus') {
+                let idealX = x1;
+                x2 = Math.max(cBounds.x, Math.min(cBounds.x + cBounds.w, idealX));
+                y2 = cBounds.y;
+            } else {
+                x2 = cBounds.x + cBounds.w/2;
+                y2 = cBounds.y;
+            }
+
             const midY = y1 + (y2 - y1) / 2;
             createWire(x1, y1, x1, midY, colorCls, typeCls, 'v');
             createWire(x1, midY, x2, midY, colorCls, typeCls, 'h');
@@ -483,7 +551,8 @@
 
         function createWire(x1, y1, x2, y2, color, type, dir) {
             if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-            const d = document.createElement('div'); d.className = `wire ${color} ${type}`;
+            const d = document.createElement('div');
+            d.className = `wire ${color} ${type}`;
             d.style.left = Math.min(x1, x2) + 'px'; d.style.top = Math.min(y1, y2) + 'px';
             if(dir==='h') { d.style.width=Math.abs(x2-x1)+'px'; d.style.height='0'; d.style.borderTopWidth='2px'; }
             else { d.style.width='0'; d.style.height=Math.abs(y2-y1)+'px'; d.style.borderLeftWidth='2px'; }
