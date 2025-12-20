@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.6</title>
+    <title>TAVIETNAM Monitor v4.7</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -22,8 +22,16 @@
         .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
-        .header-right { display: flex; align-items: center; gap: 10px; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; font-weight: 500; outline: none; max-width: 140px; }
+        
+        /* Header Right (Grid Selector) */
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .grid-selector select { 
+            background: #34495e; color: white; border: 1px solid #7f8c8d; 
+            padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; 
+            outline: none; cursor: pointer; min-width: 150px;
+        }
+        .grid-selector select:hover { background: #2c3e50; border-color: #f1c40f; }
+
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
         /* LAYOUT */
@@ -48,13 +56,11 @@
 
         /* CONTENT */
         .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
-        
-        /* QUAN TRỌNG: Cấu trúc Panel */
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
         #sld-panel { overflow: auto; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
-        
-        /* Overlay */
+
+        /* MOBILE RESPONSIVE */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; backdrop-filter: blur(2px); }
         
         @media (max-width: 1024px) {
@@ -62,7 +68,8 @@
             .app-sidebar { position: absolute; height: 100%; top: 0; left: -260px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .app-sidebar.show { left: 0; }
             .overlay.show { display: block; }
-            .user-profile { display: none; } 
+            .user-profile { display: none; } /* Ẩn user trên mobile */
+            .header-right { gap: 5px; } /* Thu gọn khoảng cách */
         }
 
         /* --- ELEMENT STYLES --- */
@@ -80,6 +87,7 @@
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
 
+        /* WIRE */
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
@@ -87,10 +95,12 @@
         .wire-solid { border-style: solid; }
         .wire-dashed { border-style: dashed; }
 
+        /* TYPES */
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
         .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
         
+        /* GENERATOR */
         .type-gen { 
             border-radius: 50% !important; width: 60px !important; height: 60px !important; 
             border: 3px solid #e67e22; background: #fdf2e9; 
@@ -100,16 +110,21 @@
         .type-gen.energized-node { background: #ffccbc !important; border-color: #d35400 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 61, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0); } }
 
+        /* CABLE */
         .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
+        
+        /* POLE */
         .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .type-pole span { display: none; }
         .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
 
+        /* MAP BTNS & LABELS */
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
         .map-label { border: 2px solid #666; border-radius: 4px; padding: 4px; text-align: center; font-weight: bold; font-size: 11px; white-space: nowrap; min-width: 50px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
         
+        /* LOTO MODAL */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
@@ -126,8 +141,11 @@
             <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
             <a href="https://khaosathethongdienapp.web.app" class="logo"><i class="fas fa-bolt"></i> SCADA MONITOR</a>
         </div>
+        
         <div class="header-right">
-            <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
+            <div class="grid-selector">
+                <select id="grid-select" onchange="changeGrid()"></select>
+            </div>
             <div class="user-profile"><i class="fas fa-user-shield"></i> <span id="clock">00:00</span></div>
         </div>
     </header>
@@ -141,7 +159,7 @@
             </ul>
             <div class="sidebar-list-title">DANH SÁCH THIẾT BỊ</div>
             <div class="sidebar-device-list" id="sidebarList"></div>
-            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.6 (Map Fixed)</div>
+            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.7 (Grid Selector Fix)</div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
 
@@ -202,14 +220,17 @@
                 if (!data) { select.appendChild(new Option("Lưới mặc định", 'default_grid')); } 
                 else { for (let id in data) select.appendChild(new Option(data[id].name, id)); }
                 select.value = currentGridId;
-                loadDevices();
+                loadDevices(); // Load devices sau khi grid được load
             });
         }
+        
+        // Gắn vào window để HTML gọi được
         window.changeGrid = function() {
             currentGridId = document.getElementById('grid-select').value;
             localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
         }
+
         function loadDevices() {
             onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
                 const data = snapshot.val();
@@ -256,7 +277,7 @@
             });
         }
 
-        // --- UI UTILS (FIX MAP RESIZE) ---
+        // --- UI UTILS ---
         window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('show'); document.querySelector('.overlay').classList.toggle('show'); }
         window.switchView = (mode, btn) => {
             document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
@@ -268,8 +289,6 @@
             } else { 
                 document.getElementById('sld-panel').classList.remove('active-view'); 
                 document.getElementById('map-panel').classList.add('active-view'); 
-                // FORCE MAP RESIZE
-                map.invalidateSize();
                 setTimeout(() => map.invalidateSize(), 300);
             }
         }
@@ -290,11 +309,9 @@
 
         function calculateSystemState() {
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
-            // Nguồn và Máy phát ON
             const pQueue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
             pQueue.forEach(n => n.isEnergized = true);
 
-            // Lan truyền 2 chiều (Flood)
             let changed = true;
             while(changed) {
                 changed = false;
@@ -302,7 +319,6 @@
                     if (!child.parent) return;
                     const parent = localNodes.find(n => n.id === child.parent);
                     if (!parent) return;
-                    
                     const linkOk = isConductive(parent) && isConductive(child);
                     if (linkOk) {
                         if (parent.isEnergized && !child.isEnergized) { child.isEnergized = true; changed = true; }
@@ -311,7 +327,6 @@
                 });
             }
 
-            // An toàn
             const sQueue = localNodes.filter(n => n.state === 'locked' || n.isGrounded === true);
             sQueue.forEach(n => n.isSafe = true);
             changed = true;
@@ -322,10 +337,11 @@
                     const parent = localNodes.find(n => n.id === child.parent);
                     if (!parent) return;
                     if (parent.isEnergized || child.isEnergized) return;
-
-                    // Giả sử nối đất luôn lan truyền
-                    if (parent.isSafe && !child.isSafe) { child.isSafe = true; changed = true; }
-                    else if (child.isSafe && !parent.isSafe) { parent.isSafe = true; changed = true; }
+                    const linkOk = true; 
+                    if (linkOk) {
+                        if (parent.isSafe && !child.isSafe) { child.isSafe = true; changed = true; }
+                        else if (child.isSafe && !parent.isSafe) { parent.isSafe = true; changed = true; }
+                    }
                 });
             }
         }
@@ -353,6 +369,7 @@
             const div = document.getElementById('lotoContent');
             div.innerHTML = '';
 
+            // GEN
             if (node.type === 'gen') {
                 if (node.state === 'on') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('off')"><i class="fas fa-stop-circle"></i> DỪNG MÁY (STOP)</button>`;
@@ -362,7 +379,9 @@
                 } else if (node.state === 'locked') {
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA LOTO</button>`;
                 }
-            } else {
+            } 
+            // SWITCH
+            else {
                 if (node.state === 'closed') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
                 } else if (node.state === 'open') {
@@ -435,6 +454,7 @@
                     let st = node.state === 'on' ? 'RUN' : (node.state==='locked'?'LOTO':'STOP');
                     content += `<br><span style="font-size:9px; font-weight:bold">${st}</span>`;
                 }
+
                 if(['bus','wire','cable','underground','pole'].includes(node.type)) content = '';
 
                 el.innerHTML = content;
@@ -516,6 +536,9 @@
                 mapMarkers[node.id] = m;
             });
         }
+
+        // Init
+        loadGrids();
     </script>
 </body>
 </html>
