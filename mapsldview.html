@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.4</title>
+    <title>TAVIETNAM Monitor v4.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- CORE CSS (Giữ nguyên) --- */
+        /* --- CORE CSS --- */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         .app-header { height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0; }
@@ -18,9 +18,9 @@
         .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
-        .header-right { display: flex; align-items: center; gap: 10px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; font-weight: 500; outline: none; max-width: 140px; }
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
+        
         .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
         .app-sidebar { width: 260px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 1500; border-right: 1px solid #34495e; }
         .sidebar-menu { list-style: none; padding: 0; margin: 0; margin-top: 10px; flex-shrink: 0; }
@@ -33,6 +33,7 @@
         .dev-item:hover { background-color: #34495e; }
         .dev-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; color: #95a5a6; text-align: center; border-top: 1px solid #34495e; background: #233242; flex-shrink: 0; }
+
         .app-content { flex: 1; position: relative; display: flex; flex-direction: column; background: #fff; }
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
@@ -45,9 +46,11 @@
             .overlay.show { display: block; }
             .user-profile { display: none; } 
         }
+
         .panel-info { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #ddd; font-size: 12px; pointer-events: none; }
         .legend-row { display: flex; align-items: center; margin-bottom: 5px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
         .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         .closed, .on { border-color: #d32f2f !important; color: #d32f2f; }
@@ -55,26 +58,37 @@
         .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
         .safe-node { background-color: #d5f5e3 !important; border-color: #27ae60 !important; box-shadow: 0 0 8px rgba(46, 204, 113, 0.5); }
+
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #ff3d00 !important; z-index: 6; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
+
         .type-bus { height: 12px !important; background: #2c3e50; border: none; width: 300px; border-radius: 6px; }
-        .type-bus span { display: none; } .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
+        .type-bus.energized-node { background-color: #ff3d00 !important; } .type-bus.safe-node { background-color: #2ecc71 !important; }
         .type-source { background-color: #e3f2fd; border-color: #1565c0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
-        .type-gen { border-radius: 50% !important; width: 60px !important; height: 60px !important; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; }
+        
+        /* MÁY PHÁT ĐIỆN */
+        .type-gen { 
+            border-radius: 50% !important; width: 60px !important; height: 60px !important; 
+            border: 3px solid #e67e22; background: #fdf2e9; 
+            display: flex; align-items: center; justify-content: center;
+        }
         .type-gen::before { content: 'G'; font-size: 24px; font-weight: bold; color: #d35400; }
         .type-gen.energized-node { background: #ffccbc !important; border-color: #d35400 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 61, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0); } }
+
         .type-cable { height: 24px !important; width: 100px; background: #ecf0f1; border: 1px dashed #7f8c8d; transform: skewX(-10deg); }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00; }
         .type-cable.safe-node { background-color: #d5f5e3 !important; border-color: #2ecc71; }
         .type-pole { width: 15px !important; height: 15px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .type-pole span { display: none; }
         .grounded { background-color: #2ecc71 !important; border: 2px solid #27ae60 !important; box-shadow: 0 0 10px #2ecc71; }
+
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
         .map-label { border: 2px solid #666; border-radius: 4px; padding: 4px; text-align: center; font-weight: bold; font-size: 11px; white-space: nowrap; min-width: 50px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+        
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 340px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.2s ease-out; }
         @keyframes popUp { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
@@ -106,7 +120,7 @@
             </ul>
             <div class="sidebar-list-title">DANH SÁCH THIẾT BỊ</div>
             <div class="sidebar-device-list" id="sidebarList"></div>
-            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.4 (Core Logic Fix)</div>
+            <div class="menu-footer">© 2025 TaVietnam<br>Version 4.5 (Wire Color Fixed)</div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
 
@@ -237,63 +251,41 @@
             else { const w = Math.floor(window.screen.availWidth / 3); mapWindow = window.open(url, 'GoogleMapsSV', `width=${w},height=${window.screen.availHeight},left=0,top=0`); }
         }
 
-        // --- CORE POWER LOGIC (THUẬT TOÁN LOANG MẠCH - FLOOD FILL) ---
-        // Sửa lỗi: Điện không chảy ngược từ Con -> Cha
-        
+        // --- CORE POWER LOGIC ---
         function isConductive(node) {
-            // Check nếu là Switch thì phải đóng
-            if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
-            // Gen chỉ dẫn khi ON
+            if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole', 'underground'].includes(node.type)) return true;
             if (node.type === 'gen') return node.state === 'on';
-            // Các loại khác (dây, bus, load) luôn dẫn
-            return true;
+            if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
+            return false;
         }
 
         function calculateSystemState() {
-            // 1. Reset
             localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
-
-            // 2. Tìm tất cả nguồn đang phát (Source + Gen ON)
-            let queue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
             
-            // Đánh dấu nguồn là có điện
-            queue.forEach(n => n.isEnergized = true);
+            // 1. Tìm Nguồn
+            const pQueue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
+            pQueue.forEach(n => n.isEnergized = true);
 
-            // 3. Vòng lặp loang mạch (Lan truyền 2 chiều)
-            // Lặp lại cho đến khi không còn thiết bị nào mới được cấp điện
+            // 2. Loang Mạch (Flood Fill) - Chạy nhiều lần để lan truyền đầy đủ 2 chiều
             let changed = true;
             while(changed) {
                 changed = false;
-                
-                // Duyệt qua tất cả mối nối (Dựa trên quan hệ parent-child)
                 localNodes.forEach(child => {
                     if (!child.parent) return;
                     const parent = localNodes.find(n => n.id === child.parent);
                     if (!parent) return;
 
-                    // Kiểm tra xem dây nối giữa Parent và Child có thông không?
-                    // Để thông, cả 2 thiết bị (nếu là switch) phải đóng.
-                    // Với dây dẫn/bus thì luôn thông.
                     const linkOk = isConductive(parent) && isConductive(child);
-
                     if (linkOk) {
-                        // Lan truyền từ Parent -> Child
-                        if (parent.isEnergized && !child.isEnergized) {
-                            child.isEnergized = true;
-                            changed = true;
-                        }
-                        // Lan truyền từ Child -> Parent (Ngược dòng) - QUAN TRỌNG CHO MÁY PHÁT
-                        else if (child.isEnergized && !parent.isEnergized) {
-                            parent.isEnergized = true;
-                            changed = true;
-                        }
+                        if (parent.isEnergized && !child.isEnergized) { child.isEnergized = true; changed = true; }
+                        else if (child.isEnergized && !parent.isEnergized) { parent.isEnergized = true; changed = true; }
                     }
                 });
             }
 
-            // 4. Tính toán An toàn (Tương tự)
-            let safeQueue = localNodes.filter(n => n.state === 'locked' || n.isGrounded === true);
-            safeQueue.forEach(n => n.isSafe = true);
+            // 3. An toàn
+            const sQueue = localNodes.filter(n => n.state === 'locked' || n.isGrounded === true);
+            sQueue.forEach(n => n.isSafe = true);
             
             changed = true;
             while(changed) {
@@ -302,14 +294,9 @@
                     if (!child.parent) return;
                     const parent = localNodes.find(n => n.id === child.parent);
                     if (!parent) return;
-
-                    // An toàn chỉ lan truyền khi KHÔNG CÓ ĐIỆN
                     if (parent.isEnergized || child.isEnergized) return;
 
-                    // Giả sử dây dẫn an toàn thì luôn thông (trừ khi bị cắt)
-                    // Tuy nhiên để đơn giản, ta coi như lan truyền vật lý
-                    const linkOk = true; // Lan truyền tiếp địa không cần switch đóng (về mặt vật lý thì cần, nhưng để an toàn thì cảnh báo rộng hơn)
-
+                    const linkOk = true; 
                     if (linkOk) {
                         if (parent.isSafe && !child.isSafe) { child.isSafe = true; changed = true; }
                         else if (child.isSafe && !parent.isSafe) { parent.isSafe = true; changed = true; }
@@ -341,12 +328,11 @@
             const div = document.getElementById('lotoContent');
             div.innerHTML = '';
 
-            // LOGIC MÁY PHÁT
+            // GEN
             if (node.type === 'gen') {
                 if (node.state === 'on') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('off')"><i class="fas fa-stop-circle"></i> DỪNG MÁY (STOP)</button>`;
                 } 
-                // Fix: Thêm node.state === 'closed' vào điều kiện này
                 else if (node.state === 'off' || node.state === 'closed' || !node.state) {
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="updateState('on')"><i class="fas fa-play-circle"></i> KHỞI ĐỘNG (START)</button>`;
                     div.innerHTML += `<button class="btn-action" style="background:#f39c12" onclick="showPinForm('lock')"><i class="fas fa-lock"></i> KHÓA LOTO</button>`;
@@ -354,7 +340,7 @@
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA LOTO</button>`;
                 }
             } 
-            // LOGIC THIẾT BỊ ĐÓNG CẮT
+            // SWITCH
             else {
                 if (node.state === 'closed') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
@@ -438,17 +424,17 @@
             });
         }
 
+        // SỬA LỖI MÀU DÂY: Kiểm tra cả 2 đầu mối nối
         function drawWire(p, c) {
             let colorCls = 'dead-line';
-            // Logic màu dây: Có điện nếu cả 2 đầu đều có điện (thông mạch), hoặc 1 trong 2 có điện và dẫn điện
-            // Nhưng để đơn giản hiển thị: Nếu bất kỳ đầu nào có điện và thông tới đầu kia -> Đỏ
+            // Logic mới: Nếu một trong hai đầu có điện VÀ thiết bị đó đang dẫn điện (ON/CLOSED)
+            // Hoặc đơn giản hơn: Nếu nút đó Energized thì dây nối với nó cũng nóng (về mặt hiển thị)
             if(p.isEnergized || c.isEnergized) colorCls = 'energized-line';
-            if((p.isSafe || c.isSafe) && colorCls !== 'energized-line') colorCls = 'safe-line';
+            else if(p.isSafe || c.isSafe) colorCls = 'safe-line';
 
             const typeCls = 'wire-' + (c.connection || 'solid');
             let pW=80, pH=50, cW=80, cH=50;
-            if(p.type==='bus'){ pW=300; pH=12; } 
-            if(c.type==='bus'){ cW=300; cH=12; } 
+            if(p.type==='bus'){ pW=300; pH=12; } if(c.type==='bus'){ cW=300; cH=12; } 
 
             let x1, y1, x2, y2;
             if (p.type === 'bus') { let idealX = c.sld.x + cW/2; x1 = Math.max(p.sld.x, Math.min(p.sld.x + pW, idealX)); y1 = p.sld.y + pH; } 
@@ -475,7 +461,6 @@
             for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
             for(let k in mapLines) map.removeLayer(mapLines[k]); mapLines={};
 
-            // Vẽ Dây Map
             localNodes.forEach(node => {
                 if(node.parent && node.geo) {
                     const p = localNodes.find(n => n.id === node.parent);
@@ -483,17 +468,14 @@
                         let color = '#95a5a6';
                         if(p.isEnergized || node.isEnergized) color = '#ff3d00';
                         else if(p.isSafe || node.isSafe) color = '#2ecc71';
-                        
                         const dash = (node.connection === 'dashed') ? '5, 10' : null;
                         mapLines[node.id] = L.polyline([[p.geo.lat,p.geo.lng], [node.geo.lat,node.geo.lng]], {color:color, weight:3, dashArray:dash}).addTo(map);
                     }
                 }
             });
 
-            // Vẽ Marker
             localNodes.forEach(node => {
                 if(!node.geo) return;
-                
                 let color = '#666'; let bg = '#fff';
                 
                 if (node.type === 'pole') {
