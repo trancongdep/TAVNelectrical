@@ -1,16 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - Advanced Grid Management</title>
+    <title>Admin Panel - Generator Update</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* CORE CSS */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* HEADER */
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
@@ -21,8 +19,6 @@
         .btn-rename { background: #f39c12; }
         
         .container { display: flex; flex: 1; overflow: hidden; }
-        
-        /* SIDEBAR */
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 1; }
         .form-group { margin-bottom: 8px; } 
@@ -30,22 +26,16 @@
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
         
-        /* BUTTONS */
         .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; }
-        
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:15px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; }
-        .btn-import:hover { background: #71368a; }
-        
         .btn-extent { background: #7f8c8d; width: 100%; margin-top:5px; padding: 6px; border: none; cursor: pointer; border-radius: 3px; color: white; font-size: 11px; }
 
-        /* LIST */
         .device-list { flex: 1; overflow-y: auto; border-top: 1px solid #eee; } 
         .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; font-size: 12px; } 
         .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
 
-        /* MAIN EDITOR */
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; }
@@ -53,23 +43,16 @@
         .tab-content { display: none; width: 100%; height: 100%; position: relative; }
         .tab-content.active { display: block; }
 
-        /* SLD */
         #sld-container { width: 100%; height: 100%; overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
-
-        /* MAP */
         #map-wrapper { position: relative; width: 100%; height: 100%; }
         #map-canvas { width: 100%; height: 100%; }
 
-        /* MODAL IMPORT */
+        /* Modal Import */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 550px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
-        .modal-header { font-weight: bold; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px; color: #2c3e50; }
         .json-input { width: 100%; height: 200px; border: 1px solid #ddd; padding: 10px; font-family: monospace; resize: none; border-radius: 4px; box-sizing: border-box; }
-        
         .import-options { display: flex; gap: 20px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #eee; }
-        .radio-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: #333; }
-        .radio-label input { cursor: pointer; }
 
         /* Street View Btn */
         .street-view-btn {
@@ -84,13 +67,26 @@
         .admin-node { position: absolute; width: 80px; height: 50px; background: white; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 10px; cursor: grab; user-select: none; z-index: 10; border-radius: 2px; }
         .admin-node.selected-node { border: 2px solid #007bff; z-index: 20; background: #e3f2fd; }
         .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
+        
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
         .energized-line { border-color: #ff3d00 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+        
         .type-bus { height: 12px !important; width: 250px; background: #2c3e50; border-radius: 6px; border:none; }
         .type-bus.energized-node { background-color: #ff3d00 !important; }
+        
         .type-source { border-radius: 50%; width: 60px; height: 60px; }
+        
+        /* STYLE MÁY PHÁT ĐIỆN (GEN) */
+        .type-gen { 
+            border-radius: 50%; width: 60px; height: 60px; 
+            border: 3px solid #e67e22; background: #fdf2e9; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .type-gen::before { content: 'G'; font-size: 24px; font-weight: bold; color: #d35400; }
+        .type-gen.energized-node { background: #ffccbc !important; border-color: #d35400 !important; }
+
         .type-cable { height: 20px !important; width: 100px; transform: skewX(-15deg); border: 1px dashed #555; background: #eee; }
         .type-cable.energized-node { background-color: #ffccbc !important; border-color: #ff3d00 !important; }
         .type-pole { width: 20px !important; height: 20px !important; border-radius: 50%; background: #bdc3c7; border: 2px solid #7f8c8d; display: flex; align-items: center; justify-content: center; }
@@ -116,17 +112,40 @@
     <div class="sidebar">
         <div class="form-content">
             <div class="form-group"><label>ID Thiết bị (Tự sinh)</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
-            <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
+            <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label" placeholder="VD: Máy phát G1"></div>
+            
+            <div class="form-group"><label>Công suất (kVA/MW)</label><input type="text" id="inp-capacity" placeholder="VD: 500kVA"></div>
+
             <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type">
-                    <optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup>
-                    <optgroup label="Thiết bị"><option value="cb">CB</option><option value="source">Nguồn</option><option value="tr">Biến áp</option><option value="fco">FCO</option><option value="ds">Dao CL</option><option value="load">Tải</option></optgroup>
-                    <optgroup label="Dây"><option value="wire">Dây nổi</option><option value="cable">Cáp ngầm</option></optgroup>
-                </select></div>
+                <div class="col form-group"><label>Loại</label>
+                    <select id="inp-type">
+                        <optgroup label="Nguồn điện">
+                            <option value="source">Lưới QG (Source)</option>
+                            <option value="gen">Máy phát (Generator)</option> </optgroup>
+                        <optgroup label="Cấu trúc">
+                            <option value="pole">Cột điện</option>
+                            <option value="bus">Thanh cái</option>
+                        </optgroup>
+                        <optgroup label="Thiết bị">
+                            <option value="cb">CB (Máy cắt)</option>
+                            <option value="tr">Biến áp</option>
+                            <option value="fco">FCO</option>
+                            <option value="ds">Dao CL</option>
+                            <option value="load">Tải</option>
+                        </optgroup>
+                        <optgroup label="Dây dẫn">
+                            <option value="wire">Đường dây</option>
+                            <option value="cable">Cáp ngầm</option>
+                        </optgroup>
+                    </select>
+                </div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
-            <div class="form-group"><label>Kiểu đấu nối</label><select id="inp-connection"><option value="solid">Nét liền</option><option value="dashed">Nét đứt</option></select></div>
             
+            <div class="form-group"><label>Kiểu đấu nối</label>
+                <select id="inp-connection"><option value="solid">Nét liền</option><option value="dashed">Nét đứt</option></select>
+            </div>
+
             <div class="row" style="background:#fff; padding:5px; border:1px solid #eee; margin-bottom:10px;">
                 <div class="col"><input type="checkbox" id="inp-showSLD" checked> Hiện SLD</div>
                 <div class="col"><input type="checkbox" id="inp-grounded"> Tiếp địa</div>
@@ -167,20 +186,11 @@
 <div id="importModal" class="modal">
     <div class="modal-content">
         <div class="modal-header"><i class="fas fa-robot"></i> Import Dữ liệu</div>
-        
         <div class="import-options">
-            <label class="radio-label">
-                <input type="radio" name="importMode" value="append" checked>
-                Thêm vào lưới hiện tại
-            </label>
-            <label class="radio-label">
-                <input type="radio" name="importMode" value="new">
-                Tạo lưới điện mới
-            </label>
+            <label class="radio-label"><input type="radio" name="importMode" value="append" checked> Thêm vào lưới hiện tại</label>
+            <label class="radio-label"><input type="radio" name="importMode" value="new"> Tạo lưới điện mới</label>
         </div>
-
-        <textarea id="jsonInput" class="json-input" placeholder='Dán JSON từ Gemini vào đây: [ {"id": "CB1", "label": "Máy cắt", "type": "cb", "parent": "BUS1"}, ... ]'></textarea>
-        
+        <textarea id="jsonInput" class="json-input" placeholder='Dán JSON từ Gemini vào đây: [ {"id": "G1", "label": "Máy phát", "type": "gen", "capacity": "500kVA"}, ... ]'></textarea>
         <div style="display:flex; gap:10px; justify-content: flex-end;">
             <button onclick="closeImportModal()" style="background:#95a5a6; border:none; padding:10px; color:white; border-radius:4px;">Hủy</button>
             <button onclick="processImport()" style="background:#27ae60; border:none; padding:10px; color:white; border-radius:4px;">Xác nhận Import</button>
@@ -220,7 +230,6 @@
             } else {
                 for (let id in data) select.appendChild(new Option(data[id].name, id));
             }
-            // Nếu grid cũ bị xóa, về mặc định
             if (data && !data[currentGridId]) currentGridId = Object.keys(data)[0];
             select.value = currentGridId;
             loadDevices();
@@ -252,7 +261,6 @@
     }
 
     function loadDevices() {
-        // Hủy lắng nghe cũ (đơn giản bằng cách overwrite onValue mới)
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
             const data = snapshot.val();
             allDevices = data ? Object.values(data) : [];
@@ -274,20 +282,14 @@
             const data = JSON.parse(jsonStr);
             if (!Array.isArray(data)) throw new Error("JSON phải là mảng []");
 
-            // Xử lý tạo lưới mới nếu chọn
             if (mode === 'new') {
-                const name = prompt("Nhập tên cho lưới điện mới từ dữ liệu này:");
-                if (!name) return; // Hủy nếu ko nhập tên
-                
+                const name = prompt("Nhập tên cho lưới điện mới:");
+                if (!name) return;
                 const newId = 'grid_' + Date.now();
-                // 1. Tạo Meta
                 set(ref(db, 'grids_meta/' + newId), { name: name });
-                // 2. Chuyển ID
-                currentGridId = newId;
-                localStorage.setItem('currentGridId', newId);
+                currentGridId = newId; localStorage.setItem('currentGridId', newId);
             }
 
-            // Chuẩn bị dữ liệu import
             const updates = {};
             let startX = 100, startY = 100;
             const mapCenter = map.getCenter();
@@ -295,14 +297,13 @@
             data.forEach((item, index) => {
                 if (!item.id || !item.type) return;
                 const col = index % 5; const row = Math.floor(index / 5);
-                
                 updates[`grids/${currentGridId}/nodes/${item.id}`] = {
                     id: item.id,
                     label: item.label || item.id,
                     type: item.type.toLowerCase(),
                     parent: item.parent || null,
-                    connection: 'solid',
-                    state: 'closed',
+                    capacity: item.capacity || "", // Import công suất
+                    connection: 'solid', state: 'closed',
                     showOnSLD: true, isGrounded: false,
                     sld: { x: startX + col * 150, y: startY + row * 100 },
                     geo: { lat: mapCenter.lat, lng: mapCenter.lng }
@@ -310,16 +311,13 @@
             });
 
             update(ref(db), updates).then(() => {
-                alert(`Đã import ${Object.keys(updates).length} thiết bị vào lưới: ${currentGridId}`);
+                alert(`Đã import ${Object.keys(updates).length} thiết bị!`);
                 closeImportModal();
                 document.getElementById('jsonInput').value = '';
-                // Nếu tạo lưới mới, cần reload select box
                 if(mode === 'new') loadGrids(); 
             });
 
-        } catch (e) {
-            alert("Lỗi JSON: " + e.message);
-        }
+        } catch (e) { alert("Lỗi JSON: " + e.message); }
     }
 
     // --- SMART WINDOW ---
@@ -337,14 +335,15 @@
         }
     }
 
-    // --- CORE LOGIC (Giữ nguyên) ---
+    // --- CORE LOGIC (Updated Power Flow) ---
     function calculatePower() {
         allDevices.forEach(n => n.isEnergized = false);
-        const sources = allDevices.filter(n => n.type === 'source');
+        // Nguồn bao gồm: Source (Lưới) và Gen (Máy phát)
+        const sources = allDevices.filter(n => n.type === 'source' || n.type === 'gen');
         sources.forEach(src => { src.isEnergized = true; propagate(src); });
     }
     function isConductive(node) {
-        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole'].includes(node.type)) return true;
+        if (['source', 'bus', 'tr', 'load', 'cable', 'wire', 'pole', 'gen'].includes(node.type)) return true;
         if (['cb', 'ds', 'fco'].includes(node.type)) return node.state === 'closed';
         return false;
     }
@@ -354,27 +353,31 @@
         }
     }
 
+    // --- FORM ACTIONS ---
     window.saveDevice = function() {
         let id = selectedId;
-        if (!id) id = 'N' + Date.now().toString().slice(-6); // ID Tự sinh
+        if (!id) id = 'N' + Date.now().toString().slice(-6);
         
         const nd = {
-            id: id, label: document.getElementById('inp-label').value||"NoName", 
+            id: id, 
+            label: document.getElementById('inp-label').value||"NoName", 
             type: document.getElementById('inp-type').value,
             parent: document.getElementById('inp-parent').value||null, 
+            capacity: document.getElementById('inp-capacity').value||"", // Lưu công suất
             connection: document.getElementById('inp-connection').value,
             state: "closed", showOnSLD: document.getElementById('inp-showSLD').checked, 
             isGrounded: document.getElementById('inp-grounded').checked,
             sld: { x: parseInt(document.getElementById('inp-x').value)||100, y: parseInt(document.getElementById('inp-y').value)||100 },
             geo: { lat: parseFloat(document.getElementById('inp-lat').value)||map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value)||map.getCenter().lng }
         };
-        // Save vào đường dẫn Grid hiện tại
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(()=>selectDevice(nd,false));
     }
 
     window.resetForm = function() {
         selectedId = null; document.getElementById('inp-id').value = "(Tự sinh)";
         document.getElementById('inp-label').value = ""; document.getElementById('inp-parent').value = "";
+        document.getElementById('inp-capacity').value = ""; // Reset công suất
+        
         const c = map.getCenter(); document.getElementById('inp-lat').value=c.lat.toFixed(6); document.getElementById('inp-lng').value=c.lng.toFixed(6);
         const container = document.getElementById('sld-container');
         document.getElementById('inp-x').value = container.scrollLeft + 300; document.getElementById('inp-y').value = container.scrollTop + 200;
@@ -383,15 +386,25 @@
 
     window.selectDevice = function(d, z) {
         selectedId = d.id;
-        document.getElementById('inp-id').value = d.id; document.getElementById('inp-label').value = d.label;
-        document.getElementById('inp-type').value = d.type; updateParentSelect(); document.getElementById('inp-parent').value = d.parent||"";
+        document.getElementById('inp-id').value = d.id; 
+        document.getElementById('inp-label').value = d.label;
+        document.getElementById('inp-type').value = d.type; 
+        document.getElementById('inp-capacity').value = d.capacity || ""; // Load công suất
+        updateParentSelect(); 
+        document.getElementById('inp-parent').value = d.parent||"";
         document.getElementById('inp-connection').value = d.connection||"solid";
         document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
         document.getElementById('inp-grounded').checked = (d.isGrounded === true);
         document.getElementById('inp-x').value = d.sld.x; document.getElementById('inp-y').value = d.sld.y;
         document.getElementById('inp-lat').value = d.geo?d.geo.lat:0; document.getElementById('inp-lng').value = d.geo?d.geo.lng:0;
         renderTable(); renderSLD();
-        if(mapMarkers[d.id]) { mapMarkers[d.id].openPopup(); if(z && d.geo) map.flyTo([d.geo.lat, d.geo.lng], 19); }
+        if(mapMarkers[d.id]) { 
+            mapMarkers[d.id].openPopup(); 
+            if(z && d.geo) {
+                map.flyTo([d.geo.lat, d.geo.lng], 19);
+                if (mapWindow && !mapWindow.closed) mapWindow.location.href = `https://www.google.com/maps?q=&layer=c&cbll=${d.geo.lat},${d.geo.lng}`;
+            }
+        }
     }
 
     window.deleteDevice = function() { if(selectedId && confirm(`Xóa?`)) { remove(ref(db, `grids/${currentGridId}/nodes/${selectedId}`)); resetForm(); } }
@@ -411,7 +424,7 @@
         sel.value = v;
     }
 
-    // RENDER (Giữ nguyên logic vẽ)
+    // RENDER SLD
     const sldCanvas = document.getElementById('sld-canvas');
     function renderSLD() {
         sldCanvas.innerHTML = '';
@@ -421,10 +434,18 @@
             const el = document.createElement('div');
             el.className = `admin-node type-${d.type} ${d.id===selectedId?'selected-node':''}`;
             el.style.left = d.sld.x + 'px'; el.style.top = d.sld.y + 'px';
-            if(d.isGrounded) el.classList.add('grounded'); // Hiển thị tiếp địa trên SLD
+            if(d.isGrounded) el.classList.add('grounded'); 
+            
+            // Hiển thị Label
             if(['bus','wire','cable','pole'].includes(d.type)) el.innerHTML=`<span style="color:${d.type==='pole'?'#333':'white'};font-size:9px">${d.id}</span>`;
-            else el.innerHTML=`<b>${d.id}</b><br>${d.label}`;
+            else {
+                let extra = d.capacity ? `<br><span style="color:blue;font-size:9px">${d.capacity}</span>` : '';
+                el.innerHTML=`<b>${d.id}</b><br>${d.label}${extra}`;
+            }
+            
             if(d.isEnergized) el.classList.add('energized-node'); 
+            
+            // Drag
             el.onmousedown = function(e) {
                 e.preventDefault(); e.stopPropagation();
                 if(d.id!==selectedId) selectDevice(d, false);
@@ -481,17 +502,29 @@
         allDevices.forEach(d => {
             if(!d.geo) return;
             let color = '#666'; let bg = '#fff';
-            if (d.type === 'pole') { // Marker cho cột
-                bg = d.isGrounded ? '#d5f5e3' : '#bdc3c7';
-                color = d.isGrounded ? '#27ae60' : '#7f8c8d';
-            } else if (d.isEnergized) {
-                color = '#ff3d00';
+            if (d.type === 'pole') {
+                color = '#7f8c8d'; bg = '#bdc3c7';
+                if(d.isGrounded) { color='#27ae60'; bg='#d5f5e3'; }
+                const html = `<div style="background:${bg}; border:2px solid ${color}; width:12px; height:12px; border-radius:50%; box-shadow:1px 1px 3px rgba(0,0,0,0.3); display:flex; justify-content:center; align-items:center; font-size:10px; color:green; font-weight:bold">${d.isGrounded ? '⏚' : ''}</div>`;
+                const icon = L.divIcon({className:'', html:html, iconSize:[12,12]});
+                const m = L.marker([d.geo.lat,d.geo.lng], {icon:icon}).addTo(map);
+                m.on('click', ()=>selectDevice(d,false));
+                m.on('dragend', ()=>{
+                    const pos = m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
+                    document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
+                    if (mapWindow && !mapWindow.closed) mapWindow.location.href = `https://www.google.com/maps?q=&layer=c&cbll=${pos.lat},${pos.lng}`;
+                });
+                mapMarkers[d.id] = m;
+                return;
             }
-            
-            let label = d.type === 'pole' ? (d.isGrounded?'⏚':'') : d.label;
-            const html = `<div style="background:${bg}; border:2px solid ${color}; width:${d.type==='pole'?12:60}px; height:${d.type==='pole'?12:20}px; border-radius:${d.type==='pole'?'50%':'4px'}; display:flex; justify-content:center; align-items:center; font-size:10px; color:green; font-weight:bold">${label}</div>`;
-            
-            const icon = L.divIcon({className:'', html:html, iconSize:[20,20]});
+
+            if(d.isEnergized) {
+                if(d.state==='closed') color='#d32f2f'; else if(d.type==='source'||d.type==='gen') color='#1565c0'; else color='#27ae60';
+                bg = '#fff';
+            }
+
+            const html = `<div class="map-label" style="background:${bg}; border:2px solid ${color}; color:#333">${d.label}</div>`;
+            const icon = L.divIcon({className:'', html:html, iconSize:[60,20], iconAnchor:[30,10]});
             const m = L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
             m.on('click', ()=>selectDevice(d,false));
             m.on('dragend', ()=>{
@@ -503,7 +536,6 @@
         });
     }
 
-    // --- TAB SWITCHER ---
     window.switchTab = function(t, btn){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -512,8 +544,9 @@
         if(t==='map') setTimeout(()=>map.invalidateSize(), 200);
     }
 
-    // INIT
+    // Init
     loadGrids();
 </script>
 </body>
 </html>
+
