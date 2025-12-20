@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v4.2</title>
+    <title>TAVIETNAM Monitor v4.3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -22,7 +23,7 @@
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .logo i { color: #f1c40f; }
         .header-right { display: flex; align-items: center; gap: 10px; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; outline: none; max-width: 140px; }
+        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 5px; border-radius: 4px; font-size: 13px; font-weight: 500; outline: none; max-width: 140px; }
         .user-profile { font-size: 13px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
         
         /* LAYOUT */
@@ -72,8 +73,8 @@
         .node-box { position: absolute; width: 80px; text-align: center; font-size: 10px; font-weight: bold; cursor: pointer; border: 2px solid #555; background: white; transition: all 0.2s; padding: 4px; user-select: none; z-index: 10; border-radius: 3px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15); }
         .node-box:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         
-        .closed { border-color: #d32f2f !important; color: #d32f2f; }
-        .open { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
+        .closed, .on { border-color: #d32f2f !important; color: #d32f2f; }
+        .open, .off { border-color: #27ae60 !important; color: #27ae60; border-style: dashed !important; background-color: #f9fff9; }
         .locked { border: 3px solid #f39c12 !important; background-color: #fcf3cf !important; color: #f39c12; }
 
         .energized-node { background-color: #ffccbc !important; box-shadow: 0 0 12px rgba(255, 61, 0, 0.5); border-color: #d32f2f !important; }
@@ -173,7 +174,7 @@
             <div class="sidebar-device-list" id="sidebarList"></div>
 
             <div class="menu-footer">
-                © 2025 TaVietnam<br>Version 4.2 (Gen Fixed)
+                © 2025 TaVietnam<br>Version 4.3 (Gen Fixed)
             </div>
         </nav>
         <div class="overlay" onclick="toggleSidebar()"></div>
@@ -268,7 +269,6 @@
         function renderSidebarList() {
             const container = document.getElementById('sidebarList');
             container.innerHTML = '';
-            // Thêm 'gen' vào danh sách hiển thị
             const visibleTypes = ['cb', 'source', 'gen', 'tr', 'load', 'ds', 'fco'];
             const filteredNodes = localNodes.filter(n => visibleTypes.includes(n.type));
             
@@ -380,13 +380,12 @@
             const node = localNodes.find(n => n.id === id);
             
             if(node.type === 'pole') {
-                if(confirm(`Tiếp địa cột ${node.label}?\n${node.isGrounded?'Đang Tiếp Địa':'Chưa Tiếp Địa'}`)) {
+                if(confirm(`Tiếp địa cột ${node.label}?\n\nTrạng thái: ${node.isGrounded?'ĐÃ TIẾP ĐỊA':'CHƯA TIẾP ĐỊA'}`)) {
                     update(ref(db, `grids/${currentGridId}/nodes/${id}`), { isGrounded: !node.isGrounded });
                 }
                 return;
             }
 
-            // Thêm 'gen' vào danh sách cho phép click
             if (!['cb', 'ds', 'fco', 'gen'].includes(node.type)) return;
 
             currentTargetId = id;
@@ -399,19 +398,22 @@
             const div = document.getElementById('lotoContent');
             div.innerHTML = '';
 
-            // LOGIC MÁY PHÁT
+            // SỬA LỖI Ở ĐÂY: Xử lý trường hợp state='closed' (mặc định) cho Gen
+            // Coi 'closed', 'off', hoặc null đều là TẮT MÁY
+            
             if (node.type === 'gen') {
                 if (node.state === 'on') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('off')"><i class="fas fa-stop-circle"></i> DỪNG MÁY (STOP)</button>`;
-                } else if (node.state === 'off' || !node.state) {
+                } 
+                // Fix: Thêm node.state === 'closed' vào điều kiện này
+                else if (node.state === 'off' || node.state === 'closed' || !node.state) {
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="updateState('on')"><i class="fas fa-play-circle"></i> KHỞI ĐỘNG (START)</button>`;
                     div.innerHTML += `<button class="btn-action" style="background:#f39c12" onclick="showPinForm('lock')"><i class="fas fa-lock"></i> KHÓA LOTO</button>`;
                 } else if (node.state === 'locked') {
                     div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="showPinForm('unlock')"><i class="fas fa-unlock"></i> MỞ KHÓA LOTO</button>`;
                 }
             } 
-            // LOGIC ĐÓNG CẮT
-            else {
+            else { // CB, DS, FCO
                 if (node.state === 'closed') {
                     div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="updateState('open')"><i class="fas fa-power-off"></i> CẮT ĐIỆN (OPEN)</button>`;
                 } else if (node.state === 'open') {
@@ -442,7 +444,7 @@
             if (!pin) return alert("Vui lòng nhập mã PIN!");
             const node = localNodes.find(n => n.id === currentTargetId);
             
-            // Trạng thái mở khóa: Máy phát thì về OFF, CB thì về OPEN
+            // Nếu mở khóa Gen -> Về OFF, Nếu CB -> Về OPEN
             const openState = (node.type === 'gen') ? 'off' : 'open';
 
             if (mode === 'lock') {
@@ -469,7 +471,6 @@
             localNodes.forEach(node => {
                 if (node.type === 'pole' && node.showOnSLD === false) return;
                 const el = document.createElement('div');
-                // Thêm type-gen vào đây
                 el.className = `node-box type-${node.type}`;
                 el.style.left = node.sld.x + 'px'; el.style.top = node.sld.y + 'px';
                 
@@ -484,7 +485,7 @@
                     content += `<br><span style="font-size:9px">${st}</span>`;
                     if(node.state==='locked') content += ` <i class="fas fa-lock"></i>`;
                 }
-                // Hiển thị trạng thái máy phát
+                // Fix hiển thị Gen
                 if(node.type === 'gen') {
                     let st = node.state === 'on' ? 'RUN' : (node.state==='locked'?'LOTO':'STOP');
                     content += `<br><span style="font-size:9px; font-weight:bold">${st}</span>`;
@@ -580,4 +581,3 @@
     </script>
 </body>
 </html>
-
