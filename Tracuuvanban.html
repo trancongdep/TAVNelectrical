@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu Văn bản Pháp luật & AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Cấu hình Firebase của bạn
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo",
+            authDomain: "tavietnam-78ae8.firebaseapp.com",
+            projectId: "tavietnam-78ae8",
+            storageBucket: "tavietnam-78ae8.firebasestorage.app",
+            messagingSenderId: "670121705534",
+            appId: "1:670121705534:web:1027ad98550573ad37116f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Biến lưu trữ văn bản đang chọn để hỏi AI
+        let currentDocContext = "";
+
+        // Hàm lấy dữ liệu từ Firestore (Giả lập dữ liệu mẫu nếu chưa có DB thật)
+        async function loadDocuments() {
+            const listElement = document.getElementById('doc-list');
+            listElement.innerHTML = '<p class="text-gray-500">Đang tải dữ liệu...</p>';
+            
+            // TODO: Khi bạn đã tạo collection 'documents' trong Firestore, bỏ comment dòng dưới
+            // const querySnapshot = await getDocs(collection(db, "documents"));
+            
+            // Dữ liệu mẫu mô phỏng (Xóa đi khi kết nối DB thật)
+            const mockDocs = [
+                {
+                    id: 1,
+                    title: "Luật Đất đai 2024",
+                    downloadUrl: "https://drive.google.com/...", 
+                    summary: "Quy định về chế độ sở hữu đất đai..."
+                },
+                {
+                    id: 2,
+                    title: "Nghị định 13 về Bảo vệ dữ liệu cá nhân",
+                    downloadUrl: "https://drive.google.com/...",
+                    summary: "Quy định về bảo vệ dữ liệu cá nhân và trách nhiệm của các bên..."
+                }
+            ];
+
+            listElement.innerHTML = '';
+            
+            // Render danh sách (Dùng mockDocs hoặc querySnapshot)
+            mockDocs.forEach((doc) => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-4 rounded shadow mb-4 hover:shadow-md transition";
+                div.innerHTML = `
+                    <h3 class="font-bold text-lg text-blue-800">${doc.title}</h3>
+                    <div class="mt-2 flex gap-2">
+                        <a href="${doc.downloadUrl}" target="_blank" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Tải về</a>
+                        <button onclick="selectDoc('${doc.title}', '${doc.summary}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Hỏi AI về văn bản này</button>
+                    </div>
+                `;
+                listElement.appendChild(div);
+            });
+        }
+
+        // Hàm chọn văn bản để đưa vào context cho AI
+        window.selectDoc = (title, content) => {
+            currentDocContext = content;
+            document.getElementById('chat-context').innerText = `Đang hỏi về: ${title}`;
+            document.getElementById('chat-section').classList.remove('hidden');
+            window.scrollTo(0, document.body.scrollHeight);
+        };
+
+        // Hàm gọi AI (Cần tích hợp Gemini API Key)
+        window.askAI = async () => {
+            const question = document.getElementById('user-question').value;
+            const chatBox = document.getElementById('chat-box');
+            
+            if (!question) return;
+
+            // Hiển thị câu hỏi
+            chatBox.innerHTML += `<div class="text-right mb-2"><span class="bg-blue-100 p-2 rounded inline-block">${question}</span></div>`;
+            
+            // Hiển thị loading
+            chatBox.innerHTML += `<div class="text-left mb-2 text-gray-500" id="loading">AI đang suy nghĩ...</div>`;
+
+            // GIẢ LẬP TRẢ LỜI (Cần thay thế bằng gọi Gemini API thực tế)
+            // Logic: Gửi prompt = `Dựa vào văn bản sau: "${currentDocContext}", hãy trả lời câu hỏi: "${question}"`
+            
+            setTimeout(() => {
+                document.getElementById('loading').remove();
+                const fakeAnswer = "Đây là câu trả lời mô phỏng. Để hoạt động thật, bạn cần chèn Gemini API Key vào code.";
+                chatBox.innerHTML += `<div class="text-left mb-2"><span class="bg-gray-100 p-2 rounded inline-block">🤖: ${fakeAnswer}</span></div>`;
+                document.getElementById('user-question').value = '';
+            }, 1000);
+        };
+
+        // Khởi chạy
+        window.onload = loadDocuments;
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <div class="container mx-auto p-6 max-w-4xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-blue-900">Kho Văn Bản Pháp Luật & AI Assistant</h1>
+            <p class="text-gray-600 mt-2">Lưu trữ trên Drive - Quản lý bởi Firebase - Hỏi đáp với AI</p>
+        </header>
+
+        <section id="doc-list" class="space-y-4">
+            </section>
+
+        <section id="chat-section" class="mt-8 border-t pt-6 hidden">
+            <div id="chat-context" class="font-semibold text-blue-700 mb-2"></div>
+            
+            <div id="chat-box" class="bg-white border rounded h-64 overflow-y-auto p-4 mb-4 shadow-inner">
+                <div class="text-center text-gray-400 text-sm">Bắt đầu đặt câu hỏi về văn bản này...</div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="user-question" class="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ví dụ: Văn bản này có hiệu lực từ bao giờ?">
+                <button onclick="askAI()" class="bg-blue-800 text-white px-6 py-2 rounded hover:bg-blue-900">Gửi</button>
+            </div>
+        </section>
+    </div>
+
+</body>
+</html>
