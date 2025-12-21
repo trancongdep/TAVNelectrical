@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v6.0 (Realtime Wire)</title>
+    <title>Admin Panel - TAVIETNAM</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -10,6 +10,9 @@
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         
+        .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .version-tag { font-size: 11px; background: #f1c40f; color: #333; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: bold; }
+
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
@@ -18,8 +21,7 @@
         .container { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 1; }
-        .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 8px; } .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
         .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
@@ -35,16 +37,13 @@
         .tab-content { display: none; width: 100%; height: 100%; position: relative; }
         .tab-content.active { display: block; }
         
-        /* SLD CONTAINER & LAYERS */
         #sld-container { width: 100%; height: 100%; overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: white; position: relative; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
-        /* Tách lớp để tối ưu render khi kéo thả */
         #wire-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
         #node-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
-
         #map-wrapper { position: relative; width: 100%; height: 100%; }
         #map-canvas { width: 100%; height: 100%; }
-        .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
+        .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px; color: #333; text-decoration: none; }
         
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
@@ -68,23 +67,36 @@
         .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; }
         .type-gen::before { content: 'G'; }
+        .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; }
         .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; min-width: 100px; }
         .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
         .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
+        .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
+        .grounded::after { content: '⏚'; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 16px; color: #27ae60; font-weight: bold; }
+        .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
+        .locked::after { content: '\f023'; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: -10px; right: -10px; color: #f39c12; font-size: 12px; background: #fff; border-radius: 50%; padding: 2px; }
         
-        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; } /* transition: none để mượt khi drag */
+        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; }
+        .safe-line { border-color: #2ecc71 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
+        .map-label { border: 2px solid #666; border-radius: 4px; padding: 2px 5px; text-align: center; font-weight: bold; font-size: 10px; white-space: nowrap; min-width: 40px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel</h2></div>
+    <div class="header-title">
+        <h2>
+            <i class="fas fa-bolt"></i> <span id="page-title">Admin Panel</span> 
+            <span id="version-tag" class="version-tag"></span>
+        </h2>
+    </div>
     <div class="grid-selector">
         <label>Lưới điện:</label>
         <select id="grid-select" onchange="changeGrid()"></select>
@@ -157,6 +169,11 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // --- CẤU HÌNH VERSION ---
+    const APP_VERSION = "V6.1";
+    document.title = `Admin Panel - ${APP_VERSION}`;
+    document.getElementById('version-tag').innerText = APP_VERSION;
+
     const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -187,7 +204,7 @@
         });
     }
 
-    // --- SLD RENDER (LAYERED & REALTIME) ---
+    // --- SLD RENDER (SMART ANCHORS) ---
     function getBusBounds(bus) {
         let minX = bus.sld.x, maxX = bus.sld.x + 100;
         const children = allDevices.filter(n => n.parent === bus.id);
@@ -195,20 +212,36 @@
         return { x: minX-20, y: bus.sld.y, width: (maxX-minX)+60 };
     }
     
-    function getAnchor(n, side) { // side: 'in' | 'out'
-        let rot = n.rotation || 0;
+    // ĐIỂM NEO THÔNG MINH (Dựa trên vị trí tương đối)
+    function getAnchor(n, targetPos) {
         let b = { x: n.sld.x, y: n.sld.y, w: 50, h: 50 };
+        // Kích thước chuẩn
         if (['cb','ds'].includes(n.type)) { b.w=24; b.h=24; }
         else if (n.type === 'tr') { b.w=30; b.h=50; }
         else if (n.type === 'fco') { b.w=14; b.h=30; }
         else if (n.type === 'pole') { b.w=12; b.h=12; }
-        else if (n.type === 'bus') { const bb=getBusBounds(n); b.x=bb.x; b.y=bb.y; b.w=bb.width; b.h=8; rot=0; }
+        else if (n.type === 'bus') { const bb=getBusBounds(n); b.x=bb.x; b.y=bb.y; b.w=bb.width; b.h=8; }
+
+        let cx = b.x + b.w/2;
+        let cy = b.y + b.h/2;
         
-        if (rot === 0) return side === 'in' ? {x: b.x + b.w/2, y: b.y} : {x: b.x + b.w/2, y: b.y + b.h};
-        else if (rot === 90) return side === 'in' ? {x: b.x, y: b.y + b.h/2} : {x: b.x + b.w, y: b.y + b.h/2};
-        else if (rot === 180) return side === 'in' ? {x: b.x + b.w/2, y: b.y + b.h} : {x: b.x + b.w/2, y: b.y};
-        else if (rot === 270) return side === 'in' ? {x: b.x + b.w, y: b.y + b.h/2} : {x: b.x, y: b.y + b.h/2};
-        return {x: b.x, y: b.y};
+        // Tính góc tương đối
+        let dx = targetPos.x - cx;
+        let dy = targetPos.y - cy;
+        
+        // Nếu Busbar -> Luôn kết nối ở cạnh trên/dưới
+        if (n.type === 'bus') {
+            return { x: Math.max(b.x, Math.min(b.x+b.w, targetPos.x)), y: dy>0 ? b.y+b.h : b.y };
+        }
+
+        // Logic 4 hướng
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Horizontal connection
+            return { x: dx>0 ? b.x+b.w : b.x, y: cy };
+        } else {
+            // Vertical connection
+            return { x: cx, y: dy>0 ? b.y+b.h : b.y };
+        }
     }
 
     const wireLayer = document.getElementById('wire-layer');
@@ -226,7 +259,9 @@
 
     function renderSLD() {
         nodeLayer.innerHTML = '';
-        renderWires(); // Vẽ dây vào layer dưới
+        
+        // Vẽ lại dây trước
+        renderWires(); 
 
         allDevices.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
@@ -235,8 +270,11 @@
             
             if(['cb','ds','fco'].includes(d.type)) el.classList.add(d.state==='closed'?'closed':'open');
             if(d.type==='gen') el.classList.add(d.state==='on'?'on':'off');
+            if(d.state==='locked') el.classList.add('locked');
             if(d.isEnergized) el.classList.add('energized-node');
+            if(d.isGrounded) el.classList.add('grounded');
 
+            // Apply Position & Rotation
             if(d.type==='bus') { 
                 const b = getBusBounds(d); el.style.left=b.x+'px'; el.style.top=b.y+'px'; el.style.width=b.width+'px'; 
             } else {
@@ -244,9 +282,11 @@
                 if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
             }
 
+            // Label
             if(!['bus','wire','cable'].includes(d.type)) {
                 const lbl = document.createElement('div'); 
                 lbl.className = 'node-label';
+                // Chỉnh label ngược chiều xoay
                 if(d.rotation == 90 || d.rotation == 270) lbl.style.transform = `rotate(-${d.rotation}deg) translate(20px, 0px)`;
                 else if(d.rotation == 180) lbl.style.transform = `rotate(-180deg) translate(0px, -30px)`;
                 let t = d.label; if(d.capacity) t+=` (${d.capacity})`;
@@ -254,7 +294,7 @@
             }
             if(d.type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT (Realtime)
+            // DRAG EVENT
             el.onmousedown = (e) => {
                 e.stopPropagation(); e.preventDefault(); if(d.id!==selectedId) selectDevice(d, false);
                 const startX=e.clientX, startY=e.clientY, sX=d.sld.x, sY=d.sld.y;
@@ -267,11 +307,11 @@
                     d.sld.x = nx; d.sld.y = ny;
 
                     if(d.type==='bus') { 
-                        const b=getBusBounds(d); el.style.left=b.x+'px'; el.style.top=b.y+'px'; 
+                        const b=getBusBounds({...d,sld:{x:nx,y:ny}}); el.style.left=b.x+'px'; el.style.top=b.y+'px'; 
                     } else { 
                         el.style.left=nx+'px'; el.style.top=ny+'px'; 
                     }
-                    // Vẽ lại dây ngay lập tức
+                    // Vẽ lại dây ngay lập tức (Realtime)
                     renderWires();
                 };
                 document.addEventListener('mousemove', onMM);
@@ -285,26 +325,29 @@
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
         
-        const start = getAnchor(p, 'out');
-        const end = getAnchor(c, 'in');
+        // Dự đoán tâm để tính hướng neo
+        let pCenter = {x: p.sld.x + 12, y: p.sld.y + 12};
+        let cCenter = {x: c.sld.x + 12, y: c.sld.y + 12};
 
-        if (p.type === 'bus') {
-            createSeg(start.x, start.y, end.x, start.y, cls, type, 'h');
-            createSeg(end.x, start.y, end.x, end.y, cls, type, 'v');
-            return;
-        }
+        // Lấy điểm neo thực sự
+        const start = getAnchor(p, cCenter);
+        const end = getAnchor(c, pCenter);
 
+        // Logic vẽ vuông góc
+        // 1. Điểm trung gian
         const midX = (start.x + end.x) / 2;
         const midY = (start.y + end.y) / 2;
-
-        if (p.rotation === 90 || p.rotation === 270) {
-            createSeg(start.x, start.y, midX, start.y, cls, type, 'h');
-            createSeg(midX, start.y, midX, end.y, cls, type, 'v');
-            createSeg(midX, end.y, end.x, end.y, cls, type, 'h');
+        
+        // Quyết định hướng đi: Ngang hay Dọc trước?
+        // Nếu chênh lệch Y lớn hơn X -> Đi Dọc
+        if (Math.abs(start.y - end.y) > Math.abs(start.x - end.x)) {
+             createSeg(start.x, start.y, start.x, midY, cls, type, 'v');
+             createSeg(start.x, midY, end.x, midY, cls, type, 'h');
+             createSeg(end.x, midY, end.x, end.y, cls, type, 'v');
         } else {
-            createSeg(start.x, start.y, start.x, midY, cls, type, 'v');
-            createSeg(start.x, midY, end.x, midY, cls, type, 'h');
-            createSeg(end.x, midY, end.x, end.y, cls, type, 'v');
+             createSeg(start.x, start.y, midX, start.y, cls, type, 'h');
+             createSeg(midX, start.y, midX, end.y, cls, type, 'v');
+             createSeg(midX, end.y, end.x, end.y, cls, type, 'h');
         }
     }
     
@@ -321,28 +364,18 @@
     window.previewRotation = function() {
         const rot = parseInt(document.getElementById('inp-rotation').value) || 0;
         if (selectedId) {
-            // Cập nhật tạm thời để render thấy ngay
             const dev = allDevices.find(d => d.id === selectedId);
             if(dev) { dev.rotation = rot; renderSLD(); }
         }
     }
 
-    // --- OTHER LOGIC (Giữ nguyên) ---
-    function renderMap() { /* Map Logic cũ */ 
+    // --- MAP RENDER (OLD LOGIC) ---
+    function renderMap() { 
         for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
-        localNodes.forEach(d => { if(d.parent && d.geo) { const p=localNodes.find(x=>x.id==d.parent); if(p && p.geo) { const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6'; mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map)); } } });
-        localNodes.forEach(d => {
-            if(!d.geo)return; const icon=L.divIcon({className:'', html:`<div style="background:${d.isEnergized?'#d32f2f':'#fff'};width:10px;height:10px;border:1px solid #333"></div>`});
-            const m=L.marker([d.geo.lat,d.geo.lng], {draggable:true, icon:icon}).addTo(map);
-            m.on('click',()=>selectDevice(d,false));
-            m.on('dragend',()=>{
-                const pos=m.getLatLng(); if(selectedId!==d.id) selectDevice(d,false);
-                document.getElementById('inp-lat').value=pos.lat.toFixed(6); document.getElementById('inp-lng').value=pos.lng.toFixed(6); saveDevice();
-            });
-            mapMarkers[d.id]=m;
-        });
+        localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>selectDevice(d,false)); mapMarkers[d.id]=m; });
     }
     
+    // Core Logic
     function calculatePower() { allDevices.forEach(n=>n.isEnergized=false); allDevices.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
     function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if((['source','bus','wire','cable','pole'].includes(p.type))||p.state==='closed'||(p.type==='gen'&&p.state==='on')) { c.isEnergized=true; propagate(c); } }); } }
 
@@ -360,7 +393,6 @@
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(()=>selectDevice(nd,false));
     }
 
-    // Các hàm khác giữ nguyên từ v5.2...
     window.selectDevice=(d,z)=>{
         selectedId=d.id; document.getElementById('inp-id').value=d.id; document.getElementById('inp-label').value=d.label;
         document.getElementById('inp-type').value=d.type; document.getElementById('inp-capacity').value=d.capacity||"";
@@ -371,6 +403,7 @@
         document.getElementById('inp-lat').value=d.geo?d.geo.lat:0; document.getElementById('inp-lng').value=d.geo?d.geo.lng:0;
         renderTable(); renderSLD();
     }
+
     window.resetForm=()=>{ selectedId=null; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
     window.deleteDevice=()=>{ if(selectedId&&confirm("Xóa?")){ remove(ref(db,`grids/${currentGridId}/nodes/${selectedId}`)); resetForm(); } }
     window.zoomExtent=()=>{ update(ref(db),{}); }
@@ -382,9 +415,7 @@
     window.openSmartWindow=()=>{ const c=map.getCenter(); window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600'); }
     window.processImport=()=>{ /* Logic import */ }
 
-    // Use localNodes alias for map render if needed or rename globally
     let localNodes = allDevices; 
-
     loadGrids();
 </script>
 </body>
