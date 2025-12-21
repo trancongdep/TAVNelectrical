@@ -4,22 +4,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v5.1</title>
+    <title>TAVIETNAM Monitor v5.2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* CSS tương tự Admin nhưng bỏ các phần chỉnh sửa */
+        /* --- CORE CSS --- */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; }
         
         .app-header { height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
+        .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; min-width: 150px; cursor: pointer; }
+        .menu-toggle { font-size: 22px; cursor: pointer; display: none; }
+        .logo { font-size: 18px; font-weight: 700; color: white; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .logo:hover { opacity: 0.8; }
+
+        /* LAYOUT */
+        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .app-sidebar { width: 260px; background: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; z-index: 1500; transition: 0.3s; }
+        .menu-item { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .menu-item:hover { background: #34495e; }
+        .menu-item.active { background: #34495e; border-left: 4px solid #3498db; }
+        .sidebar-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); }
+        .dev-item { padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; justify-content: space-between; font-size: 13px; }
+        .dev-item:hover { background: #34495e; }
         
-        /* SCADA Symbols (COPY Y HỆT TỪ ADMIN) */
-        .node-box { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .node-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; color: #333; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; }
+        .app-content { flex: 1; position: relative; }
+        #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
+        #sld-panel.active-view, #map-panel.active-view { display: block; }
+        #sld-panel { overflow: auto; background-image: radial-gradient(#bdc3c7 1px, transparent 1px); background-size: 20px 20px; background-color: #f4f6f9; }
+        
+        /* MOBILE */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; }
+        @media (max-width: 1024px) {
+            .menu-toggle { display: block; }
+            .app-sidebar { position: absolute; height: 100%; left: -260px; }
+            .app-sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
+            .overlay.show { display: block; }
+        }
+
+        /* SCADA SYMBOLS */
+        .node-box { position: absolute; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
+        .node-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; color: #333; white-space: nowrap; margin-top: 4px; pointer-events: none; font-weight: 500; text-shadow: 1px 1px 0 #fff; }
 
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; }
         .type-cb.closed { background: #d32f2f; }
@@ -28,82 +55,89 @@
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; }
         .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); }
         .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; }
-        .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); }
-        .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
+        .type-ds.closed::after { background: #d32f2f; transform: rotate(0deg) translateX(-50%); }
+        .type-ds.open::after { background: #2ecc71; transform: rotate(45deg) translateX(-50%); }
 
+        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; font-weight: bold; font-size: 24px; color: #d35400; }
+        .type-gen::before { content: 'G'; }
+        .type-gen.on { background: #ffccbc; border-color: #d35400; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
+
+        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; min-width: 100px; }
+        .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
+        
+        .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; background: #e3f2fd; font-size: 10px; color: #1565c0; font-weight: bold; }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; }
         .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
         .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
 
-        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #333; display: flex; align-items: center; justify-content: center; background: #fff; font-weight: bold; font-size: 24px; color: #333; }
-        .type-gen::before { content: 'G'; }
-        .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
-
-        .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; }
-        .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
-        .type-fco.open::after { height: 0; } 
-
-        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; min-width: 100px; }
-        .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
-
-        .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
-        .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
         .grounded::after { content: '⏚'; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 16px; color: #27ae60; font-weight: bold; }
-
         .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
         .locked::after { content: '\f023'; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: -10px; right: -10px; color: #f39c12; font-size: 12px; background: #fff; border-radius: 50%; padding: 2px; }
-        
+
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: border-color 0.2s; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; }
         .safe-line { border-color: #2ecc71 !important; z-index: 5; }
         .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
 
-        /* Layout cơ bản */
-        .app-content { flex: 1; position: relative; }
-        #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
-        #sld-panel.active-view, #map-panel.active-view { display: block; }
-        .app-sidebar { width: 260px; background: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; }
-        .menu-footer { margin-top: auto; padding: 15px; font-size: 11px; text-align: center; border-top: 1px solid #34495e; }
-        .menu-item { padding: 15px; cursor: pointer; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .menu-item:hover { background: #34495e; }
-        .menu-item.active { background: #34495e; border-left: 4px solid #3498db; }
-        
-        /* Modal & Map BTN */
+        /* Map */
+        .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; color: #333; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .map-label { border: 2px solid #666; border-radius: 4px; padding: 2px 5px; text-align: center; font-weight: bold; font-size: 10px; white-space: nowrap; min-width: 40px; cursor: pointer !important; pointer-events: auto !important; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+
+        /* Modal */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 300px; text-align: center; }
-        .btn-action { width: 100%; padding: 10px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; }
-        .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; text-decoration: none; color: #333; }
+        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .btn-action { width: 100%; padding: 10px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .pin-input { width: 100%; padding: 10px; margin: 10px 0; text-align: center; font-size: 20px; letter-spacing: 5px; border: 2px solid #ddd; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <header class="app-header">
     <div class="header-left">
-        <i class="fas fa-bars" onclick="document.querySelector('.app-sidebar').classList.toggle('show')"></i>
-        <span style="font-weight:bold; font-size:18px; margin-left:10px;"><i class="fas fa-bolt" style="color:#f1c40f"></i> SCADA MONITOR</span>
+        <i class="fas fa-bars menu-toggle" onclick="toggleSidebar()"></i>
+        <a href="https://khaosathethongdienapp.web.app" class="logo">
+            <i class="fas fa-bolt"></i> SCADA MONITOR
+        </a>
     </div>
-    <div class="header-right">
-        <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
+    <div class="header-right" style="display: flex; align-items: center; gap: 10px;">
+        <div class="grid-selector">
+            <select id="grid-select" onchange="changeGrid()"></select>
+        </div>
+        <div style="font-size:12px; color:#ccc; display: flex; gap:5px; align-items: center;">
+            <i class="fas fa-clock"></i> <span id="clock">00:00</span>
+        </div>
     </div>
 </header>
 
-<div class="app-body" style="display:flex; height: calc(100vh - 60px);">
-    <nav class="app-sidebar">
-        <div class="menu-item active" onclick="switchView('sld', this)"><i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý</div>
-        <div class="menu-item" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> Bản đồ GIS</div>
-        <div id="sidebarList" style="flex:1; overflow-y:auto; background:rgba(0,0,0,0.1)"></div>
-        <div class="menu-footer">© 2025 TaVietnam<br>v5.1 (SCADA Standard)</div>
+<div class="app-body">
+    <nav class="app-sidebar" id="sidebar">
+        <ul class="sidebar-menu">
+            <li class="menu-item active" onclick="switchView('sld', this)">
+                <i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý
+            </li>
+            <li class="menu-item" onclick="switchView('map', this)">
+                <i class="fas fa-map-marked-alt"></i> Bản đồ GIS
+            </li>
+        </ul>
+        <div style="padding:15px; font-size:11px; font-weight:bold; color:#95a5a6;">DANH SÁCH THIẾT BỊ</div>
+        <div class="sidebar-list" id="sidebarList"></div>
+        <div style="margin-top:auto; padding:15px; text-align:center; color:#95a5a6; font-size:11px; border-top:1px solid #34495e;">
+            © 2025 TaVietnam<br>v5.2 (Fix Data Load)
+        </div>
     </nav>
+    <div class="overlay" onclick="toggleSidebar()"></div>
 
     <main class="app-content">
         <div id="sld-panel" class="active-view">
-            <div id="sld-canvas" style="width: 4000px; height: 3000px; background: radial-gradient(#ccc 1px, transparent 1px) 0 0 / 20px 20px;"></div>
+            <div id="sld-canvas" style="width: 4000px; height: 3000px;"></div>
         </div>
         <div id="map-panel">
-            <button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Street View</button>
+            <button class="street-view-btn" onclick="openSmartWindow()">
+                <i class="fas fa-street-view"></i> Street View
+            </button>
             <div id="map" style="width:100%; height:100%"></div>
         </div>
     </main>
@@ -111,7 +145,7 @@
 
 <div id="lotoModal" class="loto-modal">
     <div class="loto-box">
-        <div id="lotoTitle" style="font-weight:bold; font-size:18px; margin-bottom:15px">Thao tác</div>
+        <div id="lotoTitle" style="font-weight:bold; font-size:18px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">Thao tác</div>
         <div id="lotoContent"></div>
     </div>
 </div>
@@ -126,106 +160,197 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    let localNodes = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
-    let mapWindow = null, mapMarkers = {}, mapPolylines = [];
+    let localNodes = [], mapMarkers = {}, mapPolylines = [], currentTargetId = null;
+    let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+    let mapWindow = null;
+
+    setInterval(() => { const d=new Date(); document.getElementById('clock').innerText=d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}); }, 1000);
 
     const sldCanvas = document.getElementById('sld-canvas');
-    const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18 });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:22});
+    const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
+    L.control.layers({"Bản đồ": street, "Vệ tinh": sat}).addTo(map);
 
-    // --- GRID ---
+    // --- GRID MANAGEMENT (FIXED) ---
     function loadGrids() {
-        onValue(ref(db, 'grids_meta'), (snap) => {
-            const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
-            if(!data) { sel.appendChild(new Option("Lưới mặc định", 'default_grid')); }
-            else { for(let id in data) sel.appendChild(new Option(data[id].name, id)); if(!data[currentGridId]) currentGridId=Object.keys(data)[0]; }
-            sel.value = currentGridId; loadDevices();
+        onValue(ref(db, 'grids_meta'), (snapshot) => {
+            const data = snapshot.val();
+            const select = document.getElementById('grid-select');
+            select.innerHTML = '';
+            
+            if (!data) {
+                // DB Trống -> Tạo Default option giả lập để không lỗi
+                select.appendChild(new Option("Lưới mặc định", 'default_grid'));
+                currentGridId = 'default_grid';
+            } else {
+                for (let id in data) {
+                    select.appendChild(new Option(data[id].name, id));
+                }
+                // Nếu ID hiện tại không tồn tại trong DB -> Lấy cái đầu tiên
+                if (!data[currentGridId]) {
+                    currentGridId = Object.keys(data)[0];
+                    localStorage.setItem('currentGridId', currentGridId);
+                }
+            }
+            select.value = currentGridId;
+            loadDevices();
         });
     }
-    window.changeGrid = () => { currentGridId = document.getElementById('grid-select').value; localStorage.setItem('currentGridId', currentGridId); loadDevices(); }
+
+    // Gắn vào window để HTML gọi được
+    window.changeGrid = function() {
+        currentGridId = document.getElementById('grid-select').value;
+        localStorage.setItem('currentGridId', currentGridId);
+        loadDevices();
+    }
 
     function loadDevices() {
-        onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
-            localNodes = snap.val() ? Object.values(snap.val()) : [];
-            calculateSystemState(); renderSidebarList(); renderSLD(); renderMap();
+        onValue(ref(db, `grids/${currentGridId}/nodes`), (snapshot) => {
+            const data = snapshot.val();
+            localNodes = data ? Object.values(data) : [];
+            calculateSystemState();
+            renderSidebarList();
+            renderSLD();
+            renderMap();
         });
     }
 
-    // --- SIDEBAR ---
+    // --- SIDEBAR & NAVIGATION ---
     function renderSidebarList() {
-        const c = document.getElementById('sidebarList'); c.innerHTML='';
-        localNodes.filter(n=>['cb','source','gen','tr','ds'].includes(n.type)).forEach(n => {
+        const c = document.getElementById('sidebarList'); c.innerHTML = '';
+        localNodes.filter(n => ['cb','source','gen','tr','ds'].includes(n.type)).forEach(n => {
             const div = document.createElement('div');
-            div.style.padding='10px'; div.style.borderBottom='1px solid #444'; div.style.cursor='pointer';
-            div.innerHTML = `<b>${n.label}</b>`;
+            div.className = 'dev-item';
+            div.innerHTML = `<span>${n.label}</span> <span style="font-size:10px;color:#999">${n.id}</span>`;
             div.onclick = () => {
-                document.getElementById('sld-panel').classList.remove('active-view');
-                document.getElementById('map-panel').classList.add('active-view');
+                const mapBtn = document.querySelectorAll('.menu-item')[1];
+                window.switchView('map', mapBtn);
                 if(n.geo) { map.flyTo([n.geo.lat, n.geo.lng], 19); if(mapMarkers[n.id]) mapMarkers[n.id].openPopup(); }
-                setTimeout(()=>map.invalidateSize(),200);
             };
             c.appendChild(div);
         });
     }
 
-    // --- SLD RENDER ---
+    window.toggleSidebar = () => { document.getElementById('sidebar').classList.toggle('show'); document.querySelector('.overlay').classList.toggle('show'); }
+    window.switchView = (mode, btn) => {
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+        if(window.innerWidth <= 1024) window.toggleSidebar();
+        
+        document.getElementById('sld-panel').classList.remove('active-view');
+        document.getElementById('map-panel').classList.remove('active-view');
+        document.getElementById(mode + '-panel').classList.add('active-view');
+        
+        if(mode === 'map') setTimeout(() => map.invalidateSize(), 300);
+    }
+    
+    window.openSmartWindow = () => {
+        const c = map.getCenter();
+        const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$2{c.lat},${c.lng}`;
+        if(mapWindow && !mapWindow.closed) { mapWindow.location.href = url; mapWindow.focus(); }
+        else { mapWindow = window.open(url, 'GMaps', `width=${window.screen.availWidth/3},height=${window.screen.availHeight},left=0,top=0`); }
+    }
+
+    // --- LOGIC ---
+    function isConductive(n) {
+        if(['source','bus','tr','load','cable','wire','pole','underground'].includes(n.type)) return true;
+        if(n.type==='gen') return n.state==='on';
+        if(['cb','ds','fco'].includes(n.type)) return n.state==='closed';
+        return false;
+    }
+
+    function calculateSystemState() {
+        localNodes.forEach(n => { n.isEnergized = false; n.isSafe = false; });
+        // Nguồn (Lưới + Gen On)
+        let queue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
+        queue.forEach(n => n.isEnergized = true);
+        
+        let changed = true;
+        while(changed) {
+            changed = false;
+            localNodes.forEach(child => {
+                if(!child.parent) return;
+                const parent = localNodes.find(n => n.id === child.parent);
+                if(!parent) return;
+                if(isConductive(parent) && isConductive(child)) {
+                    if(parent.isEnergized && !child.isEnergized) { child.isEnergized = true; changed = true; }
+                    else if(child.isEnergized && !parent.isEnergized) { parent.isEnergized = true; changed = true; }
+                }
+            });
+        }
+        // Safe (LOTO + Ground)
+        let safeQ = localNodes.filter(n => n.state === 'locked' || n.isGrounded === true);
+        safeQ.forEach(n => n.isSafe = true);
+        changed = true;
+        while(changed) {
+            changed = false;
+            localNodes.forEach(child => {
+                if(!child.parent) return;
+                const parent = localNodes.find(n => n.id === child.parent);
+                if(!parent) return;
+                if(parent.isEnergized || child.isEnergized) return;
+                
+                if(parent.isSafe && !child.isSafe) { child.isSafe = true; changed = true; }
+                else if(child.isSafe && !parent.isSafe) { parent.isSafe = true; changed = true; }
+            });
+        }
+    }
+
+    // --- RENDER SLD ---
     function getBusBounds(bus) {
-        let minX=bus.sld.x, maxX=bus.sld.x+100;
-        const children = localNodes.filter(n=>n.parent===bus.id);
-        if(children.length>0) { const xs=children.map(c=>c.sld.x); minX=Math.min(minX,...xs); maxX=Math.max(maxX,...xs); }
-        return {x:minX-20, y:bus.sld.y, width:(maxX-minX)+60};
+        let minX = bus.sld.x, maxX = bus.sld.x + 100;
+        const kids = localNodes.filter(n => n.parent === bus.id);
+        if(kids.length > 0) { const xs = kids.map(k=>k.sld.x); minX=Math.min(minX,...xs); maxX=Math.max(maxX,...xs); }
+        return { x: minX-20, y: bus.sld.y, width: (maxX-minX)+60 };
     }
 
     function renderSLD() {
         sldCanvas.innerHTML = '';
-        localNodes.forEach(d => { if(d.parent) { const p=localNodes.find(x=>x.id==d.parent); if(p) drawWire(p, d); } });
+        localNodes.forEach(d => { if(d.parent) { const p = localNodes.find(x=>x.id==d.parent); if(p) drawWire(p, d); } });
         localNodes.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
             const el = document.createElement('div');
             el.className = `node-box type-${d.type}`;
             
-            // Add Classes
             if(['cb','ds','fco'].includes(d.type)) el.classList.add(d.state==='closed'?'closed':'open');
             if(d.type==='gen') el.classList.add(d.state==='on'?'on':'off');
             if(d.state==='locked') el.classList.add('locked');
             if(d.isEnergized) el.classList.add('energized-node');
             if(d.isGrounded) el.classList.add('grounded');
 
-            // Position
-            if(d.type==='bus') { const b=getBusBounds(d); el.style.left=b.x+'px'; el.style.top=b.y+'px'; el.style.width=b.width+'px'; }
+            if(d.type==='bus') { const b = getBusBounds(d); el.style.left=b.x+'px'; el.style.top=b.y+'px'; el.style.width=b.width+'px'; }
             else { el.style.left=d.sld.x+'px'; el.style.top=d.sld.y+'px'; }
 
-            // Label
             if(!['bus','wire','cable'].includes(d.type)) {
                 const lbl = document.createElement('div'); lbl.className='node-label';
-                let t = d.label; if(d.capacity) t+=` (${d.capacity})`;
-                lbl.innerText = t; el.appendChild(lbl);
+                let txt = d.label; if(d.capacity) txt+=` (${d.capacity})`;
+                lbl.innerText = txt; el.appendChild(lbl);
             }
             if(d.type==='source') el.innerHTML = "SRC";
-
+            
             el.onclick = () => window.handleDeviceClick(d.id);
             sldCanvas.appendChild(el);
         });
     }
 
     function drawWire(p, c) {
-        const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
+        let cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
+        if (!p.isEnergized && !c.isEnergized && (p.isSafe || c.isSafe)) cls = 'safe-line';
         const type = 'wire-' + (c.connection || 'solid');
-        
-        let pB = {x:p.sld.x, y:p.sld.y, w: (['cb','ds','tr'].includes(p.type)?30:50), h:24};
+
+        let pB = {x:p.sld.x, y:p.sld.y, w:(['cb','ds','tr','gen'].includes(p.type)?(p.type==='gen'?60:24):50), h:24};
         if(p.type==='bus') { const b=getBusBounds(p); pB={x:b.x, y:b.y, w:b.width, h:8}; }
         
-        let cB = {x:c.sld.x, y:c.sld.y, w: (['cb','ds','tr'].includes(c.type)?30:50), h:24};
+        let cB = {x:c.sld.x, y:c.sld.y, w:(['cb','ds','tr','gen'].includes(c.type)?(c.type==='gen'?60:24):50), h:24};
         if(c.type==='bus') { const b=getBusBounds(c); cB={x:b.x, y:b.y, w:b.width, h:8}; }
 
-        let x1 = pB.x + pB.w/2, y1 = pB.y + pB.h;
-        let x2 = cB.x + cB.w/2, y2 = cB.y;
-
-        if(p.type==='bus') { x1 = Math.max(pB.x, Math.min(pB.x+pB.w, x2)); y1 = pB.y + pB.h/2; }
-        if(c.type==='bus') { x2 = Math.max(cB.x, Math.min(cB.x+cB.w, x1)); y2 = cB.y + cB.h/2; }
-
-        const midY = y1 + (y2 - y1)/2;
-        createSeg(x1, y1, x1, midY, cls, type, 'v'); createSeg(x1, midY, x2, midY, cls, type, 'h'); createSeg(x2, midY, x2, y2, cls, type, 'v');
+        let x1=pB.x+pB.w/2, y1=pB.y+pB.h, x2=cB.x+cB.w/2, y2=cB.y;
+        if(p.type==='bus') { x1=Math.max(pB.x, Math.min(pB.x+pB.w, x2)); y1=pB.y+pB.h/2; }
+        if(c.type==='bus') { x2=Math.max(cB.x, Math.min(cB.x+cB.w, x1)); y2=cB.y+cB.h/2; }
+        
+        const midY = y1 + (y2-y1)/2;
+        createSeg(x1,y1,x1,midY,cls,type,'v'); createSeg(x1,midY,x2,midY,cls,type,'h'); createSeg(x2,midY,x2,y2,cls,type,'v');
     }
     function createSeg(x,y,w,h,c,t,d) {
         const el=document.createElement('div'); el.className=`wire ${c} ${t}`;
@@ -235,97 +360,80 @@
         sldCanvas.appendChild(el);
     }
 
-    // --- MAP ---
+    // --- MAP RENDER ---
     function renderMap() {
         for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
         for(let k in mapPolylines) map.removeLayer(mapPolylines[k]); mapPolylines=[];
         
-        localNodes.forEach(d => { if(d.parent && d.geo) { const p=localNodes.find(x=>x.id==d.parent); if(p && p.geo) { const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6'; mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map)); } } });
+        localNodes.forEach(d => { if(d.parent && d.geo) { const p=localNodes.find(x=>x.id==d.parent); if(p && p.geo) {
+            const c = (p.isEnergized||d.isEnergized)?'#d32f2f':((p.isSafe||d.isSafe)?'#2ecc71':'#95a5a6');
+            mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:3}).addTo(map));
+        }}});
         
         localNodes.forEach(d => {
             if(!d.geo) return;
             let html = '';
-            
-            // Render Symbol on Map
             if(d.type==='pole') {
                 let bg=d.isGrounded?'#2ecc71':'#bdc3c7';
-                html = `<div style="width:12px;height:12px;background:${bg};border-radius:50%;border:1px solid #555;">${d.isGrounded?'⏚':''}</div>`;
+                html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`;
             } else {
-                let color='#333', bg='#fff';
-                if(d.isEnergized) { bg='#d32f2f'; color='#fff'; if(d.type==='open') bg='#2ecc71'; }
-                if(d.type==='gen') html = `<div style="width:20px;height:20px;background:${bg};border:2px solid #333;border-radius:50%;text-align:center;font-weight:bold;color:${color}">G</div>`;
-                else if(d.type==='tr') html = `<div style="width:20px;height:20px;background:${bg};border:2px solid #333;border-radius:50%;"></div>`;
-                else html = `<div style="width:16px;height:16px;background:${bg};border:2px solid #333;"></div>`;
+                let bg='#fff', border='#666';
+                if(d.isEnergized) { border='#d32f2f'; if(d.type==='source'||d.type==='gen') border='#1565c0'; }
+                else if(d.isSafe) border='#2ecc71';
+                
+                // Icon Gen
+                if(d.type==='gen') html = `<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`;
+                else html = `<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;
             }
-            
             const icon = L.divIcon({className:'', html:html});
             const m = L.marker([d.geo.lat,d.geo.lng], {icon:icon}).addTo(map);
-            m.bindTooltip(d.label, {permanent:true, direction:'bottom', className:'map-label'});
             m.on('click', ()=>window.handleDeviceClick(d.id));
             mapMarkers[d.id] = m;
         });
     }
 
-    // --- LOGIC ---
-    function calculatePower() {
-        localNodes.forEach(n => n.isEnergized = false);
-        const sources = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
-        sources.forEach(s => { s.isEnergized = true; propagate(s); });
-    }
-    function isConductive(n) {
-        if(['source','bus','tr','load','cable','wire','pole'].includes(n.type)) return true;
-        if(n.type==='gen') return n.state === 'on';
-        if(['cb','ds','fco'].includes(n.type)) return n.state === 'closed';
-        return false;
-    }
-    function propagate(p) {
-        if(p.isEnergized && isConductive(p)) {
-            localNodes.filter(n => n.parent === p.id).forEach(c => { if(!c.isEnergized) { c.isEnergized = true; propagate(c); } });
-        }
-    }
-
     // --- ACTIONS ---
-    window.handleDeviceClick = function(id) {
+    window.handleDeviceClick = (id) => {
         const node = localNodes.find(n => n.id === id);
-        currentTargetId = id;
-        
-        if(node.type === 'pole') {
-            if(confirm(`Tiếp địa cột ${node.label}?`)) update(ref(db, `grids/${currentGridId}/nodes/${id}`), { isGrounded: !node.isGrounded });
+        if(node.type==='pole') {
+            if(confirm(`Tiếp địa cột ${node.label}?`)) update(ref(db, `grids/${currentGridId}/nodes/${id}`), {isGrounded:!node.isGrounded});
             return;
         }
-        if (!['cb', 'ds', 'fco', 'gen'].includes(node.type)) return;
-
-        const div = document.getElementById('lotoContent'); div.innerHTML = '';
-        const modal = document.getElementById('lotoModal');
+        if(!['cb','ds','fco','gen'].includes(node.type)) return;
         
-        if (node.type === 'gen') {
-            if (node.state === 'on') div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="upd('off')">DỪNG MÁY</button>`;
-            else div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="upd('on')">KHỞI ĐỘNG</button>`;
+        currentTargetId = id;
+        const div = document.getElementById('lotoContent'); div.innerHTML = '';
+        
+        if(node.type==='gen') {
+            if(node.state==='on') div.innerHTML+=`<button class="btn-action" style="background:#e74c3c" onclick="upd('off')">DỪNG MÁY</button>`;
+            else div.innerHTML+=`<button class="btn-action" style="background:#27ae60" onclick="upd('on')">KHỞI ĐỘNG</button>`;
         } else {
-            if (node.state === 'closed') div.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="upd('open')">CẮT ĐIỆN</button>`;
-            else div.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="upd('closed')">ĐÓNG ĐIỆN</button>`;
+            if(node.state==='closed') div.innerHTML+=`<button class="btn-action" style="background:#e74c3c" onclick="upd('open')">CẮT ĐIỆN</button>`;
+            else div.innerHTML+=`<button class="btn-action" style="background:#27ae60" onclick="upd('closed')">ĐÓNG ĐIỆN</button>`;
         }
-        div.innerHTML += `<button class="btn-action" style="background:#999" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
-        modal.style.display = 'flex';
+        // Nút LOTO chung
+        if(node.state!=='closed' && node.state!=='on') {
+            if(node.state==='locked') div.innerHTML+=`<button class="btn-action" style="background:#f39c12" onclick="auth('unlock')">MỞ KHÓA LOTO</button>`;
+            else div.innerHTML+=`<button class="btn-action" style="background:#f39c12" onclick="auth('lock')">KHÓA LOTO</button>`;
+        }
+        div.innerHTML+=`<button class="btn-action" style="background:#999" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
+        document.getElementById('lotoModal').style.display = 'flex';
     }
 
-    window.upd = (state) => {
-        update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), { state: state });
-        document.getElementById('lotoModal').style.display = 'none';
+    window.upd = (s) => { update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), {state:s}); document.getElementById('lotoModal').style.display='none'; }
+    window.auth = (mode) => {
+        const pin = prompt(mode==='lock' ? "Thiết lập PIN:" : "Nhập PIN mở khóa:");
+        if(!pin) return;
+        const node = localNodes.find(n => n.id === currentTargetId);
+        if(mode==='lock') update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), {state:'locked', lotoPin:pin});
+        else {
+            if(pin === node.lotoPin || pin === MASTER_KEY) update(ref(db, `grids/${currentGridId}/nodes/${currentTargetId}`), {state: (node.type==='gen'?'off':'open'), lotoPin:null});
+            else alert("Sai mã PIN");
+        }
+        document.getElementById('lotoModal').style.display='none';
     }
 
-    window.switchView = (t,b) => {
-        document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-        document.getElementById('sld-panel').classList.remove('active-view');
-        document.getElementById('map-panel').classList.remove('active-view');
-        document.getElementById(t+'-panel').classList.add('active-view');
-        if(t==='map') setTimeout(()=>map.invalidateSize(), 200);
-        if(window.innerWidth < 1024) document.querySelector('.app-sidebar').classList.remove('show');
-    }
-    window.openSmartWindow = () => {
-        const c=map.getCenter(); window.open(`https://www.google.com/maps?q=&layer=c&cbll=$${c.lat},${c.lng}`,'GM','width=400,height=600');
-    }
-
+    // Start
     loadGrids();
 </script>
 </body>
