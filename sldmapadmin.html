@@ -2,29 +2,32 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v7.4 (Wire Fix)</title>
+    <title>Admin Panel - TAVIETNAM v7.5 (Multi-Select)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* CORE CSS */
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .btn-rename { background: #f39c12; }
+        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
+        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 0 0 auto; max-height: 80vh; border-bottom: 2px solid #eee; }
         .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
+        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
         .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
@@ -32,50 +35,58 @@
         
         #sld-container { width: 100%; height: 100%; overflow: auto; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
-        
-        /* WIRE LAYERS (QUAN TRỌNG: Pointer Events) */
-        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; } /* Layer ko chặn chuột */
+        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .admin-node { pointer-events: auto; } /* Node chặn chuột để drag */
+        #selection-layer { position: absolute; width: 100%; height: 100%; z-index: 15; pointer-events: none; } /* Layer chứa khung chọn */
         
-        /* WIRE HANDLES */
-        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; } /* Handle chặn chuột để kéo */
-        .wire-handle:hover { background: rgba(0,123,255,0.3); cursor: grab; } /* Hover thấy màu xanh nhạt */
-        .wire-handle:active { cursor: grabbing; background: rgba(0,123,255,0.5); }
-        .cursor-ew { cursor: ew-resize !important; } 
-        .cursor-ns { cursor: ns-resize !important; }
+        /* SELECTION BOX */
+        .selection-box {
+            position: absolute;
+            border: 1px dashed #007bff;
+            background-color: rgba(0, 123, 255, 0.2);
+            display: none;
+            pointer-events: none;
+            z-index: 100;
+        }
 
-        /* SYMBOLS & WIRE */
-        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
-        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-        .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-        
-        /* Other CSS kept from previous version */
-        .admin-node { position: absolute; cursor: grab; user-select: none; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
-        .admin-node.selected-node { outline: 2px dashed #007bff; z-index: 20; background: rgba(0,123,255,0.1); }
+        /* SYMBOLS */
+        .admin-node { position: absolute; cursor: grab; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
+        .admin-node.selected-node { outline: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
+        
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
-        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen.on { background: #ffccbc; border-color: #d35400; }
+        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
         .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
+        .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
         .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
         
+        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
+        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+        .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
+        
+        /* Handles */
+        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
+        .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; }
+        .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
+
         #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
         .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; text-decoration: none; color: #333; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 550px; display: flex; flex-direction: column; gap: 15px; }
         .json-input { width: 100%; height: 200px; border: 1px solid #ddd; padding: 10px; font-family: monospace; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.4</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.5</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -90,7 +101,7 @@
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
             <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus</label><input type="number" id="inp-width" value="300"></div></div>
             <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp ngầm</option></optgroup></select></div>
+                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
             <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
@@ -105,7 +116,16 @@
 
     <div class="main-editor">
         <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld', this)">SLD</button><button class="tab-btn" onclick="switchTab('map', this)">Map</button></div>
-        <div id="tab-sld" class="tab-content active"><div id="sld-container"><div id="sld-canvas"><div id="wire-layer"></div><div id="node-layer"></div></div></div></div>
+        <div id="tab-sld" class="tab-content active">
+            <div id="sld-container">
+                <div id="sld-canvas">
+                    <div id="wire-layer"></div>
+                    <div id="node-layer"></div>
+                    <div id="selection-layer"></div>
+                    <div id="selection-box" class="selection-box"></div>
+                </div>
+            </div>
+        </div>
         <div id="tab-map" class="tab-content"><div id="map-wrapper"><button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Map Window</button><div id="map-canvas"></div></div></div>
     </div>
 </div>
@@ -126,11 +146,99 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let allDevices = [], selectedId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+    let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, draggingWire = null;
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
+    // --- SELECTION BOX LOGIC ---
+    let selectionBox = { startX: 0, startY: 0, isDrawing: false };
+    const boxEl = document.getElementById('selection-box');
+    const containerEl = document.getElementById('sld-container');
+
+    containerEl.addEventListener('mousedown', (e) => {
+        // Chỉ vẽ box khi click vào nền trống (không phải node, không phải wire handle)
+        if (e.target !== containerEl && e.target.id !== 'sld-canvas') return;
+        
+        selectionBox.isDrawing = true;
+        selectionBox.startX = e.clientX + containerEl.scrollLeft;
+        selectionBox.startY = e.clientY + containerEl.scrollTop;
+        
+        boxEl.style.left = selectionBox.startX + 'px';
+        boxEl.style.top = selectionBox.startY + 'px';
+        boxEl.style.width = '0px';
+        boxEl.style.height = '0px';
+        boxEl.style.display = 'block';
+        
+        // Clear previous selection if not holding Ctrl
+        if (!e.ctrlKey) {
+            selectedIds = [];
+            renderSLD();
+            renderTable();
+        }
+    });
+
+    containerEl.addEventListener('mousemove', (e) => {
+        if (!selectionBox.isDrawing) return;
+        
+        const currentX = e.clientX + containerEl.scrollLeft;
+        const currentY = e.clientY + containerEl.scrollTop;
+        
+        const width = Math.abs(currentX - selectionBox.startX);
+        const height = Math.abs(currentY - selectionBox.startY);
+        const left = Math.min(currentX, selectionBox.startX);
+        const top = Math.min(currentY, selectionBox.startY);
+        
+        boxEl.style.width = width + 'px';
+        boxEl.style.height = height + 'px';
+        boxEl.style.left = left + 'px';
+        boxEl.style.top = top + 'px';
+    });
+
+    containerEl.addEventListener('mouseup', (e) => {
+        if (!selectionBox.isDrawing) return;
+        selectionBox.isDrawing = false;
+        boxEl.style.display = 'none';
+        
+        // Calculate selection
+        const rect = {
+            left: parseInt(boxEl.style.left),
+            top: parseInt(boxEl.style.top),
+            right: parseInt(boxEl.style.left) + parseInt(boxEl.style.width),
+            bottom: parseInt(boxEl.style.top) + parseInt(boxEl.style.height)
+        };
+        
+        // Find nodes inside rect
+        let newlySelected = [];
+        allDevices.forEach(d => {
+            if (d.showOnSLD === false) return;
+            // Node center
+            const nx = d.sld.x + 25; 
+            const ny = d.sld.y + 25;
+            if (nx >= rect.left && nx <= rect.right && ny >= rect.top && ny <= rect.bottom) {
+                newlySelected.push(d.id);
+            }
+        });
+        
+        // Merge selection
+        newlySelected.forEach(id => {
+            if (!selectedIds.includes(id)) selectedIds.push(id);
+        });
+        
+        // Select the last one for form editing
+        if (selectedIds.length > 0) {
+            const lastId = selectedIds[selectedIds.length - 1];
+            const dev = allDevices.find(d => d.id === lastId);
+            populateForm(dev);
+        } else {
+            resetForm();
+        }
+        
+        renderSLD();
+        renderTable();
+    });
+
+    // --- GRID ---
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
@@ -152,12 +260,11 @@
         });
     }
 
-    // --- RENDER SLD & WIRE LOGIC ---
+    // --- RENDER ---
     function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
         let type = n.type.toLowerCase();
-
         if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
         else if (type === 'tr') { b.w=30; b.h=50; }
         else if (type === 'fco') { b.w=14; b.h=30; }
@@ -169,7 +276,6 @@
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
             return { x: projX, y: projY };
         }
-
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
         let dx = targetPos.x - cx, dy = targetPos.y - cy;
         if (Math.abs(dx) > Math.abs(dy)) return { x: dx>0 ? b.x+b.w : b.x, y: cy };
@@ -191,7 +297,9 @@
             if(d.type==='pole' && d.showOnSLD===false) return;
             const el = document.createElement('div');
             let type = d.type.toLowerCase();
-            el.className = `admin-node type-${type} ${d.id===selectedId?'selected-node':''}`;
+            // Check selection array
+            let isSelected = selectedIds.includes(d.id);
+            el.className = `admin-node type-${type} ${isSelected?'selected-node':''}`;
             
             if(['cb','ds','fco'].includes(type)) el.classList.add(d.state==='closed'?'closed':'open');
             if(type==='gen') el.classList.add(d.state==='on'?'on':'off');
@@ -214,25 +322,69 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT
+            // --- GROUP DRAG LOGIC ---
             el.onmousedown = (e) => {
-                e.stopPropagation(); e.preventDefault(); if(d.id!==selectedId) selectDevice(d, false);
-                const sX=e.clientX, sY=e.clientY;
-                const origX = d.sld?.x || 100, origY = d.sld?.y || 100;
+                e.stopPropagation(); e.preventDefault();
                 
+                // Multi-select logic: Ctrl adds to selection
+                if (e.ctrlKey) {
+                    if (selectedIds.includes(d.id)) {
+                        selectedIds = selectedIds.filter(id => id !== d.id);
+                    } else {
+                        selectedIds.push(d.id);
+                        populateForm(d);
+                    }
+                    renderSLD();
+                    renderTable();
+                    return;
+                }
+
+                // Normal click: If not already selected, select only this
+                if (!selectedIds.includes(d.id)) {
+                    selectedIds = [d.id];
+                    populateForm(d);
+                    renderSLD();
+                    renderTable();
+                }
+
+                const startX = e.clientX;
+                const startY = e.clientY;
+                
+                // Store original positions of ALL selected nodes
+                const initialPositions = {};
+                selectedIds.forEach(id => {
+                    const node = allDevices.find(n => n.id === id);
+                    if (node) initialPositions[id] = { x: node.sld.x, y: node.sld.y };
+                });
+
                 const onMM = (ev) => {
-                    let nx = Math.round((origX + (ev.clientX - sX))/10)*10;
-                    let ny = Math.round((origY + (ev.clientY - sY))/10)*10;
-                    document.getElementById('inp-x').value = nx; document.getElementById('inp-y').value = ny;
-                    d.sld = {x: nx, y: ny}; // Live update
-                    if(type==='bus') { el.style.left = nx+'px'; el.style.top = ny+'px'; } 
-                    else { el.style.left = nx+'px'; el.style.top = ny+'px'; }
-                    renderWires();
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    
+                    // Move all selected nodes
+                    selectedIds.forEach(id => {
+                        const node = allDevices.find(n => n.id === id);
+                        if (node && initialPositions[id]) {
+                            let nx = Math.round((initialPositions[id].x + dx)/10)*10;
+                            let ny = Math.round((initialPositions[id].y + dy)/10)*10;
+                            node.sld.x = nx;
+                            node.sld.y = ny;
+                        }
+                    });
+                    
+                    // Update form if single select
+                    if(selectedIds.length === 1) {
+                        document.getElementById('inp-x').value = allDevices.find(n=>n.id===selectedIds[0]).sld.x;
+                        document.getElementById('inp-y').value = allDevices.find(n=>n.id===selectedIds[0]).sld.y;
+                    }
+                    
+                    renderSLD(); // Redraw everything (nodes + wires)
                 };
+
                 const onUp = () => {
                     document.removeEventListener('mousemove', onMM);
                     document.removeEventListener('mouseup', onUp);
-                    saveDevice();
+                    saveBatchPositions(); // New function to save multiple
                 };
                 document.addEventListener('mousemove', onMM);
                 document.addEventListener('mouseup', onUp);
@@ -241,7 +393,19 @@
         });
     }
 
-    // --- Z-WIRE & HANDLE ---
+    // --- SAVE BATCH ---
+    function saveBatchPositions() {
+        const updates = {};
+        selectedIds.forEach(id => {
+            const node = allDevices.find(n => n.id === id);
+            if (node) {
+                updates[`grids/${currentGridId}/nodes/${id}/sld`] = node.sld;
+            }
+        });
+        update(ref(db), updates);
+    }
+
+    // --- Z-WIRE & HANDLES ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -255,67 +419,100 @@
 
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
-        const buf = 15;
+        
+        let stubP = c.wireStubs?.p || 20; 
+        let stubC = c.wireStubs?.c || 20;
 
-        let sb = {x: start.x, y: start.y};
-        let eb = {x: end.x, y: end.y};
+        // Apply Stubs
+        const applyStub = (pt, node, len, isStart) => {
+            let nType = node.type.toLowerCase();
+            let r = node.rotation || 0;
+            let dx=0, dy=0;
+            if (nType === 'bus') {
+                let targetY = isStart ? cCenter.y : pCenter.y;
+                dy = (targetY > node.sld.y) ? len : -len;
+            } else {
+                if (r===0) dy = isStart ? len : -len;
+                else if (r===90) dx = isStart ? len : -len;
+                else if (r===180) dy = isStart ? -len : len;
+                else if (r===270) dx = isStart ? -len : len;
+            }
+            return {x: pt.x + dx, y: pt.y + dy, axis: (dx!==0 ? 'x' : 'y')};
+        }
 
-        if (pType === 'bus') sb.y += (csy > psy ? buf : -buf);
-        else { let r=p.rotation||0; if(r===0)sb.y+=buf; else if(r===90)sb.x+=buf; else if(r===180)sb.y-=buf; else if(r===270)sb.x-=buf; }
-
-        if (cType === 'bus') eb.y += (psy > csy ? buf : -buf);
-        else { let r=c.rotation||0; if(r===0)eb.y-=buf; else if(r===90)eb.x-=buf; else if(r===180)eb.y+=buf; else if(r===270)eb.x+=buf; }
+        let sbInfo = applyStub(start, p, stubP, true);
+        let sb = {x: sbInfo.x, y: sbInfo.y};
+        let ebInfo = applyStub(end, c, stubC, false);
+        let eb = {x: ebInfo.x, y: ebInfo.y};
 
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
         let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
 
-        createSeg(start.x, start.y, sb.x, sb.y, cls, type, start.x===sb.x?'v':'h');
-        createSeg(eb.x, eb.y, end.x, end.y, cls, type, end.x===eb.x?'v':'h');
+        // Draw Segments
+        createSeg(start.x, start.y, sb.x, sb.y, cls, type);
+        createSeg(eb.x, eb.y, end.x, end.y, cls, type);
 
-        if (isVerticalMid) { 
-            createSeg(sb.x, sb.y, sb.x, midVal, cls, type, 'v');
-            createSeg(sb.x, midVal, eb.x, midVal, cls, type, 'h');
-            createSeg(eb.x, midVal, eb.x, eb.y, cls, type, 'v');
-            createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'y');
-        } else {
-            createSeg(sb.x, sb.y, midVal, sb.y, cls, type, 'h');
-            createSeg(midVal, sb.y, midVal, eb.y, cls, type, 'v');
-            createSeg(midVal, eb.y, eb.x, eb.y, cls, type, 'h');
-            createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'x');
+        if (isVerticalMid) { // Z-Vertical
+            createSeg(sb.x, sb.y, sb.x, midVal, cls, type);
+            createSeg(sb.x, midVal, eb.x, midVal, cls, type);
+            createSeg(eb.x, midVal, eb.x, eb.y, cls, type);
+            createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'mid', midVal);
+        } else { // Z-Horizontal
+            createSeg(sb.x, sb.y, midVal, sb.y, cls, type);
+            createSeg(midVal, sb.y, midVal, eb.y, cls, type);
+            createSeg(midVal, eb.y, eb.x, eb.y, cls, type);
+            createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'mid', midVal);
         }
+
+        // Stub Handles
+        createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
+        createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
     }
     
-    function createSeg(x,y,w,h,c,t,d) {
-        if(Math.abs(x-w)<1 && Math.abs(y-h)<1) return;
+    function createSeg(x1,y1,x2,y2,c,t) {
+        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
         const el=document.createElement('div'); el.className=`wire ${c} ${t}`;
-        el.style.left=Math.min(x,w)+'px'; el.style.top=Math.min(y,h)+'px';
-        if(d==='h') { el.style.width=Math.abs(x-w)+'px'; el.style.height='0'; el.style.borderTopWidth='2px'; }
-        else { el.style.width='0'; el.style.height=Math.abs(y-h)+'px'; el.style.borderLeftWidth='2px'; }
+        el.style.left=Math.min(x1,x2)+'px'; el.style.top=Math.min(y1,y2)+'px';
+        if(Math.abs(x1-x2)>Math.abs(y1-y2)) { el.style.width=Math.abs(x1-x2)+'px'; el.style.height='0'; el.style.borderTopWidth='2px'; }
+        else { el.style.width='0'; el.style.height=Math.abs(y1-y2)+'px'; el.style.borderLeftWidth='2px'; }
         wireLayer.appendChild(el);
     }
 
-    function createHandle(x, y, w, h, cursor, device, axis) {
+    function createHandle(x, y, w, h, cursor, device, type, currentVal, axis) {
         const hdl = document.createElement('div');
-        hdl.className = 'wire-handle cursor-' + (cursor==='ew-resize'?'ew':'ns');
+        hdl.className = 'wire-handle cursor-' + (cursor.includes('ew')?'ew':'ns');
         hdl.style.left = x + 'px'; hdl.style.top = y + 'px';
         hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
         
         hdl.onmousedown = (e) => {
             e.stopPropagation(); e.preventDefault();
-            let safeOffset = device.wireOffset !== undefined ? device.wireOffset : (axis==='x'?(x+5):(y+5));
-            draggingWire = { id: device.id, axis: axis, startMouse: (axis==='x'?e.clientX:e.clientY), originalVal: safeOffset };
+            let dragAxis = axis || (cursor.includes('ew') ? 'x' : 'y');
+            draggingWire = { id: device.id, type: type, startMouse: (dragAxis==='x'?e.clientX:e.clientY), originalVal: currentVal, axis: dragAxis };
             
             const onWireMove = (ev) => {
-                const delta = (axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
-                const newVal = Math.round((draggingWire.originalVal + delta)/10)*10;
+                const delta = (draggingWire.axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
+                let newVal = Math.round((draggingWire.originalVal + delta)/10)*10;
                 const dev = allDevices.find(d => d.id === draggingWire.id);
-                if(dev) { dev.wireOffset = newVal; renderWires(); }
+                if(dev) { 
+                    if(draggingWire.type === 'mid') dev.wireOffset = newVal;
+                    else {
+                        if(!dev.wireStubs) dev.wireStubs = {p:20, c:20};
+                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(10, newVal); 
+                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(10, newVal);
+                    }
+                    renderWires(); 
+                }
             };
             const onWireUp = () => {
                 document.removeEventListener('mousemove', onWireMove);
                 document.removeEventListener('mouseup', onWireUp);
                 const dev = allDevices.find(d => d.id === draggingWire.id);
-                if(dev) update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), { wireOffset: dev.wireOffset });
+                if(dev) {
+                    let updates = {};
+                    if(draggingWire.type === 'mid') updates.wireOffset = dev.wireOffset;
+                    else updates.wireStubs = dev.wireStubs;
+                    update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), updates);
+                }
                 draggingWire = null;
             };
             document.addEventListener('mousemove', onWireMove);
@@ -324,53 +521,112 @@
         wireLayer.appendChild(hdl);
     }
 
+    // --- HELPER POPULATE ---
+    function populateForm(d) {
+        document.getElementById('inp-id').value = d.id;
+        document.getElementById('inp-label').value = d.label;
+        document.getElementById('inp-type').value = d.type;
+        document.getElementById('inp-capacity').value = d.capacity || "";
+        document.getElementById('inp-rotation').value = d.rotation || 0;
+        document.getElementById('inp-width').value = d.width || 300;
+        updateParentSelect();
+        document.getElementById('inp-parent').value = d.parent || "";
+        document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
+        document.getElementById('inp-grounded').checked = (d.isGrounded === true);
+        document.getElementById('inp-x').value = d.sld.x;
+        document.getElementById('inp-y').value = d.sld.y;
+    }
+
     // --- OTHER ---
-    window.previewRotation = () => { const r=parseInt(document.getElementById('inp-rotation').value)||0; if(selectedId){ const d=allDevices.find(n=>n.id===selectedId); if(d){d.rotation=r; renderSLD();} } }
+    window.previewRotation = () => { 
+        const r=parseInt(document.getElementById('inp-rotation').value)||0; 
+        selectedIds.forEach(id => {
+            const d = allDevices.find(n => n.id === id);
+            if(d) d.rotation = r; 
+        });
+        renderSLD(); 
+    }
+    
     function calculatePower() { allDevices.forEach(n=>n.isEnergized=false); allDevices.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
     function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if((['source','bus','wire','cable','pole'].includes(p.type))||p.state==='closed'||(p.type==='gen'&&p.state==='on')) { c.isEnergized=true; propagate(c); } }); } }
 
     window.saveDevice = () => {
-        let id=selectedId; if(!id) id='N'+Date.now().toString().slice(-6);
+        // If updating multiple selected devices
+        if (selectedIds.length > 0) {
+            const updates = {};
+            selectedIds.forEach(id => {
+                const node = allDevices.find(n => n.id === id);
+                // Only update common properties from form, keep individual coords/rotation unless dragged
+                // For simplicity, lets just save the current state of form to selected IDs BUT coords are separate
+                // Actually, standard behavior: Save button applies form values to ALL selected items
+                // except ID, Parent, Coords which are unique.
+                const commonData = {
+                    type: document.getElementById('inp-type').value,
+                    connection: document.getElementById('inp-connection').value,
+                    rotation: parseInt(document.getElementById('inp-rotation').value)||0,
+                    showOnSLD: document.getElementById('inp-showSLD').checked,
+                    // Label? No, keep unique labels usually. But here we overwrite.
+                };
+                // Careful with overwriting unique data. 
+                // Let's stick to: Save button only saves the LAST selected item displayed in form for now, OR iterate?
+                // To keep it simple: Save button acts on the ID in the "ID" field.
+                const formId = document.getElementById('inp-id').value;
+                if(formId !== "(Tự sinh)" && formId === id) {
+                     // Full update for the main selected item
+                     // Logic duplication from below...
+                }
+            });
+        }
+        
+        // Single/Main Save Logic
+        let id = document.getElementById('inp-id').value;
+        if(id === "(Tự sinh)" || !id) id = 'N' + Date.now().toString().slice(-6);
+        
         const nd = {
-            id:id, label:document.getElementById('inp-label').value, type:document.getElementById('inp-type').value,
-            parent:document.getElementById('inp-parent').value||null, capacity:document.getElementById('inp-capacity').value||"",
-            rotation: parseInt(document.getElementById('inp-rotation').value)||0,
-            width: parseInt(document.getElementById('inp-width').value)||300,
-            connection:document.getElementById('inp-connection').value, state:"closed", showOnSLD:document.getElementById('inp-showSLD').checked,
-            isGrounded:document.getElementById('inp-grounded').checked,
-            sld:{x:parseInt(document.getElementById('inp-x').value)||100, y:parseInt(document.getElementById('inp-y').value)||100},
-            geo:{lat:parseFloat(document.getElementById('inp-lat').value)||0,lng:parseFloat(document.getElementById('inp-lng').value)||0}
+            id: id, label: document.getElementById('inp-label').value, 
+            type: document.getElementById('inp-type').value,
+            parent: document.getElementById('inp-parent').value || null, 
+            capacity: document.getElementById('inp-capacity').value || "",
+            rotation: parseInt(document.getElementById('inp-rotation').value) || 0,
+            width: parseInt(document.getElementById('inp-width').value) || 300,
+            connection: document.getElementById('inp-connection').value, 
+            state: "closed", 
+            showOnSLD: document.getElementById('inp-showSLD').checked,
+            isGrounded: document.getElementById('inp-grounded').checked,
+            sld: { x: parseInt(document.getElementById('inp-x').value) || 100, y: parseInt(document.getElementById('inp-y').value) || 100 },
+            geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng }
         };
-        set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(()=>selectDevice(nd,false));
+        set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
+            if(!selectedIds.includes(id)) selectedIds = [id];
+            renderSLD(); renderTable();
+        });
     }
 
-    window.selectDevice=(d,z)=>{
-        selectedId=d.id; document.getElementById('inp-id').value=d.id; document.getElementById('inp-label').value=d.label;
-        document.getElementById('inp-type').value=d.type; document.getElementById('inp-capacity').value=d.capacity||"";
-        document.getElementById('inp-rotation').value = d.rotation || 0;
-        document.getElementById('inp-width').value = d.width || 300;
-        updateParentSelect(); document.getElementById('inp-parent').value=d.parent||"";
-        document.getElementById('inp-showSLD').checked=(d.showOnSLD!==false); document.getElementById('inp-grounded').checked=(d.isGrounded===true);
-        // Fallback
-        let sx = d.sld?.x || 100; let sy = d.sld?.y || 100;
-        document.getElementById('inp-x').value=sx; document.getElementById('inp-y').value=sy;
-        document.getElementById('inp-lat').value=d.geo?d.geo.lat:0; document.getElementById('inp-lng').value=d.geo?d.geo.lng:0;
-        renderTable(); renderSLD();
-    }
-
+    // MAP & RESET
     function renderMap() { 
         for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
         localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>selectDevice(d,false)); mapMarkers[d.id]=m; });
     }
-    window.resetForm=()=>{ selectedId=null; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
-    window.deleteDevice=()=>{ if(selectedId&&confirm("Xóa?")){ remove(ref(db,`grids/${currentGridId}/nodes/${selectedId}`)); resetForm(); } }
+    window.resetForm=()=>{ selectedIds=[]; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
+    window.deleteDevice=()=>{ 
+        if(selectedIds.length > 0 && confirm(`Xóa ${selectedIds.length} thiết bị?`)) {
+            const updates = {};
+            selectedIds.forEach(id => updates[`grids/${currentGridId}/nodes/${id}`] = null);
+            update(ref(db), updates);
+            resetForm();
+        }
+    }
+    
+    // UI Helpers
+    window.selectDevice=(d,z)=>{ /* Used by Map/List single click */ 
+        selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); 
+    }
     window.zoomExtent=()=>{ update(ref(db),{}); }
     window.switchTab=(t,b)=>{ document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='map') setTimeout(()=>map.invalidateSize(),200); }
-    function renderTable(){ const c=document.getElementById('device-list-container'); c.innerHTML=''; allDevices.forEach(d=>{ const div=document.createElement('div'); div.className=`device-item ${d.id===selectedId?'selected':''}`; div.innerHTML=`<b>${d.label}</b><br><small>${d.id}</small>`; div.onclick=()=>selectDevice(d,false); c.appendChild(div); }); }
-    function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(d.id!==selectedId) s.appendChild(new Option(d.label,d.id)); }); }
+    function renderTable(){ const c=document.getElementById('device-list-container'); c.innerHTML=''; allDevices.forEach(d=>{ const div=document.createElement('div'); div.className=`device-item ${selectedIds.includes(d.id)?'selected':''}`; div.innerHTML=`<b>${d.label}</b><br><small>${d.id}</small>`; div.onclick=()=>window.selectDevice(d,false); c.appendChild(div); }); }
+    function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(!selectedIds.includes(d.id)) s.appendChild(new Option(d.label,d.id)); }); }
     window.openImportModal=()=>document.getElementById('importModal').style.display='flex';
     window.closeImportModal=()=>document.getElementById('importModal').style.display='none';
-    window.openSmartWindow=()=>{ const c=map.getCenter(); window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600'); }
     window.processImport=()=>{ /* Logic */ }
 
     let localNodes = allDevices; 
