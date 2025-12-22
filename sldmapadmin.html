@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.6 (Zoom Extent)</title>
+    <title>Admin Panel - TAVIETNAM v9.7</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -15,8 +15,7 @@
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .grid-btn:hover { opacity: 0.9; } 
-        .btn-rename { background: #f39c12; }
+        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
         
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
@@ -37,7 +36,7 @@
         
         #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: default; }
         #sld-container.panning { cursor: grab; } #sld-container.panning:active { cursor: grabbing; }
-        #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); } /* Smooth zoom */
+        #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.1s; }
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .admin-node { pointer-events: auto; }
@@ -47,10 +46,8 @@
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
 
         .selection-box { position: absolute; border: 1px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); display: none; pointer-events: none; z-index: 100; }
-        
         .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .tool-btn:hover { background: #f0f0f0; }
         .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
         .context-menu { display: none; position: absolute; z-index: 2000; width: 180px; background: white; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden; }
@@ -89,7 +86,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.6</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.7</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -102,8 +99,14 @@
         <div class="form-content">
             <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group" id="grp-width" style="display:none"><label>Dài Bus</label><input type="number" id="inp-width" value="300" oninput="previewWidth()"></div></div>
-            
+            <div class="row">
+                <div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div>
+                <div class="col form-group" id="grp-width" style="display:none">
+                    <label>Dài Bus (px)</label>
+                    <input type="number" id="inp-width" value="300" oninput="previewWidth()">
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col form-group"><label>Loại</label><select id="inp-type" onchange="toggleFields()"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
@@ -132,8 +135,8 @@
                 </div>
             </div>
             <div class="toolbar">
-                <div class="tool-btn" onclick="zoomToFit()" title="Fit Screen"><i class="fas fa-expand"></i></div>
                 <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Pan"><i class="fas fa-hand-paper"></i></div>
+                <div class="tool-btn" onclick="zoomToFit()" title="Fit"><i class="fas fa-expand"></i></div>
                 <div class="tool-btn" onclick="zoomSLD(0.1)">+</div>
                 <div class="tool-btn" onclick="zoomSLD(-0.1)">-</div>
             </div>
@@ -166,8 +169,6 @@
     let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, draggingWire = null;
     let currentZoom = 1, isPanning = false;
-    let activeTab = 'sld';
-
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
@@ -193,54 +194,38 @@
         containerEl.classList.toggle('panning');
     }
 
-    // --- AUTO ZOOM TO FIT ---
     window.zoomToFit = () => {
-        if (activeTab === 'sld') {
-            if(allDevices.length === 0) return;
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            allDevices.forEach(d => {
-                if(d.showOnSLD !== false && d.sld) {
-                    const w = d.type === 'bus' ? (d.width || 300) : 50;
-                    minX = Math.min(minX, d.sld.x);
-                    minY = Math.min(minY, d.sld.y);
-                    maxX = Math.max(maxX, d.sld.x + w);
-                    maxY = Math.max(maxY, d.sld.y + 50);
-                }
-            });
-
-            if(minX === Infinity) return; // No visible devices
-
-            // Add padding
-            const padding = 100;
-            const contentW = maxX - minX + padding * 2;
-            const contentH = maxY - minY + padding * 2;
-            const containerW = containerEl.clientWidth;
-            const containerH = containerEl.clientHeight;
-
-            // Calc zoom
-            const scaleX = containerW / contentW;
-            const scaleY = containerH / contentH;
-            currentZoom = Math.min(scaleX, scaleY, 1.5); // Cap max zoom
-            currentZoom = Math.max(0.2, currentZoom);
-
-            canvasEl.style.transform = `scale(${currentZoom})`;
-
-            // Scroll to center
-            // Need to wait for transform to apply? No, calculation is raw coords
-            // Center of content in raw coords
-            const centerX = minX - padding + contentW / 2;
-            const centerY = minY - padding + contentH / 2;
-
-            // We want centerX * zoom to be at containerW / 2
-            containerEl.scrollLeft = (centerX * currentZoom) - (containerW / 2);
-            containerEl.scrollTop = (centerY * currentZoom) - (containerH / 2);
-
-        } else {
-            if (Object.keys(mapMarkers).length > 0) {
-                const group = new L.featureGroup(Object.values(mapMarkers));
-                map.fitBounds(group.getBounds(), {padding: [50, 50]});
+        if(allDevices.length === 0) return;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        allDevices.forEach(d => {
+            if(d.showOnSLD !== false && d.sld) {
+                const w = d.type === 'bus' ? (d.width || 300) : 50;
+                minX = Math.min(minX, d.sld.x);
+                minY = Math.min(minY, d.sld.y);
+                maxX = Math.max(maxX, d.sld.x + w);
+                maxY = Math.max(maxY, d.sld.y + 50);
             }
-        }
+        });
+
+        if(minX === Infinity) return;
+
+        const padding = 100;
+        const contentW = maxX - minX + padding * 2;
+        const contentH = maxY - minY + padding * 2;
+        const containerW = containerEl.clientWidth;
+        const containerH = containerEl.clientHeight;
+
+        const scaleX = containerW / contentW;
+        const scaleY = containerH / contentH;
+        currentZoom = Math.min(scaleX, scaleY, 1.5);
+        currentZoom = Math.max(0.2, currentZoom);
+
+        canvasEl.style.transform = `scale(${currentZoom})`;
+        
+        const centerX = minX - padding + contentW / 2;
+        const centerY = minY - padding + contentH / 2;
+        containerEl.scrollLeft = (centerX * currentZoom) - (containerW / 2);
+        containerEl.scrollTop = (centerY * currentZoom) - (containerH / 2);
     }
 
     containerEl.addEventListener('mousedown', (e) => {
@@ -331,7 +316,7 @@
             allDevices = snap.val() ? Object.values(snap.val()) : [];
             calculatePower(); renderTable(); renderSLD(); renderMap(); updateParentSelect();
             document.getElementById('status-msg').innerText = "Đã tải";
-            setTimeout(window.zoomToFit, 500); // Auto Zoom on load
+            setTimeout(window.zoomToFit, 100);
         });
     }
 
@@ -349,7 +334,10 @@
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
         if (type === 'bus') {
-            let safeStart = b.x + 50; let safeEnd = b.x + b.w - 50;
+            // Busbar Padding 20px
+            let padding = 20;
+            let safeStart = b.x + padding; 
+            let safeEnd = b.x + b.w - padding;
             if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
             let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
@@ -358,7 +346,7 @@
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
         
-        // Strict 2-Port Logic
+        // Strict 2-Port for devices
         if (['cb','ds','fco','tr','gen'].includes(type)) {
             if (rot === 0 || rot === 180) { 
                 return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
@@ -366,7 +354,6 @@
                 return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
             }
         }
-
         if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) {
             return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy };
         } else {
@@ -401,6 +388,7 @@
             let sx = d.sld?.x !== undefined ? d.sld.x : 100;
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
+            
             if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
@@ -413,6 +401,7 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
+            // DRAG EVENT
             el.onmousedown = (e) => {
                 if (isPanning) return; 
                 e.stopPropagation(); e.preventDefault();
@@ -467,7 +456,7 @@
         update(ref(db), updates);
     }
 
-    // --- Z-WIRE & HANDLES ---
+    // --- Z-WIRE & OPTIMIZED 2/3 SEGMENTS ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -480,25 +469,8 @@
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
         
-        if (p.type==='bus' || c.type==='bus') {
-            let bus = p.type==='bus' ? p : c;
-            let node = p.type==='bus' ? c : p;
-            let ns = getNodeSize(node.type);
-            let nCx = node.sld.x + ns.w/2;
-            let bStart = bus.sld.x + 50, bEnd = bus.sld.x + (bus.width||300) - 50;
-            if(bStart>bEnd) {bStart=bus.sld.x; bEnd=bus.sld.x+(bus.width||300);}
-
-            if (nCx >= bStart && nCx <= bEnd) {
-                 let sy = bus.sld.y + 4;
-                 let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h);
-                 createSeg(nCx, sy, nCx, ey, cls, type);
-                 return;
-            }
-        }
-
-        let defStub = 50; // Always 50px stub
-        let stubP = c.wireStubs?.p || defStub; 
-        let stubC = c.wireStubs?.c || defStub;
+        let stubP = c.wireStubs?.p || 50; 
+        let stubC = c.wireStubs?.c || 50;
 
         const applyStub = (pt, node, len, isStart) => {
             let r = node.rotation || 0;
@@ -518,7 +490,14 @@
         let sb = {x: sbInfo.x, y: sbInfo.y};
         let ebInfo = applyStub(end, c, stubC, false);
         let eb = {x: ebInfo.x, y: ebInfo.y};
+        
+        // --- OPTIMIZATION (1 Segment Check) ---
+        if (Math.abs(start.x - end.x) < 2 || Math.abs(start.y - end.y) < 2) {
+             createSeg(start.x, start.y, end.x, end.y, cls, type);
+             return;
+        }
 
+        // --- Z-WIRE DEFAULT ---
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
         let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
 
@@ -631,10 +610,7 @@
             showOnSLD: document.getElementById('inp-showSLD').checked,
             isGrounded: document.getElementById('inp-grounded').checked,
             sld: { x: parseInt(document.getElementById('inp-x').value) || 100, y: parseInt(document.getElementById('inp-y').value) || 100 },
-            geo: { 
-                lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, 
-                lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng 
-            }
+            geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng }
         };
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
             alert("Đã lưu thành công!");
@@ -654,10 +630,7 @@
         selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); 
     }
     window.zoomExtent=()=>{ update(ref(db),{}); }
-    window.switchTab=(t,b)=>{ 
-        activeTab = t; // Track active tab
-        document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='map') setTimeout(()=>map.invalidateSize(),200); 
-    }
+    window.switchTab=(t,b)=>{ document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='map') setTimeout(()=>map.invalidateSize(),200); }
     function renderTable(){ const c=document.getElementById('device-list-container'); c.innerHTML=''; allDevices.forEach(d=>{ const div=document.createElement('div'); div.className=`device-item ${selectedIds.includes(d.id)?'selected':''}`; div.innerHTML=`<b>${d.label}</b><br><small>${d.id}</small>`; div.onclick=()=>window.selectDevice(d,false); c.appendChild(div); }); }
     function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(!selectedIds.includes(d.id)) s.appendChild(new Option(d.label,d.id)); }); }
     window.openImportModal=()=>document.getElementById('importModal').style.display='flex';
