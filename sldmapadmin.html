@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v7.5 (Multi-Select)</title>
+    <title>Admin Panel - TAVIETNAM v7.6 (Selection Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,6 +11,7 @@
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+        
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
@@ -26,8 +27,10 @@
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
-        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-        
+        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } 
+        .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } 
+        .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
@@ -37,7 +40,8 @@
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        #selection-layer { position: absolute; width: 100%; height: 100%; z-index: 15; pointer-events: none; } /* Layer chứa khung chọn */
+        .admin-node { pointer-events: auto; }
+        #selection-layer { position: absolute; width: 100%; height: 100%; z-index: 15; pointer-events: none; }
         
         /* SELECTION BOX */
         .selection-box {
@@ -50,10 +54,9 @@
         }
 
         /* SYMBOLS */
-        .admin-node { position: absolute; cursor: grab; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
+        .admin-node { position: absolute; cursor: grab; user-select: none; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .admin-node.selected-node { outline: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
-        
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
@@ -70,9 +73,9 @@
         .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
         
-        /* Handles */
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; }
+        .wire-handle:active { cursor: grabbing; background: rgba(255, 166, 0, 0.6); }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
 
         #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
@@ -86,7 +89,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.5</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.6</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -151,18 +154,20 @@
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
-    // --- SELECTION BOX LOGIC ---
+    // --- SELECTION BOX LOGIC (FIXED COORD) ---
     let selectionBox = { startX: 0, startY: 0, isDrawing: false };
     const boxEl = document.getElementById('selection-box');
     const containerEl = document.getElementById('sld-container');
+    const canvasEl = document.getElementById('sld-canvas');
 
     containerEl.addEventListener('mousedown', (e) => {
-        // Chỉ vẽ box khi click vào nền trống (không phải node, không phải wire handle)
-        if (e.target !== containerEl && e.target.id !== 'sld-canvas') return;
+        if (e.target !== containerEl && e.target.id !== 'sld-canvas' && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
         
         selectionBox.isDrawing = true;
-        selectionBox.startX = e.clientX + containerEl.scrollLeft;
-        selectionBox.startY = e.clientY + containerEl.scrollTop;
+        // Fix: Tính tọa độ tương đối chính xác
+        const rect = containerEl.getBoundingClientRect();
+        selectionBox.startX = e.clientX - rect.left + containerEl.scrollLeft;
+        selectionBox.startY = e.clientY - rect.top + containerEl.scrollTop;
         
         boxEl.style.left = selectionBox.startX + 'px';
         boxEl.style.top = selectionBox.startY + 'px';
@@ -170,19 +175,15 @@
         boxEl.style.height = '0px';
         boxEl.style.display = 'block';
         
-        // Clear previous selection if not holding Ctrl
-        if (!e.ctrlKey) {
-            selectedIds = [];
-            renderSLD();
-            renderTable();
-        }
+        if (!e.ctrlKey) { selectedIds = []; renderSLD(); renderTable(); }
     });
 
     containerEl.addEventListener('mousemove', (e) => {
         if (!selectionBox.isDrawing) return;
         
-        const currentX = e.clientX + containerEl.scrollLeft;
-        const currentY = e.clientY + containerEl.scrollTop;
+        const rect = containerEl.getBoundingClientRect();
+        const currentX = e.clientX - rect.left + containerEl.scrollLeft;
+        const currentY = e.clientY - rect.top + containerEl.scrollTop;
         
         const width = Math.abs(currentX - selectionBox.startX);
         const height = Math.abs(currentY - selectionBox.startY);
@@ -200,7 +201,6 @@
         selectionBox.isDrawing = false;
         boxEl.style.display = 'none';
         
-        // Calculate selection
         const rect = {
             left: parseInt(boxEl.style.left),
             top: parseInt(boxEl.style.top),
@@ -208,37 +208,25 @@
             bottom: parseInt(boxEl.style.top) + parseInt(boxEl.style.height)
         };
         
-        // Find nodes inside rect
         let newlySelected = [];
         allDevices.forEach(d => {
             if (d.showOnSLD === false) return;
-            // Node center
-            const nx = d.sld.x + 25; 
-            const ny = d.sld.y + 25;
+            const nx = d.sld.x + 25; const ny = d.sld.y + 25;
             if (nx >= rect.left && nx <= rect.right && ny >= rect.top && ny <= rect.bottom) {
                 newlySelected.push(d.id);
             }
         });
         
-        // Merge selection
-        newlySelected.forEach(id => {
-            if (!selectedIds.includes(id)) selectedIds.push(id);
-        });
+        newlySelected.forEach(id => { if (!selectedIds.includes(id)) selectedIds.push(id); });
         
-        // Select the last one for form editing
         if (selectedIds.length > 0) {
             const lastId = selectedIds[selectedIds.length - 1];
-            const dev = allDevices.find(d => d.id === lastId);
-            populateForm(dev);
-        } else {
-            resetForm();
-        }
+            populateForm(allDevices.find(d => d.id === lastId));
+        } else { resetForm(); }
         
-        renderSLD();
-        renderTable();
+        renderSLD(); renderTable();
     });
 
-    // --- GRID ---
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
@@ -297,7 +285,6 @@
             if(d.type==='pole' && d.showOnSLD===false) return;
             const el = document.createElement('div');
             let type = d.type.toLowerCase();
-            // Check selection array
             let isSelected = selectedIds.includes(d.id);
             el.className = `admin-node type-${type} ${isSelected?'selected-node':''}`;
             
@@ -322,35 +309,21 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            // --- GROUP DRAG LOGIC ---
+            // GROUP DRAG
             el.onmousedown = (e) => {
                 e.stopPropagation(); e.preventDefault();
                 
-                // Multi-select logic: Ctrl adds to selection
                 if (e.ctrlKey) {
-                    if (selectedIds.includes(d.id)) {
-                        selectedIds = selectedIds.filter(id => id !== d.id);
-                    } else {
-                        selectedIds.push(d.id);
-                        populateForm(d);
-                    }
-                    renderSLD();
-                    renderTable();
-                    return;
+                    if (selectedIds.includes(d.id)) selectedIds = selectedIds.filter(id => id !== d.id);
+                    else { selectedIds.push(d.id); populateForm(d); }
+                    renderSLD(); renderTable(); return;
                 }
 
-                // Normal click: If not already selected, select only this
                 if (!selectedIds.includes(d.id)) {
-                    selectedIds = [d.id];
-                    populateForm(d);
-                    renderSLD();
-                    renderTable();
+                    selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable();
                 }
 
-                const startX = e.clientX;
-                const startY = e.clientY;
-                
-                // Store original positions of ALL selected nodes
+                const startX = e.clientX; const startY = e.clientY;
                 const initialPositions = {};
                 selectedIds.forEach(id => {
                     const node = allDevices.find(n => n.id === id);
@@ -358,33 +331,25 @@
                 });
 
                 const onMM = (ev) => {
-                    const dx = ev.clientX - startX;
-                    const dy = ev.clientY - startY;
-                    
-                    // Move all selected nodes
+                    const dx = ev.clientX - startX; const dy = ev.clientY - startY;
                     selectedIds.forEach(id => {
                         const node = allDevices.find(n => n.id === id);
                         if (node && initialPositions[id]) {
-                            let nx = Math.round((initialPositions[id].x + dx)/10)*10;
-                            let ny = Math.round((initialPositions[id].y + dy)/10)*10;
-                            node.sld.x = nx;
-                            node.sld.y = ny;
+                            node.sld.x = Math.round((initialPositions[id].x + dx)/10)*10;
+                            node.sld.y = Math.round((initialPositions[id].y + dy)/10)*10;
                         }
                     });
-                    
-                    // Update form if single select
-                    if(selectedIds.length === 1) {
+                    if(selectedIds.length===1) {
                         document.getElementById('inp-x').value = allDevices.find(n=>n.id===selectedIds[0]).sld.x;
                         document.getElementById('inp-y').value = allDevices.find(n=>n.id===selectedIds[0]).sld.y;
                     }
-                    
-                    renderSLD(); // Redraw everything (nodes + wires)
+                    renderSLD();
                 };
 
                 const onUp = () => {
                     document.removeEventListener('mousemove', onMM);
                     document.removeEventListener('mouseup', onUp);
-                    saveBatchPositions(); // New function to save multiple
+                    saveBatchPositions();
                 };
                 document.addEventListener('mousemove', onMM);
                 document.addEventListener('mouseup', onUp);
@@ -393,14 +358,11 @@
         });
     }
 
-    // --- SAVE BATCH ---
     function saveBatchPositions() {
         const updates = {};
         selectedIds.forEach(id => {
             const node = allDevices.find(n => n.id === id);
-            if (node) {
-                updates[`grids/${currentGridId}/nodes/${id}/sld`] = node.sld;
-            }
+            if (node) updates[`grids/${currentGridId}/nodes/${id}/sld`] = node.sld;
         });
         update(ref(db), updates);
     }
@@ -423,7 +385,6 @@
         let stubP = c.wireStubs?.p || 20; 
         let stubC = c.wireStubs?.c || 20;
 
-        // Apply Stubs
         const applyStub = (pt, node, len, isStart) => {
             let nType = node.type.toLowerCase();
             let r = node.rotation || 0;
@@ -448,23 +409,21 @@
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
         let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
 
-        // Draw Segments
         createSeg(start.x, start.y, sb.x, sb.y, cls, type);
         createSeg(eb.x, eb.y, end.x, end.y, cls, type);
 
-        if (isVerticalMid) { // Z-Vertical
+        if (isVerticalMid) { 
             createSeg(sb.x, sb.y, sb.x, midVal, cls, type);
             createSeg(sb.x, midVal, eb.x, midVal, cls, type);
             createSeg(eb.x, midVal, eb.x, eb.y, cls, type);
             createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'mid', midVal);
-        } else { // Z-Horizontal
+        } else {
             createSeg(sb.x, sb.y, midVal, sb.y, cls, type);
             createSeg(midVal, sb.y, midVal, eb.y, cls, type);
             createSeg(midVal, eb.y, eb.x, eb.y, cls, type);
             createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'mid', midVal);
         }
 
-        // Stub Handles
         createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
         createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
     }
@@ -521,7 +480,6 @@
         wireLayer.appendChild(hdl);
     }
 
-    // --- HELPER POPULATE ---
     function populateForm(d) {
         document.getElementById('inp-id').value = d.id;
         document.getElementById('inp-label').value = d.label;
@@ -551,34 +509,6 @@
     function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if((['source','bus','wire','cable','pole'].includes(p.type))||p.state==='closed'||(p.type==='gen'&&p.state==='on')) { c.isEnergized=true; propagate(c); } }); } }
 
     window.saveDevice = () => {
-        // If updating multiple selected devices
-        if (selectedIds.length > 0) {
-            const updates = {};
-            selectedIds.forEach(id => {
-                const node = allDevices.find(n => n.id === id);
-                // Only update common properties from form, keep individual coords/rotation unless dragged
-                // For simplicity, lets just save the current state of form to selected IDs BUT coords are separate
-                // Actually, standard behavior: Save button applies form values to ALL selected items
-                // except ID, Parent, Coords which are unique.
-                const commonData = {
-                    type: document.getElementById('inp-type').value,
-                    connection: document.getElementById('inp-connection').value,
-                    rotation: parseInt(document.getElementById('inp-rotation').value)||0,
-                    showOnSLD: document.getElementById('inp-showSLD').checked,
-                    // Label? No, keep unique labels usually. But here we overwrite.
-                };
-                // Careful with overwriting unique data. 
-                // Let's stick to: Save button only saves the LAST selected item displayed in form for now, OR iterate?
-                // To keep it simple: Save button acts on the ID in the "ID" field.
-                const formId = document.getElementById('inp-id').value;
-                if(formId !== "(Tự sinh)" && formId === id) {
-                     // Full update for the main selected item
-                     // Logic duplication from below...
-                }
-            });
-        }
-        
-        // Single/Main Save Logic
         let id = document.getElementById('inp-id').value;
         if(id === "(Tự sinh)" || !id) id = 'N' + Date.now().toString().slice(-6);
         
@@ -602,10 +532,9 @@
         });
     }
 
-    // MAP & RESET
     function renderMap() { 
         for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
-        localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>selectDevice(d,false)); mapMarkers[d.id]=m; });
+        localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>window.selectDevice(d,false)); mapMarkers[d.id]=m; });
     }
     window.resetForm=()=>{ selectedIds=[]; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
     window.deleteDevice=()=>{ 
@@ -617,8 +546,7 @@
         }
     }
     
-    // UI Helpers
-    window.selectDevice=(d,z)=>{ /* Used by Map/List single click */ 
+    window.selectDevice=(d,z)=>{ 
         selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); 
     }
     window.zoomExtent=()=>{ update(ref(db),{}); }
@@ -627,6 +555,7 @@
     function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(!selectedIds.includes(d.id)) s.appendChild(new Option(d.label,d.id)); }); }
     window.openImportModal=()=>document.getElementById('importModal').style.display='flex';
     window.closeImportModal=()=>document.getElementById('importModal').style.display='none';
+    window.openSmartWindow=()=>{ const c=map.getCenter(); window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600'); }
     window.processImport=()=>{ /* Logic */ }
 
     let localNodes = allDevices; 
