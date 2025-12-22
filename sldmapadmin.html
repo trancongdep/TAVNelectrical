@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.4 (Fix Save)</title>
+    <title>Admin Panel - TAVIETNAM v9.5 (Strict Wiring)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,7 +11,6 @@
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
-        
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
@@ -28,6 +27,7 @@
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
         .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
@@ -84,7 +84,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.4</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.5</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -97,15 +97,8 @@
         <div class="form-content">
             <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
+            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group" id="grp-width" style="display:none"><label>Dài Bus</label><input type="number" id="inp-width" value="300" oninput="previewWidth()"></div></div>
             
-            <div class="row">
-                <div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div>
-                <div class="col form-group" id="grp-width" style="display:none">
-                    <label>Dài Bus (px)</label>
-                    <input type="number" id="inp-width" value="300" oninput="previewWidth()">
-                </div>
-            </div>
-
             <div class="row">
                 <div class="col form-group"><label>Loại</label><select id="inp-type" onchange="toggleFields()"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
@@ -113,12 +106,10 @@
             <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
             <div class="form-group"><label>Kiểu nối</label><select id="inp-connection"><option value="solid">Liền</option><option value="dashed">Đứt</option></select></div>
             <div class="row" style="background:#fff; padding:5px; border:1px solid #eee; margin-bottom:10px;"><div class="col"><input type="checkbox" id="inp-showSLD" checked> SLD</div><div class="col"><input type="checkbox" id="inp-grounded"> Tiếp địa</div></div>
-            
             <div class="row"><div class="col form-group"><label>X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>Y</label><input type="number" id="inp-y"></div></div>
             
-            <input type="hidden" id="inp-lat">
-            <input type="hidden" id="inp-lng">
-
+            <input type="hidden" id="inp-lat"><input type="hidden" id="inp-lng">
+            
             <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
             <button class="btn-import" onclick="openImportModal()"><i class="fas fa-robot"></i> Import AI</button>
         </div>
@@ -283,11 +274,7 @@
         });
     }
 
-    // --- RENDER SLD ---
-    function getBusBounds(bus) { 
-        return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; // STRICT MANUAL WIDTH
-    }
-
+    // --- SLD RENDER (STRICT 2-PORT ANCHOR) ---
     function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
@@ -309,12 +296,22 @@
         }
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        if (type === 'tr') {
-            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
+        
+        // STRICT 2-PORT LOGIC FOR DEVICES
+        if (['cb','ds','fco','tr','gen'].includes(type)) {
+            if (rot === 0 || rot === 180) { // Vertical -> Top/Bottom Only
+                return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
+            } else { // Horizontal -> Left/Right Only
+                return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
+            }
         }
-        if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-        else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
+
+        // Generic 4-way fallback
+        if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) {
+            return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy };
+        } else {
+            return { x: cx, y: (targetPos.y > cy ? b.y+b.h : b.y) };
+        }
     }
 
     const wireLayer = document.getElementById('wire-layer');
@@ -356,7 +353,6 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT
             el.onmousedown = (e) => {
                 if (isPanning) return; 
                 e.stopPropagation(); e.preventDefault();
@@ -411,7 +407,6 @@
         update(ref(db), updates);
     }
 
-    // --- Z-WIRE ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -424,7 +419,6 @@
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
         
-        // Smart Straight Check
         if (p.type==='bus' || c.type==='bus') {
             let bus = p.type==='bus' ? p : c;
             let node = p.type==='bus' ? c : p;
@@ -441,7 +435,8 @@
             }
         }
 
-        let defStub = (['cb','ds','fco','tr'].includes(p.type.toLowerCase()) || ['cb','ds','fco','tr'].includes(c.type.toLowerCase())) ? 50 : 20;
+        // 50px STUB FOR DEVICES
+        let defStub = (['cb','ds','fco','tr','gen'].includes(p.type.toLowerCase()) || ['cb','ds','fco','tr','gen'].includes(c.type.toLowerCase())) ? 50 : 20;
         let stubP = c.wireStubs?.p || defStub; 
         let stubC = c.wireStubs?.c || defStub;
 
