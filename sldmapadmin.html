@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v7.3 (Stable)</title>
+    <title>Admin Panel - TAVIETNAM v7.4 (Wire Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,105 +11,71 @@
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
-        
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
         .btn-rename { background: #f39c12; }
-        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        
-        /* SIDEBAR */
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 0 0 auto; max-height: 80vh; border-bottom: 2px solid #eee; }
         .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
-        
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
-        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
-        
-        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } 
-        .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } 
-        .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-
-        /* EDITOR */
+        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
         .tab-content { display: none; width: 100%; height: 100%; position: relative; } .tab-content.active { display: block; }
         
-        /* SLD CANVAS */
         #sld-container { width: 100%; height: 100%; overflow: auto; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; }
         #sld-canvas { width: 4000px; height: 3000px; position: relative; }
-        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        
+        /* WIRE LAYERS (QUAN TRỌNG: Pointer Events) */
+        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; } /* Layer ko chặn chuột */
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .admin-node { pointer-events: auto; } 
-
+        .admin-node { pointer-events: auto; } /* Node chặn chuột để drag */
+        
         /* WIRE HANDLES */
-        .wire-handle { position: absolute; z-index: 20; background: transparent; }
-        .wire-handle:hover { background: rgba(0,123,255,0.2); cursor: grab; }
-        .wire-handle:active { cursor: grabbing; background: rgba(0,123,255,0.4); }
+        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; } /* Handle chặn chuột để kéo */
+        .wire-handle:hover { background: rgba(0,123,255,0.3); cursor: grab; } /* Hover thấy màu xanh nhạt */
+        .wire-handle:active { cursor: grabbing; background: rgba(0,123,255,0.5); }
         .cursor-ew { cursor: ew-resize !important; } 
         .cursor-ns { cursor: ns-resize !important; }
 
-        /* SYMBOLS (QUAN TRỌNG: Đã fix kích thước) */
-        .admin-node { position: absolute; cursor: grab; user-select: none; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
-        .admin-node.selected-node { outline: 2px dashed #007bff; z-index: 20; background: rgba(0,123,255,0.1); }
-        
-        /* Nhãn thiết bị */
-        .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
-        
-        /* Các loại thiết bị (Bắt buộc có width/height) */
-        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
-        .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
-        
-        .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } 
-        .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } 
-        .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } 
-        .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } 
-        .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
-        
-        .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } 
-        .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
-        
-        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } 
-        .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
-        
-        .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } 
-        .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
-        
-        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
-        .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
-        
-        .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
-        .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
-        
-        .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
-        .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
-        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
-        
+        /* SYMBOLS & WIRE */
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
-        .energized-line { border-color: #d32f2f !important; z-index: 5; } 
-        .safe-line { border-color: #2ecc71 !important; z-index: 5; } 
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
         
-        #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
-        .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: #333; text-decoration: none; }
+        /* Other CSS kept from previous version */
+        .admin-node { position: absolute; cursor: grab; user-select: none; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .admin-node.selected-node { outline: 2px dashed #007bff; z-index: 20; background: rgba(0,123,255,0.1); }
+        .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
+        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
+        .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
+        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen.on { background: #ffccbc; border-color: #d35400; }
+        .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
+        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
+        .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
+        .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
+        .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
+        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
         
+        #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
+        .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; text-decoration: none; color: #333; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 550px; display: flex; flex-direction: column; gap: 15px; }
         .json-input { width: 100%; height: 200px; border: 1px solid #ddd; padding: 10px; font-family: monospace; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.3</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin Panel <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.4</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -124,7 +90,7 @@
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
             <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus</label><input type="number" id="inp-width" value="300"></div></div>
             <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
+                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp ngầm</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
             <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
@@ -139,9 +105,7 @@
 
     <div class="main-editor">
         <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld', this)">SLD</button><button class="tab-btn" onclick="switchTab('map', this)">Map</button></div>
-        <div id="tab-sld" class="tab-content active">
-            <div id="sld-container"><div id="sld-canvas"><div id="wire-layer"></div><div id="node-layer"></div></div></div>
-        </div>
+        <div id="tab-sld" class="tab-content active"><div id="sld-container"><div id="sld-canvas"><div id="wire-layer"></div><div id="node-layer"></div></div></div></div>
         <div id="tab-map" class="tab-content"><div id="map-wrapper"><button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Map Window</button><div id="map-canvas"></div></div></div>
     </div>
 </div>
@@ -163,7 +127,7 @@
     const db = getDatabase(app);
 
     let allDevices = [], selectedId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
-    let mapMarkers = {}, mapPolylines = [], draggingWire = null;
+    let mapMarkers = {}, draggingWire = null;
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
@@ -184,17 +148,16 @@
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             allDevices = snap.val() ? Object.values(snap.val()) : [];
             calculatePower(); renderTable(); renderSLD(); renderMap(); updateParentSelect();
+            document.getElementById('status-msg').innerText = "Đã tải";
         });
     }
 
-    // --- SLD RENDER (FIXED VISIBILITY) ---
+    // --- RENDER SLD & WIRE LOGIC ---
     function getAnchor(n, targetPos) { 
-        // Fallback tọa độ nếu thiếu
-        let sx = n.sld?.x || 100;
-        let sy = n.sld?.y || 100;
+        let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
-        
-        let type = n.type.toLowerCase(); // Chuẩn hóa
+        let type = n.type.toLowerCase();
+
         if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
         else if (type === 'tr') { b.w=30; b.h=50; }
         else if (type === 'fco') { b.w=14; b.h=30; }
@@ -206,7 +169,7 @@
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
             return { x: projX, y: projY };
         }
-        
+
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
         let dx = targetPos.x - cx, dy = targetPos.y - cy;
         if (Math.abs(dx) > Math.abs(dy)) return { x: dx>0 ? b.x+b.w : b.x, y: cy };
@@ -218,12 +181,7 @@
 
     function renderWires() {
         wireLayer.innerHTML = '';
-        allDevices.forEach(d => { 
-            if(d.parent) { 
-                const p = allDevices.find(x=>x.id==d.parent); 
-                if(p) drawOrthogonalWire(p, d); 
-            } 
-        });
+        allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
     }
 
     function renderSLD() {
@@ -232,7 +190,6 @@
         allDevices.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
             const el = document.createElement('div');
-            // Chuẩn hóa type về chữ thường để khớp CSS
             let type = d.type.toLowerCase();
             el.className = `admin-node type-${type} ${d.id===selectedId?'selected-node':''}`;
             
@@ -242,17 +199,12 @@
             if(d.isEnergized) el.classList.add('energized-node');
             if(d.isGrounded) el.classList.add('grounded');
 
-            // Fallback tọa độ an toàn
             let sx = d.sld?.x !== undefined ? d.sld.x : 100;
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
-            
-            el.style.left = sx + 'px'; 
-            el.style.top = sy + 'px';
-            
+            el.style.left = sx + 'px'; el.style.top = sy + 'px';
             if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
-            // Render Label
             if(!['bus','wire','cable'].includes(type)) {
                 const lbl = document.createElement('div'); lbl.className = 'node-label';
                 if(d.rotation == 90 || d.rotation == 270) lbl.style.transform = `rotate(-${d.rotation}deg) translate(20px, 0px)`;
@@ -260,24 +212,19 @@
                 let t = d.label; if(d.capacity) t+=` (${d.capacity})`;
                 lbl.innerText = t; el.appendChild(lbl);
             }
-            if(type==='gen') el.innerHTML = ""; // Icon Gen dùng CSS ::before
             if(type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT (MOUSE ONLY)
+            // DRAG EVENT
             el.onmousedown = (e) => {
-                e.stopPropagation(); e.preventDefault();
-                if(d.id!==selectedId) selectDevice(d, false);
+                e.stopPropagation(); e.preventDefault(); if(d.id!==selectedId) selectDevice(d, false);
                 const sX=e.clientX, sY=e.clientY;
-                const origX = d.sld?.x || 100;
-                const origY = d.sld?.y || 100;
+                const origX = d.sld?.x || 100, origY = d.sld?.y || 100;
                 
                 const onMM = (ev) => {
                     let nx = Math.round((origX + (ev.clientX - sX))/10)*10;
                     let ny = Math.round((origY + (ev.clientY - sY))/10)*10;
-                    document.getElementById('inp-x').value = nx; 
-                    document.getElementById('inp-y').value = ny;
-                    d.sld = {x: nx, y: ny}; // Cập nhật live
-                    
+                    document.getElementById('inp-x').value = nx; document.getElementById('inp-y').value = ny;
+                    d.sld = {x: nx, y: ny}; // Live update
                     if(type==='bus') { el.style.left = nx+'px'; el.style.top = ny+'px'; } 
                     else { el.style.left = nx+'px'; el.style.top = ny+'px'; }
                     renderWires();
@@ -294,17 +241,14 @@
         });
     }
 
-    // --- Z-WIRE & DRAG WIRE ---
+    // --- Z-WIRE & HANDLE ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
         
-        let pType = p.type.toLowerCase();
-        let cType = c.type.toLowerCase();
-
-        // Tọa độ an toàn
-        let psx = p.sld?.x || 100, psy = p.sld?.y || 100;
-        let csx = c.sld?.x || 100, csy = c.sld?.y || 100;
+        let pType = p.type.toLowerCase(), cType = c.type.toLowerCase();
+        let psx = p.sld?.x||100, psy = p.sld?.y||100;
+        let csx = c.sld?.x||100, csy = c.sld?.y||100;
 
         const pCenter = { x: psx + (p.width||50)/2, y: psy + (pType==='bus'?4:25) }; 
         const cCenter = { x: csx + (c.width||50)/2, y: csy + (cType==='bus'?4:25) }; 
@@ -328,12 +272,12 @@
         createSeg(start.x, start.y, sb.x, sb.y, cls, type, start.x===sb.x?'v':'h');
         createSeg(eb.x, eb.y, end.x, end.y, cls, type, end.x===eb.x?'v':'h');
 
-        if (isVerticalMid) { // Z-Vertical
+        if (isVerticalMid) { 
             createSeg(sb.x, sb.y, sb.x, midVal, cls, type, 'v');
             createSeg(sb.x, midVal, eb.x, midVal, cls, type, 'h');
             createSeg(eb.x, midVal, eb.x, eb.y, cls, type, 'v');
             createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'y');
-        } else { // Z-Horizontal
+        } else {
             createSeg(sb.x, sb.y, midVal, sb.y, cls, type, 'h');
             createSeg(midVal, sb.y, midVal, eb.y, cls, type, 'v');
             createSeg(midVal, eb.y, eb.x, eb.y, cls, type, 'h');
@@ -407,7 +351,7 @@
         document.getElementById('inp-width').value = d.width || 300;
         updateParentSelect(); document.getElementById('inp-parent').value=d.parent||"";
         document.getElementById('inp-showSLD').checked=(d.showOnSLD!==false); document.getElementById('inp-grounded').checked=(d.isGrounded===true);
-        // Fallback coord
+        // Fallback
         let sx = d.sld?.x || 100; let sy = d.sld?.y || 100;
         document.getElementById('inp-x').value=sx; document.getElementById('inp-y').value=sy;
         document.getElementById('inp-lat').value=d.geo?d.geo.lat:0; document.getElementById('inp-lng').value=d.geo?d.geo.lng:0;
