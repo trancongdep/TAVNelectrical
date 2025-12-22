@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v8.4 (Bus Width Fix)</title>
+    <title>Admin Panel - TAVIETNAM v9.0 (Smart Wiring)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -11,10 +11,12 @@
         
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+        
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
+        .grid-btn:hover { opacity: 0.9; } 
+        .btn-rename { background: #f39c12; }
         
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
@@ -22,11 +24,11 @@
         .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
-        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
         .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
@@ -38,6 +40,7 @@
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .admin-node { pointer-events: auto; }
+        
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
@@ -51,6 +54,7 @@
         .ctx-item { padding: 10px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
         .ctx-item:hover { background: #f4f6f8; color: #2980b9; }
 
+        /* SYMBOLS */
         .admin-node { position: absolute; cursor: grab; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .admin-node.selected-node { outline: 2px dashed #007bff; z-index: 20; background: rgba(0,123,255,0.1); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
@@ -70,7 +74,7 @@
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-
+        
         #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
         .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; text-decoration: none; color: #333; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
@@ -82,7 +86,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V8.4</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.0</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -95,9 +99,9 @@
         <div class="form-content">
             <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus (px)</label><input type="number" id="inp-width" value="300"></div></div>
+            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus</label><input type="number" id="inp-width" value="300"></div></div>
             <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
+                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp ngầm</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
             <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
@@ -173,7 +177,11 @@
     let selectionBox = { startX: 0, startY: 0, isDrawing: false };
 
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); canvasEl.style.transform = `scale(${currentZoom})`; }
-    window.togglePan = () => { isPanning = !isPanning; document.getElementById('btn-pan').classList.toggle('active'); containerEl.classList.toggle('panning'); }
+    window.togglePan = () => {
+        isPanning = !isPanning;
+        document.getElementById('btn-pan').classList.toggle('active');
+        containerEl.classList.toggle('panning');
+    }
 
     containerEl.addEventListener('mousedown', (e) => {
         if (e.target !== containerEl && e.target !== canvasEl && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
@@ -266,21 +274,43 @@
         });
     }
 
-    // --- RENDER ---
+    // --- SMART ANCHOR & WIRING ---
     function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
-        let size = n.type==='bus' ? {w:n.width||300, h:8} : getNodeSize(n.type);
-        let b = { x: sx, y: sy, w: size.w, h: size.h };
+        let b = { x: sx, y: sy, w: 50, h: 50 };
+        let type = n.type.toLowerCase();
+        let rot = n.rotation || 0;
 
-        if (n.type === 'bus') {
-            let projX = Math.max(b.x, Math.min(b.x + b.w, targetPos.x));
+        if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
+        else if (type === 'tr') { b.w=30; b.h=50; }
+        else if (type === 'fco') { b.w=14; b.h=30; }
+        else if (type === 'pole') { b.w=12; b.h=12; }
+        else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
+
+        // BUSBAR: Safe zone (50px padding)
+        if (type === 'bus') {
+            let safeStart = b.x + 50;
+            let safeEnd = b.x + b.w - 50;
+            if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; // Handle short bus
+
+            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
             return { x: projX, y: projY };
         }
+
+        // DEVICE: 2 Sides Only based on target pos and rotation
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        let dx = targetPos.x - cx, dy = targetPos.y - cy;
-        if (Math.abs(dx) > Math.abs(dy)) return { x: dx>0 ? b.x+b.w : b.x, y: cy };
-        else return { x: cx, y: dy>0 ? b.y+b.h : b.y };
+        
+        // Rot 0/180: Vertically oriented -> Top/Bottom ports
+        if (rot === 0 || rot === 180) {
+            // If target is above -> Top. Else Bottom
+            return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
+        } 
+        // Rot 90/270: Horizontally oriented -> Left/Right ports
+        else {
+            // If target is left -> Left. Else Right
+            return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
+        }
     }
 
     const wireLayer = document.getElementById('wire-layer');
@@ -310,8 +340,6 @@
             let sx = d.sld?.x !== undefined ? d.sld.x : 100;
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
-            
-            // FIX BUSBAR WIDTH DISPLAY
             if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
@@ -324,7 +352,6 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT
             el.onmousedown = (e) => {
                 if (isPanning) return; 
                 e.stopPropagation(); e.preventDefault();
@@ -382,26 +409,32 @@
         update(ref(db), updates);
     }
 
+    // --- Z-WIRE & HANDLES (UPDATED FOR 50PX STUB) ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
         
         let ps = p.type==='bus' ? {w:p.width||300, h:8} : getNodeSize(p.type);
         let cs = c.type==='bus' ? {w:c.width||300, h:8} : getNodeSize(c.type);
-        
         let pCenter = { x: p.sld.x + ps.w/2, y: p.sld.y + ps.h/2 }; 
         let cCenter = { x: c.sld.x + cs.w/2, y: c.sld.y + cs.h/2 }; 
 
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
         
+        // Smart Straight Check (Bus)
         if (p.type==='bus' || c.type==='bus') {
             let bus = p.type==='bus' ? p : c;
             let node = p.type==='bus' ? c : p;
             let ns = getNodeSize(node.type);
             let nCx = node.sld.x + ns.w/2;
             
-            if (nCx >= bus.sld.x && nCx <= bus.sld.x + (bus.width||300)) {
+            // Check if node is within safe range of bus
+            let safeStart = bus.sld.x + 50;
+            let safeEnd = bus.sld.x + (bus.width||300) - 50;
+            if (safeStart > safeEnd) { safeStart = bus.sld.x; safeEnd = bus.sld.x + (bus.width||300); }
+
+            if (nCx >= safeStart && nCx <= safeEnd) {
                  let sy = bus.sld.y + 4;
                  let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h);
                  createSeg(nCx, sy, nCx, ey, cls, type);
@@ -409,8 +442,10 @@
             }
         }
 
-        let stubP = c.wireStubs?.p || 20; 
-        let stubC = c.wireStubs?.c || 20;
+        // Configurable Stub or Default 50px for CB/DS
+        let defStub = (['cb','ds','fco'].includes(p.type.toLowerCase()) || ['cb','ds','fco'].includes(c.type.toLowerCase())) ? 50 : 20;
+        let stubP = c.wireStubs?.p || defStub; 
+        let stubC = c.wireStubs?.c || defStub;
 
         const applyStub = (pt, node, len, isStart) => {
             let r = node.rotation || 0;
@@ -418,10 +453,13 @@
             if (node.type === 'bus') {
                 dy = (isStart ? cCenter.y : pCenter.y) > node.sld.y ? len : -len;
             } else {
-                if (r===0) dy = isStart ? len : -len;
-                else if (r===90) dx = isStart ? len : -len;
-                else if (r===180) dy = isStart ? -len : len;
-                else if (r===270) dx = isStart ? -len : len;
+                // If anchored Top/Bottom
+                if (Math.abs(pt.x - (node.sld.x + (node.type==='gen'?25:12))) < 1) { // roughly center x
+                    dy = (pt.y > node.sld.y) ? len : -len;
+                } else {
+                     // anchored Left/Right
+                     dx = (pt.x > node.sld.x) ? len : -len;
+                }
             }
             return {x: pt.x + dx, y: pt.y + dy, axis: (dx!==0 ? 'x' : 'y')};
         }
