@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.2 (Fix Bus Width)</title>
+    <title>Admin Panel - TAVIETNAM v9.3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -44,6 +44,7 @@
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
+
         .selection-box { position: absolute; border: 1px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); display: none; pointer-events: none; z-index: 100; }
         .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -85,7 +86,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.2</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.3</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -98,9 +99,17 @@
         <div class="form-content">
             <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus (px)</label><input type="number" id="inp-width" value="300"></div></div>
+            
             <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
+                <div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div>
+                <div class="col form-group" id="grp-width" style="display:none">
+                    <label>Dài Bus (px)</label>
+                    <input type="number" id="inp-width" value="300" oninput="previewWidth()">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col form-group"><label>Loại</label><select id="inp-type" onchange="toggleFields()"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
             </div>
             <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
@@ -274,7 +283,7 @@
     }
 
     // --- RENDER ---
-    function getBusBounds(bus) { return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; } // MANUAL WIDTH FIX
+    function getBusBounds(bus) { return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; }
 
     function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
@@ -289,8 +298,7 @@
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
         if (type === 'bus') {
-            let safeStart = b.x + 50;
-            let safeEnd = b.x + b.w - 50;
+            let safeStart = b.x + 50; let safeEnd = b.x + b.w - 50;
             if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
             let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
@@ -298,6 +306,10 @@
         }
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
+        if (type === 'tr') {
+            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
+            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
+        }
         if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
         else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
     }
@@ -330,7 +342,7 @@
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
             
-            // FIX BUSBAR WIDTH DISPLAY (Manual)
+            // MANUAL WIDTH + LIVE PREVIEW
             if (type === 'bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
@@ -353,9 +365,7 @@
                     else { selectedIds.push(d.id); populateForm(d); }
                     renderSLD(); renderTable(); return;
                 }
-                if (!selectedIds.includes(d.id)) {
-                    selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable();
-                }
+                if (!selectedIds.includes(d.id)) { selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); }
 
                 const startX = e.clientX; const startY = e.clientY;
                 const initialPositions = {};
@@ -401,7 +411,7 @@
         update(ref(db), updates);
     }
 
-    // --- Z-WIRE & HANDLES ---
+    // --- Z-WIRE ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -414,6 +424,7 @@
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
         
+        // Smart Straight Check
         if (p.type==='bus' || c.type==='bus') {
             let bus = p.type==='bus' ? p : c;
             let node = p.type==='bus' ? c : p;
@@ -534,13 +545,27 @@
         document.getElementById('inp-type').value = d.type;
         document.getElementById('inp-capacity').value = d.capacity || "";
         document.getElementById('inp-rotation').value = d.rotation || 0;
-        document.getElementById('inp-width').value = d.width || 300; // Load Width
+        document.getElementById('inp-width').value = d.width || 300;
         updateParentSelect();
         document.getElementById('inp-parent').value = d.parent || "";
         document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
         document.getElementById('inp-grounded').checked = (d.isGrounded === true);
         document.getElementById('inp-x').value = d.sld.x;
         document.getElementById('inp-y').value = d.sld.y;
+        window.toggleFields();
+    }
+    
+    // --- LIVE PREVIEW WIDTH ---
+    window.previewWidth = () => {
+        const w = parseInt(document.getElementById('inp-width').value) || 300;
+        if(selectedIds.length > 0) {
+            const dev = allDevices.find(d => d.id === selectedIds[0]);
+            if(dev && dev.type === 'bus') { dev.width = w; renderSLD(); }
+        }
+    }
+    window.toggleFields = () => {
+        const type = document.getElementById('inp-type').value;
+        document.getElementById('grp-width').style.display = (type==='bus'?'block':'none');
     }
 
     window.previewRotation = () => { 
@@ -560,7 +585,7 @@
             parent: document.getElementById('inp-parent').value || null, 
             capacity: document.getElementById('inp-capacity').value || "",
             rotation: parseInt(document.getElementById('inp-rotation').value) || 0,
-            width: parseInt(document.getElementById('inp-width').value) || 300, // SAVE WIDTH
+            width: parseInt(document.getElementById('inp-width').value) || 300,
             connection: document.getElementById('inp-connection').value, 
             state: "closed", 
             showOnSLD: document.getElementById('inp-showSLD').checked,
@@ -569,7 +594,7 @@
             geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng }
         };
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
-            alert("Đã lưu thành công!"); // Notification
+            alert("Đã lưu thành công!");
             if(!selectedIds.includes(id)) selectedIds = [id];
             renderSLD(); renderTable();
         });
