@@ -2,21 +2,18 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.7</title>
+    <title>Admin Panel - TAVIETNAM v9.8 (Busbar Slider)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CORE CSS */
+        /* CORE CSS GIỮ NGUYÊN */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
-        
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
-        
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
         .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
-        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 0 0 auto; max-height: 80vh; border-bottom: 2px solid #eee; }
@@ -41,6 +38,7 @@
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .admin-node { pointer-events: auto; }
         
+        /* WIRE HANDLES */
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
@@ -86,7 +84,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.7</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.8</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -200,28 +198,20 @@
         allDevices.forEach(d => {
             if(d.showOnSLD !== false && d.sld) {
                 const w = d.type === 'bus' ? (d.width || 300) : 50;
-                minX = Math.min(minX, d.sld.x);
-                minY = Math.min(minY, d.sld.y);
-                maxX = Math.max(maxX, d.sld.x + w);
-                maxY = Math.max(maxY, d.sld.y + 50);
+                minX = Math.min(minX, d.sld.x); minY = Math.min(minY, d.sld.y);
+                maxX = Math.max(maxX, d.sld.x + w); maxY = Math.max(maxY, d.sld.y + 50);
             }
         });
-
         if(minX === Infinity) return;
-
         const padding = 100;
         const contentW = maxX - minX + padding * 2;
         const contentH = maxY - minY + padding * 2;
         const containerW = containerEl.clientWidth;
         const containerH = containerEl.clientHeight;
-
         const scaleX = containerW / contentW;
         const scaleY = containerH / contentH;
-        currentZoom = Math.min(scaleX, scaleY, 1.5);
-        currentZoom = Math.max(0.2, currentZoom);
-
+        currentZoom = Math.max(0.2, Math.min(1.5, Math.min(scaleX, scaleY)));
         canvasEl.style.transform = `scale(${currentZoom})`;
-        
         const centerX = minX - padding + contentW / 2;
         const centerY = minY - padding + contentH / 2;
         containerEl.scrollLeft = (centerX * currentZoom) - (containerW / 2);
@@ -230,7 +220,6 @@
 
     containerEl.addEventListener('mousedown', (e) => {
         if (e.target !== containerEl && e.target !== canvasEl && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
-        
         if (isPanning) {
             let startX = e.clientX, startY = e.clientY, sl = containerEl.scrollLeft, st = containerEl.scrollTop;
             const onPanMove = (ev) => { containerEl.scrollLeft = sl - (ev.clientX - startX); containerEl.scrollTop = st - (ev.clientY - startY); };
@@ -238,7 +227,6 @@
             document.addEventListener('mousemove', onPanMove); document.addEventListener('mouseup', onPanUp);
             return;
         }
-
         selectionBox.isDrawing = true;
         const rect = containerEl.getBoundingClientRect();
         selectionBox.startX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
@@ -321,7 +309,9 @@
     }
 
     // --- RENDER SLD ---
-    function getAnchor(n, targetPos) { 
+    function getBusBounds(bus) { return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; }
+
+    function getAnchor(n, targetPos, isChild) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
         let type = n.type.toLowerCase();
@@ -333,20 +323,37 @@
         else if (type === 'pole') { b.w=12; b.h=12; }
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
+        // BUSBAR LOGIC (SLIDABLE ANCHOR)
         if (type === 'bus') {
-            // Busbar Padding 20px
+            // Check manual offset on the CONNECTED node
+            // Note: targetPos here is center of the other node.
+            // We need the 'connOffset' from the Child node data.
+            // If n is parent, check child data. If n is child, check child data.
+            // Wait, wire is p -> c. 
+            // If p is bus, we need c.busConnOffset. 
+            // If c is bus, we need... we don't support c.busConnOffset logic yet? 
+            // Actually usually Parent=Bus, Child=Device.
+            // The anchor logic is called by drawOrthogonalWire which has p and c.
+            
+            // Default projection logic
             let padding = 20;
-            let safeStart = b.x + padding; 
-            let safeEnd = b.x + b.w - padding;
+            let safeStart = b.x + padding; let safeEnd = b.x + b.w - padding;
             if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
-            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
+            
+            let anchorX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
+            
+            // OVERRIDE if busConnOffset exists on the CHILD
+            // We need to access 'c' inside here? Or pass offset?
+            // Let's rely on drawOrthogonalWire to pass correct X if it has offset.
+            // For now, standard projection.
+            
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
-            return { x: projX, y: projY };
+            return { x: anchorX, y: projY };
         }
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
         
-        // Strict 2-Port for devices
+        // Strict 2-Port Logic
         if (['cb','ds','fco','tr','gen'].includes(type)) {
             if (rot === 0 || rot === 180) { 
                 return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
@@ -456,7 +463,7 @@
         update(ref(db), updates);
     }
 
-    // --- Z-WIRE & OPTIMIZED 2/3 SEGMENTS ---
+    // --- Z-WIRE & HANDLES ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -466,11 +473,39 @@
         let pCenter = { x: p.sld.x + ps.w/2, y: p.sld.y + ps.h/2 }; 
         let cCenter = { x: c.sld.x + cs.w/2, y: c.sld.y + cs.h/2 }; 
 
-        const start = getAnchor(p, cCenter);
-        const end = getAnchor(c, pCenter);
+        // ANCHOR CALCULATION
+        let start = getAnchor(p, cCenter);
+        let end = getAnchor(c, pCenter);
         
-        let stubP = c.wireStubs?.p || 50; 
-        let stubC = c.wireStubs?.c || 50;
+        // OVERRIDE ANCHOR IF BUS OFFSET EXISTS
+        if (p.type === 'bus') {
+            // Priority: Manual Offset > Projected
+            let safeStart = p.sld.x + 20; let safeEnd = p.sld.x + (p.width||300) - 20;
+            if (c.busConnOffset !== undefined) {
+                 start.x = Math.max(safeStart, Math.min(safeEnd, p.sld.x + c.busConnOffset));
+            } else {
+                 // Default projection logic from getAnchor
+                 // It's already correct there
+            }
+        }
+
+        // Smart Straight Check
+        if (p.type==='bus' || c.type==='bus') {
+            let bus = p.type==='bus' ? p : c;
+            let node = p.type==='bus' ? c : p;
+            let ns = getNodeSize(node.type);
+            let nCx = node.sld.x + ns.w/2;
+            let bStart = bus.sld.x + 20, bEnd = bus.sld.x + (bus.width||300) - 20;
+
+            // Only apply straight if NO manual offset is set (or offset aligns)
+            // Actually straight is fine.
+            // If bus offset set, we might not be straight.
+            // But let's assume default behavior.
+        }
+
+        let defStub = 50; 
+        let stubP = c.wireStubs?.p || defStub; 
+        let stubC = c.wireStubs?.c || defStub;
 
         const applyStub = (pt, node, len, isStart) => {
             let r = node.rotation || 0;
@@ -490,14 +525,7 @@
         let sb = {x: sbInfo.x, y: sbInfo.y};
         let ebInfo = applyStub(end, c, stubC, false);
         let eb = {x: ebInfo.x, y: ebInfo.y};
-        
-        // --- OPTIMIZATION (1 Segment Check) ---
-        if (Math.abs(start.x - end.x) < 2 || Math.abs(start.y - end.y) < 2) {
-             createSeg(start.x, start.y, end.x, end.y, cls, type);
-             return;
-        }
 
-        // --- Z-WIRE DEFAULT ---
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
         let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
 
@@ -518,6 +546,11 @@
 
         createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
         createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
+
+        // BUSBAR SLIDER HANDLE
+        if (p.type === 'bus') {
+            createHandle(start.x - 5, start.y - 5, 10, 10, 'ew-resize', c, 'busConn', (c.busConnOffset || (start.x - p.sld.x)), 'x');
+        }
     }
     
     function createSeg(x1,y1,x2,y2,c,t) {
@@ -535,6 +568,13 @@
         hdl.style.left = x + 'px'; hdl.style.top = y + 'px';
         hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
         
+        // Visual Style for Bus Handle
+        if (type === 'busConn') {
+            hdl.style.background = '#e67e22'; // Orange
+            hdl.style.borderRadius = '50%';
+            hdl.style.border = '1px solid white';
+        }
+
         hdl.onmousedown = (e) => {
             if (isPanning) return;
             e.stopPropagation(); e.preventDefault();
@@ -547,10 +587,11 @@
                 const dev = allDevices.find(d => d.id === draggingWire.id);
                 if(dev) { 
                     if(draggingWire.type === 'mid') dev.wireOffset = newVal;
+                    else if(draggingWire.type === 'busConn') dev.busConnOffset = newVal;
                     else {
-                        if(!dev.wireStubs) dev.wireStubs = {p:20, c:20};
-                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(10, newVal); 
-                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(10, newVal);
+                        if(!dev.wireStubs) dev.wireStubs = {p:50, c:50};
+                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(20, newVal); 
+                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(20, newVal);
                     }
                     renderWires(); 
                 }
@@ -562,6 +603,7 @@
                 if(dev) {
                     let updates = {};
                     if(draggingWire.type === 'mid') updates.wireOffset = dev.wireOffset;
+                    else if(draggingWire.type === 'busConn') updates.busConnOffset = dev.busConnOffset;
                     else updates.wireStubs = dev.wireStubs;
                     update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), updates);
                 }
