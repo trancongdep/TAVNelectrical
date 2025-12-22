@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.1 (TR Fix)</title>
+    <title>Admin Panel - TAVIETNAM v9.2 (Fix Bus Width)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -15,8 +15,7 @@
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .grid-btn:hover { opacity: 0.9; } 
-        .btn-rename { background: #f39c12; }
+        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
         
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
@@ -24,7 +23,8 @@
         .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .row { display: flex; gap: 10px; } .col { flex: 1; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
+        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
         .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
@@ -44,7 +44,6 @@
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
-
         .selection-box { position: absolute; border: 1px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); display: none; pointer-events: none; z-index: 100; }
         .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -86,7 +85,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.1</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.2</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -99,7 +98,7 @@
         <div class="form-content">
             <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
             <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus</label><input type="number" id="inp-width" value="300"></div></div>
+            <div class="row"><div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div><div class="col form-group"><label>Dài Bus (px)</label><input type="number" id="inp-width" value="300"></div></div>
             <div class="row">
                 <div class="col form-group"><label>Loại</label><select id="inp-type"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
                 <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
@@ -274,7 +273,9 @@
         });
     }
 
-    // --- RENDER SLD ---
+    // --- RENDER ---
+    function getBusBounds(bus) { return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; } // MANUAL WIDTH FIX
+
     function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
@@ -287,7 +288,6 @@
         else if (type === 'pole') { b.w=12; b.h=12; }
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
-        // BUS: Vùng đệm 50px
         if (type === 'bus') {
             let safeStart = b.x + 50;
             let safeEnd = b.x + b.w - 50;
@@ -298,14 +298,6 @@
         }
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        
-        // TR: Radial Strict
-        if (type === 'tr') {
-            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
-        }
-
-        // Generic
         if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
         else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
     }
@@ -337,7 +329,9 @@
             let sx = d.sld?.x !== undefined ? d.sld.x : 100;
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
-            if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
+            
+            // FIX BUSBAR WIDTH DISPLAY (Manual)
+            if (type === 'bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
             if(!['bus','wire','cable'].includes(type)) {
@@ -353,12 +347,15 @@
             el.onmousedown = (e) => {
                 if (isPanning) return; 
                 e.stopPropagation(); e.preventDefault();
+                
                 if (e.ctrlKey) {
                     if (selectedIds.includes(d.id)) selectedIds = selectedIds.filter(id => id !== d.id);
                     else { selectedIds.push(d.id); populateForm(d); }
                     renderSLD(); renderTable(); return;
                 }
-                if (!selectedIds.includes(d.id)) { selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); }
+                if (!selectedIds.includes(d.id)) {
+                    selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable();
+                }
 
                 const startX = e.clientX; const startY = e.clientY;
                 const initialPositions = {};
@@ -417,7 +414,6 @@
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
         
-        // Smart Straight Check
         if (p.type==='bus' || c.type==='bus') {
             let bus = p.type==='bus' ? p : c;
             let node = p.type==='bus' ? c : p;
@@ -538,7 +534,7 @@
         document.getElementById('inp-type').value = d.type;
         document.getElementById('inp-capacity').value = d.capacity || "";
         document.getElementById('inp-rotation').value = d.rotation || 0;
-        document.getElementById('inp-width').value = d.width || 300;
+        document.getElementById('inp-width').value = d.width || 300; // Load Width
         updateParentSelect();
         document.getElementById('inp-parent').value = d.parent || "";
         document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
@@ -564,7 +560,7 @@
             parent: document.getElementById('inp-parent').value || null, 
             capacity: document.getElementById('inp-capacity').value || "",
             rotation: parseInt(document.getElementById('inp-rotation').value) || 0,
-            width: parseInt(document.getElementById('inp-width').value) || 300,
+            width: parseInt(document.getElementById('inp-width').value) || 300, // SAVE WIDTH
             connection: document.getElementById('inp-connection').value, 
             state: "closed", 
             showOnSLD: document.getElementById('inp-showSLD').checked,
@@ -573,6 +569,7 @@
             geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng }
         };
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
+            alert("Đã lưu thành công!"); // Notification
             if(!selectedIds.includes(id)) selectedIds = [id];
             renderSLD(); renderTable();
         });
