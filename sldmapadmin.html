@@ -2,20 +2,20 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v7.6 (Selection Fix)</title>
+    <title>Admin Panel - TAVIETNAM v8.1 (CAD Tools)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* CORE CSS */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         
-        header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
+        header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
         
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
+        .btn-rename { background: #f39c12; }
         
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
@@ -27,36 +27,57 @@
         button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
         .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
-        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } 
-        .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } 
-        .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-
+        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
+        
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
         .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
         .tab-content { display: none; width: 100%; height: 100%; position: relative; } .tab-content.active { display: block; }
         
-        #sld-container { width: 100%; height: 100%; overflow: auto; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; }
-        #sld-canvas { width: 4000px; height: 3000px; position: relative; }
+        #sld-container { 
+            width: 100%; height: 100%; overflow: hidden; /* Ẩn scroll mặc định để custom Pan */
+            background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
+            position: relative; cursor: default;
+        }
+        #sld-container.panning { cursor: grab; }
+        #sld-container.panning:active { cursor: grabbing; }
+
+        #sld-canvas { 
+            width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; 
+            transform-origin: 0 0; transition: transform 0.1s linear;
+        }
+
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .admin-node { pointer-events: auto; }
-        #selection-layer { position: absolute; width: 100%; height: 100%; z-index: 15; pointer-events: none; }
-        
-        /* SELECTION BOX */
-        .selection-box {
-            position: absolute;
-            border: 1px dashed #007bff;
-            background-color: rgba(0, 123, 255, 0.2);
-            display: none;
-            pointer-events: none;
-            z-index: 100;
+        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
+        .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
+
+        /* SELECTION BOX (CAD STYLE) */
+        .selection-box { position: absolute; display: none; pointer-events: none; z-index: 100; }
+        .selection-box.window { border: 1px solid #007bff; background-color: rgba(0, 123, 255, 0.2); } /* Trái -> Phải */
+        .selection-box.crossing { border: 1px dashed #27ae60; background-color: rgba(46, 204, 113, 0.2); } /* Phải -> Trái */
+
+        /* TOOLBAR (ZOOM/PAN) */
+        .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
+        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
+
+        /* CONTEXT MENU */
+        .context-menu {
+            display: none; position: absolute; z-index: 2000; width: 180px;
+            background: white; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+            border-radius: 4px; overflow: hidden;
         }
+        .ctx-item { padding: 10px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .ctx-item:hover { background: #f4f6f8; color: #2980b9; }
+        .ctx-item i { width: 20px; text-align: center; }
 
         /* SYMBOLS */
-        .admin-node { position: absolute; cursor: grab; user-select: none; z-index: 10; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .admin-node { position: absolute; cursor: grab; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .admin-node.selected-node { outline: 2px solid #007bff; z-index: 20; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
+        
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
@@ -72,11 +93,6 @@
         .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-        
-        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
-        .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; }
-        .wire-handle:active { cursor: grabbing; background: rgba(255, 166, 0, 0.6); }
-        .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
 
         #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
         .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; text-decoration: none; color: #333; }
@@ -89,7 +105,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V7.6</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V8.1</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -124,13 +140,22 @@
                 <div id="sld-canvas">
                     <div id="wire-layer"></div>
                     <div id="node-layer"></div>
-                    <div id="selection-layer"></div>
                     <div id="selection-box" class="selection-box"></div>
                 </div>
+            </div>
+            <div class="toolbar">
+                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Pan Mode"><i class="fas fa-hand-paper"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(0.1)" title="Zoom In"><i class="fas fa-plus"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(-0.1)" title="Zoom Out"><i class="fas fa-minus"></i></div>
             </div>
         </div>
         <div id="tab-map" class="tab-content"><div id="map-wrapper"><button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Map Window</button><div id="map-canvas"></div></div></div>
     </div>
+</div>
+
+<div id="context-menu" class="context-menu">
+    <div class="ctx-item" onclick="alignNodes('v')"><i class="fas fa-arrows-alt-v"></i> Căn thẳng đứng</div>
+    <div class="ctx-item" onclick="alignNodes('h')"><i class="fas fa-arrows-alt-h"></i> Căn thẳng ngang</div>
 </div>
 
 <div id="importModal" class="modal">
@@ -151,49 +176,90 @@
 
     let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, draggingWire = null;
+    let currentZoom = 1; 
+    let isPanning = false; // Trạng thái Pan
+    
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
-    // --- SELECTION BOX LOGIC (FIXED COORD) ---
+    // --- SELECTION & PAN LOGIC ---
     let selectionBox = { startX: 0, startY: 0, isDrawing: false };
     const boxEl = document.getElementById('selection-box');
     const containerEl = document.getElementById('sld-container');
     const canvasEl = document.getElementById('sld-canvas');
 
+    window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); canvasEl.style.transform = `scale(${currentZoom})`; }
+    
+    window.togglePan = () => {
+        isPanning = !isPanning;
+        document.getElementById('btn-pan').classList.toggle('active');
+        containerEl.classList.toggle('panning');
+    }
+
     containerEl.addEventListener('mousedown', (e) => {
-        if (e.target !== containerEl && e.target.id !== 'sld-canvas' && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
+        // Chỉ xử lý nếu click vào vùng trống (Canvas hoặc Container)
+        if (e.target !== containerEl && e.target !== canvasEl && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
         
+        // PAN MODE
+        if (isPanning) {
+            let startX = e.clientX, startY = e.clientY;
+            let scrollLeft = containerEl.scrollLeft, scrollTop = containerEl.scrollTop;
+            
+            const onPanMove = (ev) => {
+                containerEl.scrollLeft = scrollLeft - (ev.clientX - startX);
+                containerEl.scrollTop = scrollTop - (ev.clientY - startY);
+            };
+            const onPanUp = () => { document.removeEventListener('mousemove', onPanMove); document.removeEventListener('mouseup', onPanUp); };
+            document.addEventListener('mousemove', onPanMove);
+            document.addEventListener('mouseup', onPanUp);
+            return;
+        }
+
+        // SELECTION MODE (CAD STYLE)
         selectionBox.isDrawing = true;
-        // Fix: Tính tọa độ tương đối chính xác
         const rect = containerEl.getBoundingClientRect();
-        selectionBox.startX = e.clientX - rect.left + containerEl.scrollLeft;
-        selectionBox.startY = e.clientY - rect.top + containerEl.scrollTop;
+        // Tọa độ chuột trong container (chưa scale)
+        selectionBox.startX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
+        selectionBox.startY = (e.clientY - rect.top + containerEl.scrollTop) / currentZoom;
         
+        // Tọa độ màn hình để vẽ box
+        selectionBox.screenStartX = e.clientX - rect.left;
+        selectionBox.screenStartY = e.clientY - rect.top;
+
         boxEl.style.left = selectionBox.startX + 'px';
         boxEl.style.top = selectionBox.startY + 'px';
-        boxEl.style.width = '0px';
-        boxEl.style.height = '0px';
+        boxEl.style.width = '0px'; boxEl.style.height = '0px';
         boxEl.style.display = 'block';
+        boxEl.className = 'selection-box'; // Reset class
         
         if (!e.ctrlKey) { selectedIds = []; renderSLD(); renderTable(); }
+        // Ẩn context menu
+        document.getElementById('context-menu').style.display = 'none';
     });
 
     containerEl.addEventListener('mousemove', (e) => {
         if (!selectionBox.isDrawing) return;
         
         const rect = containerEl.getBoundingClientRect();
-        const currentX = e.clientX - rect.left + containerEl.scrollLeft;
-        const currentY = e.clientY - rect.top + containerEl.scrollTop;
+        const currentX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
+        const currentY = (e.clientY - rect.top + containerEl.scrollTop) / currentZoom;
         
-        const width = Math.abs(currentX - selectionBox.startX);
+        const width = currentX - selectionBox.startX; // Có thể âm
         const height = Math.abs(currentY - selectionBox.startY);
-        const left = Math.min(currentX, selectionBox.startX);
-        const top = Math.min(currentY, selectionBox.startY);
         
-        boxEl.style.width = width + 'px';
+        boxEl.style.width = Math.abs(width) + 'px';
         boxEl.style.height = height + 'px';
-        boxEl.style.left = left + 'px';
-        boxEl.style.top = top + 'px';
+        
+        // Xử lý vị trí Left/Top
+        boxEl.style.left = Math.min(currentX, selectionBox.startX) + 'px';
+        boxEl.style.top = Math.min(currentY, selectionBox.startY) + 'px';
+
+        // Đổi màu viền: Trái->Phải (Dương) = Window (Blue), Phải->Trái (Âm) = Crossing (Green)
+        if (width < 0) { // Crossing
+            boxEl.className = 'selection-box crossing';
+        } else { // Window
+            boxEl.className = 'selection-box window';
+        }
     });
 
     containerEl.addEventListener('mouseup', (e) => {
@@ -201,7 +267,12 @@
         selectionBox.isDrawing = false;
         boxEl.style.display = 'none';
         
-        const rect = {
+        const rect = containerEl.getBoundingClientRect();
+        const endX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
+        const isCrossing = (endX < selectionBox.startX);
+
+        // Chuẩn hóa Rect
+        const box = {
             left: parseInt(boxEl.style.left),
             top: parseInt(boxEl.style.top),
             right: parseInt(boxEl.style.left) + parseInt(boxEl.style.width),
@@ -211,10 +282,25 @@
         let newlySelected = [];
         allDevices.forEach(d => {
             if (d.showOnSLD === false) return;
-            const nx = d.sld.x + 25; const ny = d.sld.y + 25;
-            if (nx >= rect.left && nx <= rect.right && ny >= rect.top && ny <= rect.bottom) {
-                newlySelected.push(d.id);
+            const nx = d.sld.x + (d.type==='bus'?(d.width/2):25); 
+            const ny = d.sld.y + (d.type==='bus'?4:25);
+            
+            // Logic Crossing vs Window
+            // Window: Center phải nằm trong box. 
+            // Crossing: (Đơn giản hóa) Center nằm trong box (Đúng ra là intersect nhưng node nhỏ nên center ok)
+            // Với Busbar (lớn), logic Crossing nên check bounds.
+            
+            let inside = (nx >= box.left && nx <= box.right && ny >= box.top && ny <= box.bottom);
+            
+            if (d.type === 'bus' && isCrossing) {
+                // Nếu bus cắt qua box cũng tính
+                let bLeft = d.sld.x, bRight = d.sld.x + (d.width||300), bY = d.sld.y;
+                let xOverlap = Math.max(0, Math.min(bRight, box.right) - Math.max(bLeft, box.left));
+                let yOverlap = (bY >= box.top && bY <= box.bottom);
+                if (xOverlap > 0 && yOverlap) inside = true;
             }
+
+            if (inside) newlySelected.push(d.id);
         });
         
         newlySelected.forEach(id => { if (!selectedIds.includes(id)) selectedIds.push(id); });
@@ -222,10 +308,44 @@
         if (selectedIds.length > 0) {
             const lastId = selectedIds[selectedIds.length - 1];
             populateForm(allDevices.find(d => d.id === lastId));
-        } else { resetForm(); }
+        } else resetForm();
         
         renderSLD(); renderTable();
     });
+
+    // --- CONTEXT MENU ---
+    document.addEventListener('contextmenu', (e) => {
+        if (selectedIds.length > 1 && (e.target.classList.contains('admin-node') || e.target.classList.contains('node-label'))) {
+            e.preventDefault();
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'block';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+        } else {
+            document.getElementById('context-menu').style.display = 'none';
+        }
+    });
+    document.addEventListener('click', () => document.getElementById('context-menu').style.display = 'none');
+
+    window.alignNodes = (axis) => {
+        if (selectedIds.length < 2) return;
+        let sum = 0, count = 0;
+        selectedIds.forEach(id => {
+            const d = allDevices.find(n => n.id === id);
+            if (d) { sum += (axis==='v' ? d.sld.x : d.sld.y); count++; }
+        });
+        const avg = Math.round((sum / count)/10)*10;
+        
+        const updates = {};
+        selectedIds.forEach(id => {
+            const d = allDevices.find(n => n.id === id);
+            if (d) {
+                if(axis==='v') d.sld.x = avg; else d.sld.y = avg;
+                updates[`grids/${currentGridId}/nodes/${id}/sld`] = d.sld;
+            }
+        });
+        update(ref(db), updates);
+    };
 
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
@@ -309,8 +429,9 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            // GROUP DRAG
+            // DRAG EVENT
             el.onmousedown = (e) => {
+                if (isPanning) return; // Không drag node khi đang Pan
                 e.stopPropagation(); e.preventDefault();
                 
                 if (e.ctrlKey) {
@@ -331,7 +452,8 @@
                 });
 
                 const onMM = (ev) => {
-                    const dx = ev.clientX - startX; const dy = ev.clientY - startY;
+                    const dx = (ev.clientX - startX) / currentZoom; // Fix Drag with Zoom
+                    const dy = (ev.clientY - startY) / currentZoom;
                     selectedIds.forEach(id => {
                         const node = allDevices.find(n => n.id === id);
                         if (node && initialPositions[id]) {
@@ -367,7 +489,7 @@
         update(ref(db), updates);
     }
 
-    // --- Z-WIRE & HANDLES ---
+    // --- SMART STRAIGHT WIRE ---
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
@@ -379,9 +501,29 @@
         const pCenter = { x: psx + (p.width||50)/2, y: psy + (pType==='bus'?4:25) }; 
         const cCenter = { x: csx + (c.width||50)/2, y: csy + (cType==='bus'?4:25) }; 
 
+        // SMART STRAIGHT LINE CHECK
+        // Nếu một thiết bị là Busbar và thiết bị kia nằm trong phạm vi chiều rộng của Busbar
+        // -> Vẽ thẳng
+        if (pType === 'bus' || cType === 'bus') {
+            let bus = pType==='bus' ? p : c;
+            let node = pType==='bus' ? c : p;
+            let nodeCx = node.sld.x + (['cb','ds','tr'].includes(node.type.toLowerCase()) ? 12 : 25);
+            
+            // Check nếu tâm node nằm trong phạm vi bus
+            if (nodeCx >= bus.sld.x && nodeCx <= bus.sld.x + (bus.width||300)) {
+                // Vẽ thẳng đứng
+                let startY = bus.sld.y + 4; // Tâm bus
+                let endY = node.sld.y + (node.sld.y > bus.sld.y ? 0 : 50); // Đỉnh hoặc Đáy node
+                if (['cb','ds','fco'].includes(node.type.toLowerCase())) endY = node.sld.y + (node.sld.y > bus.sld.y ? 0 : 24);
+
+                createSeg(nodeCx, startY, nodeCx, endY, cls, type);
+                return; // Xong, không cần Z-Wire
+            }
+        }
+
+        // Logic cũ cho các trường hợp khác
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
-        
         let stubP = c.wireStubs?.p || 20; 
         let stubC = c.wireStubs?.c || 20;
 
@@ -444,13 +586,14 @@
         hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
         
         hdl.onmousedown = (e) => {
+            if (isPanning) return; // Không kéo handle khi pan
             e.stopPropagation(); e.preventDefault();
             let dragAxis = axis || (cursor.includes('ew') ? 'x' : 'y');
             draggingWire = { id: device.id, type: type, startMouse: (dragAxis==='x'?e.clientX:e.clientY), originalVal: currentVal, axis: dragAxis };
             
             const onWireMove = (ev) => {
                 const delta = (draggingWire.axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
-                let newVal = Math.round((draggingWire.originalVal + delta)/10)*10;
+                let newVal = Math.round((draggingWire.originalVal + delta/currentZoom)/10)*10; // Fix Zoom Drag
                 const dev = allDevices.find(d => d.id === draggingWire.id);
                 if(dev) { 
                     if(draggingWire.type === 'mid') dev.wireOffset = newVal;
