@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.30</title>
+    <title>TAVIETNAM Monitor v9.27 (Restored)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -51,10 +51,9 @@
         #sld-container { 
             width: 100%; height: 100%; overflow: hidden; 
             background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
-            position: relative; cursor: default; touch-action: none;
+            position: relative; cursor: grab; touch-action: none;
         }
-        #sld-container.panning { cursor: grab; }
-        #sld-container.panning:active { cursor: grabbing; }
+        #sld-container.panning { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
@@ -77,8 +76,8 @@
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         
-        /* BUSBAR STYLES */
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
+        /* RED BUSBAR FIX */
         .type-bus.energized-node { background-color: #d32f2f !important; box-shadow: 0 0 8px #d32f2f; border-color: #d32f2f !important; }
 
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
@@ -170,7 +169,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.30";
+    const APP_VERSION = "v9.27 (Restored)";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -179,11 +178,10 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // UNIFIED VARIABLE: allDevices (Fixed!)
+    // USE ALL_DEVICES
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
-    let currentZoom = 1;
-    let isPanning = false;
+    let currentZoom = 1, isPanning = false;
 
     window.resetApp = () => { localStorage.removeItem('currentGridId'); location.reload(); }
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
@@ -220,6 +218,7 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
+                // AUTO FIX Grid mismatch
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
@@ -233,21 +232,18 @@
         document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
-            allDevices = data ? Object.values(data) : []; // ASSIGN TO GLOBAL VARIABLE
-            console.log("Devices loaded (View):", allDevices); // DEBUG
+            // ASSIGN TO allDevices
+            allDevices = data ? Object.values(data) : [];
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
             
             calculateSystemState(); 
-            renderSidebarList(); 
-            renderSLD(); 
-            renderMap();
+            renderSidebarList(); renderSLD(); renderMap();
             setTimeout(window.zoomToFit, 100);
         });
     }
     
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        // Use allDevices, NOT localNodes
         const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
         
         if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
@@ -269,11 +265,7 @@
 
     // --- VIEW CONTROLS ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
-    window.togglePan = () => {
-        isPanning = !isPanning;
-        document.getElementById('btn-pan').classList.toggle('active');
-        sldContainer.classList.toggle('panning');
-    }
+    window.togglePan = () => { isPanning = !isPanning; document.getElementById('btn-pan').classList.toggle('active'); sldContainer.classList.toggle('panning'); }
     window.zoomToFit = () => {
         if(allDevices.length === 0) return;
         let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
@@ -309,7 +301,7 @@
         const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
-
+    
     let isDragging = false;
     sldContainer.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; } });
     sldContainer.addEventListener('touchmove', (e) => { if(!isDragging) return; e.preventDefault(); const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop; const walkX = (x - startX); const walkY = (y - startY); sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY; });
@@ -348,7 +340,6 @@
 
     function renderSLD() {
         nodeLayer.innerHTML = ''; wireLayer.innerHTML = '';
-        // USE allDevices, NOT localNodes
         allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
         allDevices.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
