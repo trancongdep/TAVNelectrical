@@ -1,92 +1,109 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geo Camera Calculator v1.0</title>
+    <title>Geo Camera Calculator v1.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
-        #map { height: 400px; width: 100%; border-radius: 0.5rem; }
-        .compass-arrow {
-            transition: transform 0.2s ease-out;
-        }
+        #map { height: 400px; width: 100%; border-radius: 0.5rem; z-index: 1; }
+        .compass-arrow { transition: transform 0.2s ease-out; }
+        /* Fix layer control z-index overlapping with tailwind sometimes */
+        .leaflet-control-layers { z-index: 999; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
 
     <div class="max-w-md mx-auto bg-white shadow-lg rounded-xl overflow-hidden">
         
-        <div class="bg-blue-600 p-4 text-white flex justify-between items-center">
-            <h1 class="font-bold text-lg"><i class="fa-solid fa-map-location-dot mr-2"></i>Geo Calc v1.0</h1>
-            <span class="text-xs bg-blue-500 px-2 py-1 rounded">Dev Mode</span>
+        <div class="bg-indigo-700 p-4 text-white flex justify-between items-center">
+            <h1 class="font-bold text-lg"><i class="fa-solid fa-satellite-dish mr-2"></i>Geo Calc v1.1</h1>
+            <div class="flex items-center space-x-2">
+                <span id="saveStatus" class="hidden text-xs bg-green-500 px-2 py-1 rounded fade-in">Đã lưu!</span>
+            </div>
         </div>
 
         <div class="p-4 border-b border-gray-200">
-            <h2 class="text-sm font-semibold text-gray-500 mb-2 uppercase">1. Cảm biến & Vị trí</h2>
+            <h2 class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">1. Trạng thái thiết bị</h2>
             
-            <button id="requestPermissionBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-3 hidden">
+            <button id="requestPermissionBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-3 hidden transition">
                 <i class="fa-solid fa-compass mr-2"></i>Cấp quyền La Bàn (iOS)
             </button>
 
             <div class="grid grid-cols-2 gap-4">
-                <div class="bg-gray-50 text-center p-2 rounded border">
-                    <div class="text-xs text-gray-500">Độ chính xác GPS</div>
-                    <div id="gpsAccuracy" class="font-mono font-bold text-green-600">-- m</div>
+                <div class="bg-gray-50 text-center p-3 rounded border border-gray-200">
+                    <div class="text-xs text-gray-500 mb-1">GPS (Độ chính xác)</div>
+                    <div id="gpsAccuracy" class="font-mono font-bold text-green-600 text-lg">-- m</div>
                 </div>
-                <div class="bg-gray-50 text-center p-2 rounded border relative">
-                    <div class="text-xs text-gray-500">Hướng (Azimuth)</div>
-                    <div id="compassHeading" class="font-mono font-bold text-blue-600">--°</div>
-                    <div class="absolute top-1 right-1">
-                        <i id="compassIcon" class="fa-solid fa-location-arrow compass-arrow text-gray-300"></i>
+                <div class="bg-gray-50 text-center p-3 rounded border border-gray-200 relative">
+                    <div class="text-xs text-gray-500 mb-1">Góc hướng (Azimuth)</div>
+                    <div id="compassHeading" class="font-mono font-bold text-blue-600 text-lg">--°</div>
+                    <div class="absolute top-2 right-2">
+                        <i id="compassIcon" class="fa-solid fa-location-arrow compass-arrow text-gray-300 text-xl"></i>
                     </div>
                 </div>
             </div>
-            <div id="gpsCoords" class="text-xs text-center mt-2 text-gray-400 font-mono">Đang chờ GPS...</div>
+            <div id="gpsCoords" class="text-xs text-center mt-2 text-gray-400 font-mono">Đang chờ tín hiệu vệ tinh...</div>
         </div>
 
-        <div class="p-4 bg-blue-50">
-            <h2 class="text-sm font-semibold text-gray-500 mb-2 uppercase">2. Nhập liệu</h2>
+        <div class="p-4 bg-indigo-50">
+            <h2 class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">2. Thu thập dữ liệu</h2>
             
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ảnh đối tượng</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hình ảnh đối tượng</label>
                 <div class="flex items-center space-x-2">
-                    <label class="flex-1 cursor-pointer bg-white border border-gray-300 rounded py-2 px-3 hover:bg-gray-50 text-center">
-                        <i class="fa-solid fa-camera mr-2"></i>Chụp ảnh
+                    <label class="flex-1 cursor-pointer bg-white border border-gray-300 rounded py-2 px-3 hover:bg-gray-100 text-center shadow-sm transition">
+                        <i class="fa-solid fa-camera text-indigo-600 mr-2"></i>Chụp ảnh
                         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="previewImage(this)">
                     </label>
                 </div>
-                <img id="imagePreview" class="mt-2 w-full h-32 object-cover rounded hidden border border-gray-300" />
+                <img id="imagePreview" class="mt-2 w-full h-40 object-cover rounded hidden border border-gray-300 shadow-sm" />
             </div>
 
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Khoảng cách tới đối tượng (m)</label>
-                <div class="flex">
-                    <input type="number" id="distanceInput" placeholder="VD: 50.5" class="flex-1 p-2 border border-gray-300 rounded-l focus:outline-none focus:border-blue-500">
-                    <span class="bg-gray-200 text-gray-600 p-2 rounded-r border border-l-0 border-gray-300">mét</span>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Khoảng cách đo được (mét)</label>
+                <div class="flex shadow-sm">
+                    <input type="number" id="distanceInput" placeholder="VD: 25.5" class="flex-1 p-3 border border-gray-300 rounded-l focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <span class="bg-gray-200 text-gray-700 font-bold p-3 rounded-r border border-l-0 border-gray-300">m</span>
                 </div>
             </div>
 
-            <button onclick="calculateTarget()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded shadow-lg transform active:scale-95 transition">
-                <i class="fa-solid fa-calculator mr-2"></i>Tính toán & Ghim Map
+            <button onclick="calculateTarget()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded shadow-lg transform active:scale-95 transition flex justify-center items-center">
+                <i class="fa-solid fa-calculator mr-2"></i>Tính toán tọa độ
             </button>
         </div>
 
         <div class="p-4">
-            <h2 class="text-sm font-semibold text-gray-500 mb-2 uppercase">3. Bản đồ kết quả</h2>
-            <div id="map"></div>
-            <div id="resultLog" class="mt-2 text-xs text-gray-600 font-mono bg-gray-100 p-2 rounded max-h-24 overflow-y-auto hidden"></div>
+            <h2 class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">3. Xác thực & Lưu trữ</h2>
+            
+            <div class="relative">
+                <div id="map"></div>
+                </div>
+
+            <div id="actionArea" class="mt-4 hidden space-y-3">
+                <div class="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+                    <i class="fa-solid fa-check-circle mr-1"></i> Đã tính toán xong. Kiểm tra vị trí trên bản đồ (chấm đỏ).
+                </div>
+                
+                <button id="btnSaveFirebase" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded shadow-lg flex justify-center items-center transition">
+                    <i class="fa-brands fa-google-drive mr-2"></i> Lưu vào Firebase
+                </button>
+            </div>
+            
+            <div id="resultLog" class="mt-2 text-xs text-gray-500 font-mono bg-gray-100 p-2 rounded max-h-24 overflow-y-auto hidden"></div>
         </div>
 
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { 
             apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
@@ -97,30 +114,83 @@
             appId: "1:670121705534:web:1027ad98550573ad37116f" 
         };
 
-        // Initialize Firebase (Không kích hoạt Firestore ngay để tránh lỗi nếu chưa config rules)
         const app = initializeApp(firebaseConfig);
-        console.log("Firebase initialized for project:", firebaseConfig.projectId);
+        const db = getFirestore(app);
+
+        // Expose function to window so HTML button can call it
+        window.saveToFirestore = async function(data) {
+            const btn = document.getElementById('btnSaveFirebase');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang lưu...';
+                btn.disabled = true;
+
+                // Add to collection "geo_points"
+                const docRef = await addDoc(collection(db, "geo_points"), {
+                    ...data,
+                    timestamp: serverTimestamp(),
+                    device_agent: navigator.userAgent
+                });
+
+                console.log("Document written with ID: ", docRef.id);
+                
+                // Show success
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Đã lưu thành công';
+                btn.classList.replace('bg-red-600', 'bg-green-600');
+                
+                document.getElementById('saveStatus').classList.remove('hidden');
+                setTimeout(() => document.getElementById('saveStatus').classList.add('hidden'), 3000);
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("Lỗi khi lưu: " + e.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
     </script>
 
     <script>
-        // --- Variables ---
+        // --- Global State ---
         let map;
         let currentLat = null;
         let currentLng = null;
         let currentHeading = 0;
         let userMarker = null;
-        let objectMarkers = [];
+        let targetMarker = null;
+        let targetLine = null;
+        let lastCalculatedData = null; // Store data to save later
         
-        // --- Initialization ---
+        // --- 1. Init Map with Layers (Satellite & Terrain) ---
         function initMap() {
-            // Default center (Ho Chi Minh City based on context)
-            map = L.map('map').setView([10.7769, 106.7009], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+            // Define Base Layers
+            const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 19
+            });
+
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 18
+            });
+
+            // Initialize Map
+            map = L.map('map', {
+                center: [10.7769, 106.7009],
+                zoom: 15,
+                layers: [streetLayer] // Default layer
+            });
+
+            // Add Layer Control
+            const baseMaps = {
+                "Bản đồ đường phố": streetLayer,
+                "Vệ tinh (Satellite)": satelliteLayer
+            };
+            L.control.layers(baseMaps).addTo(map);
         }
 
-        // --- 1. Get GPS Location ---
+        // --- 2. GPS Logic ---
         function startGPS() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.watchPosition(
@@ -132,43 +202,33 @@
                         document.getElementById('gpsCoords').innerText = `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
                         document.getElementById('gpsAccuracy').innerText = `±${Math.round(accuracy)}m`;
 
-                        // Update User Position on Map
                         const userIcon = L.divIcon({
                             className: 'custom-div-icon',
-                            html: "<div style='background-color:blue; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px black;'></div>",
-                            iconSize: [12, 12],
-                            iconAnchor: [6, 6]
+                            html: "<div style='background-color:#2563EB; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);'></div>",
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
                         });
 
                         if (userMarker) {
                             userMarker.setLatLng([currentLat, currentLng]);
                         } else {
-                            userMarker = L.marker([currentLat, currentLng], {icon: userIcon}).addTo(map).bindPopup("Vị trí của bạn");
+                            userMarker = L.marker([currentLat, currentLng], {icon: userIcon}).addTo(map).bindPopup("Vị trí đứng chụp");
                             map.setView([currentLat, currentLng], 18);
                         }
                     },
-                    (error) => {
-                        alert("Lỗi GPS: " + error.message);
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    (error) => console.warn("GPS Error: " + error.message),
+                    { enableHighAccuracy: true, maximumAge: 0 }
                 );
-            } else {
-                alert("Trình duyệt không hỗ trợ GPS.");
             }
         }
 
-        // --- 2. Get Compass Heading ---
+        // --- 3. Compass Logic ---
         function handleOrientation(event) {
             let heading = null;
-
-            // iOS Webkit
             if (event.webkitCompassHeading) {
                 heading = event.webkitCompassHeading;
-            } 
-            // Android / Standard
-            else if (event.alpha) {
-                // Check if absolute values are available (Android Chrome)
-                heading = 360 - event.alpha; 
+            } else if (event.alpha) {
+                heading = 360 - event.alpha;
             }
 
             if (heading !== null) {
@@ -178,7 +238,6 @@
             }
         }
 
-        // iOS Permission Handling
         function requestIOSPermission() {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -186,21 +245,16 @@
                         if (permissionState === 'granted') {
                             window.addEventListener('deviceorientation', handleOrientation);
                             document.getElementById('requestPermissionBtn').classList.add('hidden');
-                        } else {
-                            alert('Quyền truy cập la bàn bị từ chối');
-                        }
+                        } else { alert('Quyền bị từ chối'); }
                     })
                     .catch(console.error);
-            } else {
-                // Non-iOS 13+ devices
-                window.addEventListener('deviceorientation', handleOrientation);
             }
         }
 
-        // --- 3. Camera Preview ---
+        // --- 4. Camera & Image ---
         function previewImage(input) {
             if (input.files && input.files[0]) {
-                var reader = new FileReader();
+                const reader = new FileReader();
                 reader.onload = function(e) {
                     const img = document.getElementById('imagePreview');
                     img.src = e.target.result;
@@ -210,78 +264,107 @@
             }
         }
 
-        // --- 4. Main Calculation (The Math) ---
+        // --- 5. Calculation Logic ---
         function calculateTarget() {
             const distance = parseFloat(document.getElementById('distanceInput').value);
 
-            // Validation
             if (currentLat === null || currentLng === null) {
-                alert("Chưa có tọa độ GPS. Vui lòng chờ máy định vị.");
+                alert("Đang chờ tín hiệu GPS...");
                 return;
             }
             if (isNaN(distance) || distance <= 0) {
-                alert("Vui lòng nhập khoảng cách hợp lệ.");
+                alert("Vui lòng nhập khoảng cách chính xác.");
                 return;
             }
 
-            // --- Geodesy Formula (Destination Point) ---
-            const R = 6371000; // Earth Radius in meters
+            // Vincenty-ish formula (spherical approximation)
+            const R = 6371000; 
             const lat1 = currentLat * Math.PI / 180;
             const lng1 = currentLng * Math.PI / 180;
-            const brng = currentHeading * Math.PI / 180; // Bearing in radians
+            const brng = currentHeading * Math.PI / 180;
 
             const lat2 = Math.asin( Math.sin(lat1)*Math.cos(distance/R) + 
                         Math.cos(lat1)*Math.sin(distance/R)*Math.cos(brng) );
-            
             const lng2 = lng1 + Math.atan2(Math.sin(brng)*Math.sin(distance/R)*Math.cos(lat1), 
                         Math.cos(distance/R)-Math.sin(lat1)*Math.sin(lat2));
 
-            // Convert back to degrees
             const targetLat = lat2 * 180 / Math.PI;
             const targetLng = lng2 * 180 / Math.PI;
 
-            // --- Display Result ---
-            
-            // 1. Add Marker
-            const targetMarker = L.marker([targetLat, targetLng]).addTo(map);
-            
-            // 2. Add Popup with Image if available
-            const imgSrc = document.getElementById('imagePreview').src;
-            let popupContent = `<b>Đối tượng mới</b><br>Cách: ${distance}m<br>Góc: ${Math.round(currentHeading)}°`;
-            if(imgSrc && !document.getElementById('imagePreview').classList.contains('hidden')) {
-                popupContent += `<br><img src="${imgSrc}" style="width:100px; margin-top:5px;">`;
-            }
-            
-            targetMarker.bindPopup(popupContent).openPopup();
-            
-            // 3. Draw line from user to target
-            L.polyline([[currentLat, currentLng], [targetLat, targetLng]], {color: 'red', dashArray: '5, 10'}).addTo(map);
-            
-            // 4. Log
-            const logDiv = document.getElementById('resultLog');
-            logDiv.classList.remove('hidden');
-            logDiv.innerHTML = `<div>New Point: ${targetLat.toFixed(6)}, ${targetLng.toFixed(6)}</div>` + logDiv.innerHTML;
+            // Update Map UI
+            if (targetMarker) map.removeLayer(targetMarker);
+            if (targetLine) map.removeLayer(targetLine);
 
-            // Zoom to show both
+            targetMarker = L.marker([targetLat, targetLng], {draggable: true}).addTo(map); // Draggable to fine-tune
+            
+            // Popup content
+            const imgSrc = document.getElementById('imagePreview').src;
+            let popupContent = `<b>Điểm mới (Có thể kéo để chỉnh)</b><br>Cách: ${distance}m<br>Hướng: ${Math.round(currentHeading)}°`;
+            if(imgSrc && !document.getElementById('imagePreview').classList.contains('hidden')) {
+                // Resize image for popup to avoid lag
+                popupContent += `<br><img src="${imgSrc}" style="width:120px; border-radius:4px; margin-top:5px;">`;
+            }
+            targetMarker.bindPopup(popupContent).openPopup();
+
+            targetLine = L.polyline([[currentLat, currentLng], [targetLat, targetLng]], {color: 'red', dashArray: '5, 10'}).addTo(map);
+
+            // Fit bounds
             const group = new L.featureGroup([userMarker, targetMarker]);
             map.fitBounds(group.getBounds().pad(0.2));
+
+            // Prepare Data for Saving
+            // Lưu ý: Ảnh base64 có thể rất dài, trong thực tế nên upload Storage lấy URL.
+            // Ở đây tôi cắt bớt ảnh nếu quá dài hoặc chỉ lưu metadata để demo nhanh.
+            lastCalculatedData = {
+                user_lat: currentLat,
+                user_lng: currentLng,
+                target_lat: targetLat,
+                target_lng: targetLng,
+                azimuth: currentHeading,
+                distance: distance,
+                image_base64: imgSrc.length < 1000000 ? imgSrc : "image_too_large_skipped" // Simple guard
+            };
+
+            // Show Save UI
+            const actionArea = document.getElementById('actionArea');
+            actionArea.classList.remove('hidden');
+            
+            // Listener for marker drag (update coordinates before saving)
+            targetMarker.on('dragend', function(event) {
+                const marker = event.target;
+                const position = marker.getLatLng();
+                lastCalculatedData.target_lat = position.lat;
+                lastCalculatedData.target_lng = position.lng;
+                targetMarker.setPopupContent(popupContent + "<br><i>(Đã điều chỉnh vị trí)</i>");
+            });
+
+            // Bind Save Button
+            const saveBtn = document.getElementById('btnSaveFirebase');
+            // Reset button state just in case
+            saveBtn.innerHTML = '<i class="fa-brands fa-google-drive mr-2"></i> Lưu vào Firebase';
+            saveBtn.classList.remove('bg-green-600');
+            saveBtn.classList.add('bg-red-600');
+            saveBtn.disabled = false;
+            
+            saveBtn.onclick = function() {
+                if(window.saveToFirestore) {
+                    window.saveToFirestore(lastCalculatedData);
+                }
+            };
         }
 
-        // --- On Load ---
+        // --- Init ---
         window.onload = function() {
             initMap();
             startGPS();
-
-            // Check if iOS to show permission button
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 document.getElementById('requestPermissionBtn').classList.remove('hidden');
                 document.getElementById('requestPermissionBtn').addEventListener('click', requestIOSPermission);
             } else {
-                window.addEventListener('deviceorientationabsolute', handleOrientation); // Android Chrome
-                window.addEventListener('deviceorientation', handleOrientation); // Fallback
+                window.addEventListener('deviceorientationabsolute', handleOrientation);
+                window.addEventListener('deviceorientation', handleOrientation);
             }
         };
-
     </script>
 </body>
 </html>
