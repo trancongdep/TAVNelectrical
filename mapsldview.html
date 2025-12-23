@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.27</title>
+    <title>TAVIETNAM Monitor v9.31</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@
         header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #e67e22; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
 
@@ -36,10 +37,7 @@
         .dev-item span { font-size: 11px; color: #7f8c8d; }
         
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; border: 1px solid rgba(0,0,0,0.1); }
-        .status-dot.live { background: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
-        .status-dot.locked { background: #f39c12; }
-        
-        .info-bar { font-size: 10px; padding: 5px 15px; background: #2c3e50; color: #ecf0f1; border-top: 1px solid #ddd; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .info-bar { font-size: 11px; padding: 5px 15px; background: #ecf0f1; color: #2c3e50; border-top: 1px solid #ddd; font-weight: bold; }
 
         /* MAIN VIEW */
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1; }
@@ -47,7 +45,11 @@
         #sld-panel.active-view, #map-panel.active-view { display: block; }
 
         /* SLD CANVAS */
-        #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: default; touch-action: none; }
+        #sld-container { 
+            width: 100%; height: 100%; overflow: hidden; 
+            background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
+            position: relative; cursor: default; touch-action: none;
+        }
         #sld-container.panning { cursor: grab; }
         #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
@@ -55,28 +57,45 @@
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 
-        /* TOOLBAR */
-        .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .tool-btn:active { background: #eee; } .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
+        /* TOOLBAR STYLING */
+        .zoom-controls { 
+            position: absolute; bottom: 20px; right: 20px; z-index: 100; 
+            display: flex; flex-direction: column; gap: 8px; 
+            background: rgba(255,255,255,0.9); padding: 5px; border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tool-btn { 
+            width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; 
+            display: flex; align-items: center; justify-content: center; font-size: 18px; 
+            cursor: pointer; transition: 0.2s; color: #555;
+        }
+        .tool-btn:hover { background: #f0f0f0; }
+        .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
         /* SYMBOLS */
         .admin-node { position: absolute; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
         .admin-node:hover { filter: brightness(0.9); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
 
-        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
+        .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; } .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
-        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
+        
+        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
+        /* RED BUSBAR */
+        .type-bus.energized-node { background-color: #d32f2f !important; box-shadow: 0 0 8px #d32f2f; border-color: #d32f2f !important; }
+
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
         .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
         .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
         .locked::after { content: '\f023'; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: -10px; right: -10px; color: #f39c12; font-size: 12px; background: #fff; border-radius: 50%; padding: 2px; }
+        
         .energized-node { background-color: #ffccbc !important; border-color: #d32f2f !important; }
+
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: none; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
@@ -107,7 +126,7 @@
     </div>
     <div class="header-right">
         <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
-        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset Cache</button>
+        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset</button>
         <div style="font-size:12px; color:#ccc; margin-left:10px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
     </div>
 </header>
@@ -120,7 +139,7 @@
         </div>
         <div style="padding:10px; font-size:11px; font-weight:bold; color:#95a5a6; background:#fff">DANH SÁCH THIẾT BỊ</div>
         <div class="device-list" id="sidebarList"></div>
-        <div class="info-bar" id="status-bar">Đang khởi tạo...</div>
+        <div class="info-bar" id="status-bar">Đang tải...</div>
     </nav>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
@@ -133,10 +152,10 @@
                 </div>
             </div>
             <div class="zoom-controls">
-                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình"><i class="fas fa-expand"></i></div>
-                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan"><i class="fas fa-hand-paper"></i></div>
-                <div class="tool-btn" onclick="zoomSLD(0.1)"><i class="fas fa-plus"></i></div>
-                <div class="tool-btn" onclick="zoomSLD(-0.1)"><i class="fas fa-minus"></i></div>
+                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình (Zoom Extent)"><i class="fas fa-expand"></i></div>
+                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan (Kéo thả)"><i class="fas fa-hand-paper"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(0.1)" title="Phóng to"><i class="fas fa-plus"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(-0.1)" title="Thu nhỏ"><i class="fas fa-minus"></i></div>
             </div>
         </div>
         <div id="map-panel" style="width:100%; height:100%; display:none;">
@@ -158,7 +177,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.27";
+    const APP_VERSION = "v9.31";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -167,10 +186,11 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // GLOBAL VARIABLES (STRICTLY SYNCED WITH ADMIN)
+    // USE ALL_DEVICES
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
-    let currentZoom = 1, isPanning = false;
+    let currentZoom = 1;
+    let isPanning = false;
 
     window.resetApp = () => { localStorage.removeItem('currentGridId'); location.reload(); }
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
@@ -197,18 +217,17 @@
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
-            let validIds = [];
             if(!data) { 
                 sel.appendChild(new Option("Lưới mặc định", 'default_grid')); 
                 currentGridId = 'default_grid'; 
             }
             else { 
+                let firstId = null;
                 for(let id in data) { 
                     sel.appendChild(new Option(data[id].name, id)); 
-                    validIds.push(id);
+                    if(!firstId) firstId = id;
                 }
-                // AUTO FIX: If cached ID is invalid, pick the first one
-                if(!data[currentGridId] && validIds.length > 0) currentGridId = validIds[0];
+                if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
@@ -218,35 +237,28 @@
     window.changeGrid = () => { currentGridId = document.getElementById('grid-select').value; localStorage.setItem('currentGridId', currentGridId); loadDevices(); }
 
     function loadDevices() {
-        document.getElementById('status-bar').innerText = `Đang kết nối: ${currentGridId}...`;
+        document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
             allDevices = data ? Object.values(data) : [];
-            
-            // DEBUG INFO
-            document.getElementById('status-bar').innerText = `ID: ${currentGridId} | SL: ${allDevices.length}`;
-            console.log("Loaded devices:", allDevices);
-
-            calculatePower(); 
-            renderSidebarList(); 
-            renderSLD(); 
-            renderMap();
+            document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
+            calculateSystemState(); 
+            renderSidebarList(); renderSLD(); renderMap();
+            // AUTO ZOOM EXTENT ON LOAD
             setTimeout(window.zoomToFit, 100);
         });
     }
     
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        // Show everything except pure wires for list cleanliness
         const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
-        
-        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Chưa có thiết bị nào trong lưới này.</div>'; return; }
-
+        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
             let statusColor = '#95a5a6';
             if (n.isEnergized) statusColor = '#d32f2f'; else if (n.state === 'locked') statusColor = '#f39c12';
-            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${n.type}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
+            let typeLabel = n.type.toUpperCase();
+            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${typeLabel}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
             d.onclick = () => { 
                 window.switchView('map', document.querySelectorAll('.tab-btn')[1]); 
                 if(n.geo) { map.flyTo([n.geo.lat, n.geo.lng], 19); if(mapMarkers[n.id]) mapMarkers[n.id].openPopup(); } 
@@ -256,7 +268,7 @@
         }); 
     }
 
-    // --- VIEW CONTROLS ---
+    // --- ZOOM & PAN ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
     window.togglePan = () => { isPanning = !isPanning; document.getElementById('btn-pan').classList.toggle('active'); sldContainer.classList.toggle('panning'); }
     window.zoomToFit = () => {
@@ -294,6 +306,11 @@
         const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
+    
+    let isDragging = false;
+    sldContainer.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; } });
+    sldContainer.addEventListener('touchmove', (e) => { if(!isDragging) return; e.preventDefault(); const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop; const walkX = (x - startX); const walkY = (y - startY); sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY; });
+    sldContainer.addEventListener('touchend', () => isDragging = false);
 
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
@@ -442,7 +459,7 @@
     window.upd=(s)=>{ update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:s}); document.getElementById('lotoModal').style.display='none'; }
     window.auth=(m)=>{ const p=prompt(m==='lock'?"PIN:":"PIN mở:"); if(p) { if(m==='lock') update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:'locked',lotoPin:p}); else { const n=allDevices.find(x=>x.id===currentTargetId); if(p===n.lotoPin||p===MASTER_KEY) update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:(n.type==='gen'?'off':'open'),lotoPin:null}); else alert("Sai PIN"); } } document.getElementById('lotoModal').style.display='none'; }
     window.toggleSidebar=()=>{document.getElementById('sidebar').classList.toggle('show');document.querySelector('.overlay').classList.toggle('show');}
-    window.switchView=(t,b)=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
+    window.switchView=(t,b)=>{document.querySelectorAll('.tab-btn').forEach(x=>x.style.background='#eee'); b.style.background='#3498db'; document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
     window.openSmartWindow=()=>{const c=map.getCenter();window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600');}
     
     function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; mapPolylines.forEach(l=>map.removeLayer(l)); mapPolylines=[]; allDevices.forEach(d=>{ if(d.parent&&d.geo){const p=allDevices.find(x=>x.id==d.parent);if(p&&p.geo){const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6';mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map));}} }); allDevices.forEach(d=>{ if(!d.geo)return; let html='',bg='#fff',border='#666'; if(d.isEnergized){border='#d32f2f';if(d.type==='source'||d.type==='gen')border='#1565c0';} if(d.type==='pole'){bg='#bdc3c7';if(d.isGrounded){bg='#d5f5e3';border='#27ae60';} html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`; }else{ if(d.type==='gen')html=`<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`; else html=`<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;} const icon=L.divIcon({className:'',html:html}); const m=L.marker([d.geo.lat,d.geo.lng],{icon:icon}).addTo(map); m.bindTooltip(d.label,{permanent:true,direction:'bottom',className:'map-label'}); m.on('click',()=>window.handleDeviceClick(d.id)); mapMarkers[d.id]=m; }); }
@@ -457,9 +474,11 @@
                 if(!child.parent) return;
                 const parent = allDevices.find(n => n.id === child.parent);
                 if(!parent) return;
+                // Forward
                 if (parent.isEnergized && !child.isEnergized) {
                     if (isConductive(parent)) { child.isEnergized = true; changed = true; }
                 }
+                // Reverse
                 if (child.isEnergized && !parent.isEnergized) {
                     if (isConductive(child) && isConductive(parent)) { parent.isEnergized = true; changed = true; }
                 }
