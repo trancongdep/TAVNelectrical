@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.12</title>
+    <title>TAVIETNAM Monitor v9.13</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -19,17 +19,21 @@
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #f1c40f; color: #333; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-
+        .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
         
         /* LAYOUT */
         .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
-        .app-sidebar { width: 260px; background-color: #2c3e50; color: #ecf0f1; display: flex; flex-direction: column; transition: 0.3s; z-index: 1500; }
+        .app-sidebar { 
+            width: 260px; background-color: #2c3e50; color: #ecf0f1; 
+            display: flex; flex-direction: column; transition: 0.3s; z-index: 1500; 
+        }
         .menu-item { padding: 15px; cursor: pointer; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .menu-item.active { background: #3498db; }
-        .sidebar-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); }
+        
+        /* LIST */
+        .sidebar-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); min-height: 0; }
         .dev-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
         .dev-item:hover { background: #34495e; }
         .dev-item b { display: block; color: white; margin-bottom: 2px; }
@@ -50,7 +54,7 @@
         #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
 
-        /* SCADA SYMBOLS (UPDATED CSS v9.x) */
+        /* SCADA SYMBOLS */
         .node-box { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
         .node-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; color: #333; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; }
 
@@ -65,7 +69,8 @@
 
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } 
         .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
-        
+        .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
+
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } 
         .type-gen::before { content: 'G'; } 
         .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
@@ -95,6 +100,9 @@
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .tool-btn:active { background: #eee; }
         .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
+
+        /* DEBUG FOOTER */
+        .debug-bar { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 11px; padding: 2px 10px; z-index: 9999; pointer-events: none; }
 
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 300px; text-align: center; }
@@ -134,7 +142,7 @@
         <div style="padding:15px; font-size:11px; font-weight:bold; color:#95a5a6;">DANH SÁCH THIẾT BỊ</div>
         <div class="sidebar-list" id="sidebarList"></div>
         <div class="menu-footer" style="margin-top:auto; padding:15px; text-align:center; color:#95a5a6; font-size:11px; border-top:1px solid #34495e;">
-            © 2025 TaVietnam<br>v9.12 (Final Sync)
+            © 2025 TaVietnam<br>v9.13 (Safe Mode)
         </div>
     </nav>
     <div class="overlay" onclick="toggleSidebar()"></div>
@@ -158,6 +166,8 @@
     </main>
 </div>
 
+<div id="debug-bar" class="debug-bar">Đang tải dữ liệu...</div>
+
 <div id="lotoModal" class="loto-modal">
     <div class="loto-box">
         <div id="lotoTitle" style="font-weight:bold; font-size:18px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">Thao tác</div>
@@ -171,7 +181,7 @@
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     // --- CONFIG ---
-    const APP_VERSION = "v9.12";
+    const APP_VERSION = "v9.13";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -185,6 +195,9 @@
     let currentZoom = 1;
     let isPanning = false;
 
+    // LOG
+    const debug = (msg) => { document.getElementById('debug-bar').innerText = msg; }
+
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     if(window.innerWidth <= 1024) document.getElementById('menu-btn').style.display='block';
 
@@ -193,8 +206,9 @@
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
-    // --- HELPER: STANDARDIZE NODE SIZES (FIX INVISIBLE NODES) ---
+    // --- HELPER: SAFE NODE SIZE ---
     function getNodeSize(type) {
+        if(!type) return {w:50, h:50}; // Safety check
         type = type.toLowerCase();
         if(['cb','ds'].includes(type)) return {w:24, h:24};
         if(type === 'tr') return {w:30, h:50};
@@ -206,6 +220,7 @@
 
     // --- GRID ---
     function loadGrids() {
+        debug("Đang kết nối Firebase...");
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
             if(!data) { 
@@ -218,12 +233,14 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
-                // Auto-fix if stored grid is invalid
+                // Auto-fix invalid grid ID
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
+        }, (error) => {
+            debug("Lỗi kết nối: " + error.message);
         });
     }
     window.changeGrid = () => { 
@@ -233,33 +250,39 @@
     }
 
     function loadDevices() {
+        debug(`Đang tải thiết bị cho lưới: ${currentGridId}...`);
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
-            localNodes = snap.val() ? Object.values(snap.val()) : [];
+            const data = snap.val();
+            localNodes = data ? Object.values(data) : [];
+            
+            debug(`Đã tải ${localNodes.length} thiết bị.`);
+            
             calculateSystemState(); 
             renderSidebarList(); 
             renderSLD(); 
             renderMap();
-            setTimeout(window.zoomToFit, 200); // Wait for DOM update
+            setTimeout(window.zoomToFit, 200); 
         });
     }
     
-    // --- SIDEBAR LIST ---
+    // --- SIDEBAR LIST (SAFE MODE) ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); 
         c.innerHTML = ''; 
         const validTypes = ['cb','source','gen','tr','ds','fco'];
-        // Fix: Case insensitive check
-        const items = localNodes.filter(n => validTypes.includes(n.type.toLowerCase()));
+        
+        // Filter safe
+        const items = localNodes.filter(n => n.type && validTypes.includes(n.type.toLowerCase()));
         
         if (items.length === 0) {
-            c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>';
+            c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị hoặc dữ liệu lỗi</div>';
             return;
         }
 
         items.forEach(n => { 
             const d = document.createElement('div'); 
             d.className = 'dev-item'; 
-            d.innerHTML = `<div><b>${n.label}</b><span>${n.id}</span></div>`; 
+            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span>${n.id}</span></div>`; 
             
             let statusColor = '#95a5a6'; // Dead
             if (n.isEnergized) statusColor = '#d32f2f'; // Live
@@ -291,8 +314,7 @@
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         localNodes.forEach(d => {
             if(d.showOnSLD !== false && d.sld) {
-                // Fix: Check correct width
-                const type = d.type.toLowerCase();
+                const type = d.type ? d.type.toLowerCase() : '';
                 const w = type === 'bus' ? (d.width || 300) : 50;
                 minX = Math.min(minX, d.sld.x); minY = Math.min(minY, d.sld.y);
                 maxX = Math.max(maxX, d.sld.x + w); maxY = Math.max(maxY, d.sld.y + 50);
@@ -303,8 +325,8 @@
         const padding = 50;
         const contentW = maxX - minX + padding*2;
         const contentH = maxY - minY + padding*2;
-        const containerW = sldContainer.clientWidth;
-        const containerH = sldContainer.clientHeight;
+        const containerW = sldContainer.clientWidth || 800;
+        const containerH = sldContainer.clientHeight || 600;
         
         const scaleX = containerW / contentW;
         const scaleY = containerH / contentH;
@@ -351,9 +373,12 @@
 
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
-        let sx = n.sld?.x||100, sy = n.sld?.y||100;
+        // Safe check
+        if (!n || !n.sld) return {x:0, y:0};
+
+        let sx = n.sld.x||100, sy = n.sld.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
-        let type = n.type.toLowerCase();
+        let type = n.type ? n.type.toLowerCase() : 'unknown';
         let rot = n.rotation || 0;
 
         if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
@@ -381,12 +406,19 @@
 
     function renderSLD() {
         sldCanvas.innerHTML = '';
-        localNodes.forEach(d => { if(d.parent) { const p=localNodes.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
+        localNodes.forEach(d => { 
+            // Fix: Check parent existence
+            if(d.parent) { 
+                const p = localNodes.find(x=>x.id==d.parent); 
+                if(p) drawOrthogonalWire(p, d); 
+            } 
+        });
+
         localNodes.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
+            if(!d.type) return; // Skip invalid nodes
+
             const el = document.createElement('div');
-            
-            // Fix: Lowercase type for CSS
             let type = d.type.toLowerCase();
             el.className = `node-box type-${type}`;
             
@@ -396,12 +428,11 @@
             if(d.isEnergized) el.classList.add('energized-node');
             if(d.isGrounded) el.classList.add('grounded');
 
-            let sx = d.sld?.x !== undefined ? d.sld.x : 100;
-            let sy = d.sld?.y !== undefined ? d.sld.y : 100;
+            let sx = d.sld ? d.sld.x : 100;
+            let sy = d.sld ? d.sld.y : 100;
             el.style.left = sx + 'px'; 
             el.style.top = sy + 'px';
             
-            // Fix: Busbar Width
             if(type==='bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
@@ -420,6 +451,9 @@
     }
 
     function drawOrthogonalWire(p, c) {
+        // Safe check
+        if (!p || !c || !p.sld || !c.sld) return;
+
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
         
@@ -496,11 +530,10 @@
 
     // --- ACTIONS ---
     window.handleDeviceClick = (id) => {
-        if(isPanning) return; 
+        if(isPanning) return;
         const node = localNodes.find(n => n.id === id);
         currentTargetId = id;
         if(node.type==='pole') { if(confirm(`Tiếp địa cột ${node.label}?`)) update(ref(db, `grids/${currentGridId}/nodes/${id}`), {isGrounded:!node.isGrounded}); return; }
-        // Fix case sensitive
         if(!['cb','ds','fco','gen'].includes(node.type.toLowerCase())) return;
         
         const div = document.getElementById('lotoContent'); div.innerHTML = '';
