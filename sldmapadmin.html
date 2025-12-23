@@ -2,18 +2,20 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.8 (Busbar Slider)</title>
+    <title>Admin Panel - TAVIETNAM v9.9 (Fine Snap)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* CORE CSS GIỮ NGUYÊN */
+        /* CORE CSS */
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+        
         header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
         .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
         .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
         .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
+        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .form-content { padding: 15px; overflow-y: auto; flex: 0 0 auto; max-height: 80vh; border-bottom: 2px solid #eee; }
@@ -31,14 +33,20 @@
         .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
         .tab-content { display: none; width: 100%; height: 100%; position: relative; } .tab-content.active { display: block; }
         
-        #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: default; }
+        /* SLD CANVAS & GRID */
+        #sld-container { 
+            width: 100%; height: 100%; overflow: hidden; 
+            /* Grid background 20px visual, but snap is 5px */
+            background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
+            position: relative; cursor: default; 
+        }
         #sld-container.panning { cursor: grab; } #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.1s; }
+        
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .admin-node { pointer-events: auto; }
         
-        /* WIRE HANDLES */
         .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
         .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
         .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
@@ -84,7 +92,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.8</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.9</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -164,6 +172,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    const GRID_SIZE = 5; // NEW: Fine Grid for snapping
+
     let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, draggingWire = null;
     let currentZoom = 1, isPanning = false;
@@ -198,20 +208,27 @@
         allDevices.forEach(d => {
             if(d.showOnSLD !== false && d.sld) {
                 const w = d.type === 'bus' ? (d.width || 300) : 50;
-                minX = Math.min(minX, d.sld.x); minY = Math.min(minY, d.sld.y);
-                maxX = Math.max(maxX, d.sld.x + w); maxY = Math.max(maxY, d.sld.y + 50);
+                minX = Math.min(minX, d.sld.x);
+                minY = Math.min(minY, d.sld.y);
+                maxX = Math.max(maxX, d.sld.x + w);
+                maxY = Math.max(maxY, d.sld.y + 50);
             }
         });
+
         if(minX === Infinity) return;
+
         const padding = 100;
         const contentW = maxX - minX + padding * 2;
         const contentH = maxY - minY + padding * 2;
         const containerW = containerEl.clientWidth;
         const containerH = containerEl.clientHeight;
+
         const scaleX = containerW / contentW;
         const scaleY = containerH / contentH;
         currentZoom = Math.max(0.2, Math.min(1.5, Math.min(scaleX, scaleY)));
+
         canvasEl.style.transform = `scale(${currentZoom})`;
+        
         const centerX = minX - padding + contentW / 2;
         const centerY = minY - padding + contentH / 2;
         containerEl.scrollLeft = (centerX * currentZoom) - (containerW / 2);
@@ -220,6 +237,7 @@
 
     containerEl.addEventListener('mousedown', (e) => {
         if (e.target !== containerEl && e.target !== canvasEl && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
+        
         if (isPanning) {
             let startX = e.clientX, startY = e.clientY, sl = containerEl.scrollLeft, st = containerEl.scrollTop;
             const onPanMove = (ev) => { containerEl.scrollLeft = sl - (ev.clientX - startX); containerEl.scrollTop = st - (ev.clientY - startY); };
@@ -227,6 +245,7 @@
             document.addEventListener('mousemove', onPanMove); document.addEventListener('mouseup', onPanUp);
             return;
         }
+
         selectionBox.isDrawing = true;
         const rect = containerEl.getBoundingClientRect();
         selectionBox.startX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
@@ -311,7 +330,7 @@
     // --- RENDER SLD ---
     function getBusBounds(bus) { return { x: bus.sld.x, y: bus.sld.y, width: bus.width || 300 }; }
 
-    function getAnchor(n, targetPos, isChild) { 
+    function getAnchor(n, targetPos) { 
         let sx = n.sld?.x||100, sy = n.sld?.y||100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
         let type = n.type.toLowerCase();
@@ -323,32 +342,12 @@
         else if (type === 'pole') { b.w=12; b.h=12; }
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
-        // BUSBAR LOGIC (SLIDABLE ANCHOR)
         if (type === 'bus') {
-            // Check manual offset on the CONNECTED node
-            // Note: targetPos here is center of the other node.
-            // We need the 'connOffset' from the Child node data.
-            // If n is parent, check child data. If n is child, check child data.
-            // Wait, wire is p -> c. 
-            // If p is bus, we need c.busConnOffset. 
-            // If c is bus, we need... we don't support c.busConnOffset logic yet? 
-            // Actually usually Parent=Bus, Child=Device.
-            // The anchor logic is called by drawOrthogonalWire which has p and c.
-            
-            // Default projection logic
-            let padding = 20;
-            let safeStart = b.x + padding; let safeEnd = b.x + b.w - padding;
+            let safeStart = b.x + 20; let safeEnd = b.x + b.w - 20;
             if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
-            
-            let anchorX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
-            
-            // OVERRIDE if busConnOffset exists on the CHILD
-            // We need to access 'c' inside here? Or pass offset?
-            // Let's rely on drawOrthogonalWire to pass correct X if it has offset.
-            // For now, standard projection.
-            
+            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
-            return { x: anchorX, y: projY };
+            return { x: projX, y: projY };
         }
 
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
@@ -395,7 +394,6 @@
             let sx = d.sld?.x !== undefined ? d.sld.x : 100;
             let sy = d.sld?.y !== undefined ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
-            
             if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
@@ -432,8 +430,9 @@
                     selectedIds.forEach(id => {
                         const node = allDevices.find(n => n.id === id);
                         if (node && initialPositions[id]) {
-                            node.sld.x = Math.round((initialPositions[id].x + dx)/10)*10;
-                            node.sld.y = Math.round((initialPositions[id].y + dy)/10)*10;
+                            // SNAP TO GRID 5px
+                            node.sld.x = Math.round((initialPositions[id].x + dx)/GRID_SIZE)*GRID_SIZE;
+                            node.sld.y = Math.round((initialPositions[id].y + dy)/GRID_SIZE)*GRID_SIZE;
                         }
                     });
                     if(selectedIds.length===1) {
@@ -473,20 +472,15 @@
         let pCenter = { x: p.sld.x + ps.w/2, y: p.sld.y + ps.h/2 }; 
         let cCenter = { x: c.sld.x + cs.w/2, y: c.sld.y + cs.h/2 }; 
 
-        // ANCHOR CALCULATION
+        // ANCHOR WITH BUS OFFSET SUPPORT
         let start = getAnchor(p, cCenter);
         let end = getAnchor(c, pCenter);
-        
-        // OVERRIDE ANCHOR IF BUS OFFSET EXISTS
+
         if (p.type === 'bus') {
-            // Priority: Manual Offset > Projected
-            let safeStart = p.sld.x + 20; let safeEnd = p.sld.x + (p.width||300) - 20;
-            if (c.busConnOffset !== undefined) {
-                 start.x = Math.max(safeStart, Math.min(safeEnd, p.sld.x + c.busConnOffset));
-            } else {
-                 // Default projection logic from getAnchor
-                 // It's already correct there
-            }
+             // If manual offset exists on child for this connection
+             if (c.busConnOffset !== undefined) {
+                 start.x = p.sld.x + c.busConnOffset;
+             }
         }
 
         // Smart Straight Check
@@ -497,13 +491,15 @@
             let nCx = node.sld.x + ns.w/2;
             let bStart = bus.sld.x + 20, bEnd = bus.sld.x + (bus.width||300) - 20;
 
-            // Only apply straight if NO manual offset is set (or offset aligns)
-            // Actually straight is fine.
-            // If bus offset set, we might not be straight.
-            // But let's assume default behavior.
+            if (nCx >= bStart && nCx <= bEnd) {
+                 let sy = bus.sld.y + 4;
+                 let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h);
+                 createSeg(nCx, sy, nCx, ey, cls, type);
+                 return;
+            }
         }
 
-        let defStub = 50; 
+        let defStub = (['cb','ds','fco','tr'].includes(p.type.toLowerCase()) || ['cb','ds','fco','tr'].includes(c.type.toLowerCase())) ? 50 : 20;
         let stubP = c.wireStubs?.p || defStub; 
         let stubC = c.wireStubs?.c || defStub;
 
@@ -527,7 +523,12 @@
         let eb = {x: ebInfo.x, y: ebInfo.y};
 
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
-        let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
+        
+        // AUTO SNAP MID VALUE
+        let calcMid = isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2;
+        calcMid = Math.round(calcMid / GRID_SIZE) * GRID_SIZE; // Force snap
+
+        let midVal = c.wireOffset !== undefined ? c.wireOffset : calcMid;
 
         createSeg(start.x, start.y, sb.x, sb.y, cls, type);
         createSeg(eb.x, eb.y, end.x, end.y, cls, type);
@@ -546,8 +547,7 @@
 
         createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
         createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
-
-        // BUSBAR SLIDER HANDLE
+        
         if (p.type === 'bus') {
             createHandle(start.x - 5, start.y - 5, 10, 10, 'ew-resize', c, 'busConn', (c.busConnOffset || (start.x - p.sld.x)), 'x');
         }
@@ -568,11 +568,9 @@
         hdl.style.left = x + 'px'; hdl.style.top = y + 'px';
         hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
         
-        // Visual Style for Bus Handle
         if (type === 'busConn') {
-            hdl.style.background = '#e67e22'; // Orange
-            hdl.style.borderRadius = '50%';
-            hdl.style.border = '1px solid white';
+            hdl.style.background = '#e67e22'; 
+            hdl.style.borderRadius = '50%'; hdl.style.border = '1px solid white';
         }
 
         hdl.onmousedown = (e) => {
@@ -583,15 +581,15 @@
             
             const onWireMove = (ev) => {
                 const delta = (draggingWire.axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
-                let newVal = Math.round((draggingWire.originalVal + delta/currentZoom)/10)*10;
+                let newVal = Math.round((draggingWire.originalVal + delta/currentZoom)/GRID_SIZE)*GRID_SIZE;
                 const dev = allDevices.find(d => d.id === draggingWire.id);
                 if(dev) { 
                     if(draggingWire.type === 'mid') dev.wireOffset = newVal;
                     else if(draggingWire.type === 'busConn') dev.busConnOffset = newVal;
                     else {
-                        if(!dev.wireStubs) dev.wireStubs = {p:50, c:50};
-                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(20, newVal); 
-                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(20, newVal);
+                        if(!dev.wireStubs) dev.wireStubs = {p:20, c:20};
+                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(10, newVal); 
+                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(10, newVal);
                     }
                     renderWires(); 
                 }
@@ -666,7 +664,14 @@
         localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>window.selectDevice(d,false)); mapMarkers[d.id]=m; });
     }
     window.resetForm=()=>{ selectedIds=[]; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
-    window.deleteDevice=()=>{ if(selectedIds.length>0&&confirm("Xóa?")){ const u={}; selectedIds.forEach(id=>u[`grids/${currentGridId}/nodes/${id}`]=null); update(ref(db),u); resetForm(); } }
+    window.deleteDevice=()=>{ 
+        if(selectedIds.length > 0 && confirm(`Xóa ${selectedIds.length} thiết bị?`)) {
+            const updates = {};
+            selectedIds.forEach(id => updates[`grids/${currentGridId}/nodes/${id}`] = null);
+            update(ref(db), updates);
+            resetForm();
+        }
+    }
     
     window.selectDevice=(d,z)=>{ 
         selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); 
