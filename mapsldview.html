@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.24</title>
+    <title>TAVIETNAM Monitor v9.25</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
         header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #e67e22; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
 
@@ -37,14 +37,14 @@
         .dev-item b { display: block; color: #2c3e50; margin-bottom: 2px; }
         .dev-item span { font-size: 11px; color: #7f8c8d; }
         
-        /* STATUS INDICATOR */
+        /* STATUS */
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; border: 1px solid rgba(0,0,0,0.1); }
         .status-dot.live { background: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
         .status-dot.locked { background: #f39c12; }
+        .info-bar { font-size: 11px; padding: 5px 15px; background: #ecf0f1; color: #2c3e50; border-top: 1px solid #ddd; font-weight: bold; }
 
         /* MAIN VIEW */
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1; }
-        
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
 
@@ -67,14 +67,15 @@
         .tool-btn:active { background: #eee; }
         .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
-        /* SYMBOLS (Copied from Admin) */
+        /* SYMBOLS */
         .admin-node { position: absolute; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
         .admin-node:hover { filter: brightness(0.9); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
 
-        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
+        .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
-        .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
+        .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; } .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
@@ -87,26 +88,21 @@
         .energized-node { background-color: #ffccbc !important; border-color: #d32f2f !important; }
 
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: none; box-sizing: border-box; }
-        .energized-line { border-color: #d32f2f !important; z-index: 5; } 
-        .safe-line { border-color: #2ecc71 !important; z-index: 5; } 
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
 
         /* MODAL */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
-        
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-decoration: none; color: #333; }
-        .info-bar { font-size: 11px; padding: 5px 15px; background: #ecf0f1; color: #2c3e50; border-top: 1px solid #ddd; font-weight: bold; }
-
+        
         @media (max-width: 1024px) {
             .sidebar { position: absolute; height: 100%; left: -280px; }
             .sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; }
             .overlay.show { display: block; }
         }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
     </style>
 </head>
 <body>
@@ -122,7 +118,7 @@
     <div class="header-right">
         <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
         <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset</button>
-        <div style="font-size:12px; color:#ccc; margin-left:10px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
+        <div style="font-size:12px; color:#ccc; margin-left:5px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
     </div>
 </header>
 
@@ -172,7 +168,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.24";
+    const APP_VERSION = "v9.25";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -181,7 +177,7 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // USE SAME VARIABLE NAME AS ADMIN FOR CONSISTENCY
+    // UNIFIED VARIABLE NAME: allDevices (Matches Admin)
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
@@ -209,8 +205,9 @@
         return {w:50, h:50}; 
     }
 
-    // --- GRID SYNC (EXACTLY AS ADMIN) ---
+    // --- GRID SYNC (SAME AS ADMIN) ---
     function loadGrids() {
+        console.log("Loading grids...");
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
             if(!data) { 
@@ -223,7 +220,6 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
-                // Auto fix logic
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
@@ -234,11 +230,14 @@
     window.changeGrid = () => { currentGridId = document.getElementById('grid-select').value; localStorage.setItem('currentGridId', currentGridId); loadDevices(); }
 
     function loadDevices() {
+        console.log("Loading devices for:", currentGridId);
         document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
-            // IMPORTANT: Assign to allDevices to match logic
+            // THIS IS THE FIX: Assign to allDevices properly
             allDevices = data ? Object.values(data) : [];
+            console.log("Devices loaded:", allDevices.length);
+            
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
             calculateSystemState(); 
             renderSidebarList(); renderSLD(); renderMap();
@@ -249,17 +248,14 @@
     // --- SIDEBAR LIST (SHOW ALL) ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        // Filter out only wires
         const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
-        
         if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
-
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
-            let statusClass = '';
-            if (n.isEnergized) statusClass = 'live'; else if (n.state === 'locked') statusClass = 'locked';
-            
-            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span>${n.id}</span></div><div class="status-dot ${statusClass}"></div>`;
+            let statusColor = '#95a5a6';
+            if (n.isEnergized) statusColor = '#d32f2f'; else if (n.state === 'locked') statusColor = '#f39c12';
+            let typeLabel = n.type.toUpperCase();
+            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${typeLabel}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
             d.onclick = () => { 
                 window.switchView('map', document.querySelectorAll('.tab-btn')[1]); 
                 if(n.geo) { map.flyTo([n.geo.lat, n.geo.lng], 19); if(mapMarkers[n.id]) mapMarkers[n.id].openPopup(); } 
@@ -297,7 +293,6 @@
         sldContainer.scrollTop = (centerY * currentZoom) - (containerH/2);
     }
 
-    // PAN HANDLERS
     let startX, startY, scrollLeft, scrollTop;
     sldContainer.addEventListener('mousedown', (e) => {
         if(!isPanning) return;
@@ -312,6 +307,7 @@
         const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
+
     let isDragging = false;
     sldContainer.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; } });
     sldContainer.addEventListener('touchmove', (e) => { if(!isDragging) return; e.preventDefault(); const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop; const walkX = (x - startX); const walkY = (y - startY); sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY; });
@@ -365,10 +361,13 @@
             if(d.isEnergized) el.classList.add('energized-node');
             if(d.isGrounded) el.classList.add('grounded');
 
-            let sx = d.sld ? d.sld.x : 100; let sy = d.sld ? d.sld.y : 100;
+            let sx = d.sld ? d.sld.x : 100;
+            let sy = d.sld ? d.sld.y : 100;
             el.style.left = sx + 'px'; el.style.top = sy + 'px';
+            
             if(type==='bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
+
             if(!['bus','wire','cable'].includes(type)) {
                 const lbl = document.createElement('div'); lbl.className='node-label';
                 if(d.rotation==90 || d.rotation==270) lbl.style.transform=`rotate(-${d.rotation}deg) translate(20px,0px)`;
@@ -377,6 +376,7 @@
                 lbl.innerText = t; el.appendChild(lbl);
             }
             if(type==='source') el.innerHTML = "SRC";
+
             el.onclick = () => window.handleDeviceClick(d.id);
             nodeLayer.appendChild(el);
         });
@@ -384,7 +384,6 @@
 
     function drawOrthogonalWire(p, c) {
         if (!p || !c || !p.sld || !c.sld) return;
-
         let isHot = false;
         if (c.isEnergized) isHot = true;
         else if (p.isEnergized) {
@@ -459,7 +458,7 @@
     window.upd=(s)=>{ update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:s}); document.getElementById('lotoModal').style.display='none'; }
     window.auth=(m)=>{ const p=prompt(m==='lock'?"PIN:":"PIN mở:"); if(p) { if(m==='lock') update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:'locked',lotoPin:p}); else { const n=allDevices.find(x=>x.id===currentTargetId); if(p===n.lotoPin||p===MASTER_KEY) update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:(n.type==='gen'?'off':'open'),lotoPin:null}); else alert("Sai PIN"); } } document.getElementById('lotoModal').style.display='none'; }
     window.toggleSidebar=()=>{document.getElementById('sidebar').classList.toggle('show');document.querySelector('.overlay').classList.toggle('show');}
-    window.switchView=(t,b)=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
+    window.switchView=(t,b)=>{document.querySelectorAll('.tab-btn').forEach(x=>x.style.background='#eee'); b.style.background='#3498db'; document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
     window.openSmartWindow=()=>{const c=map.getCenter();window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600');}
     
     function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; mapPolylines.forEach(l=>map.removeLayer(l)); mapPolylines=[]; allDevices.forEach(d=>{ if(d.parent&&d.geo){const p=allDevices.find(x=>x.id==d.parent);if(p&&p.geo){const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6';mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map));}} }); allDevices.forEach(d=>{ if(!d.geo)return; let html='',bg='#fff',border='#666'; if(d.isEnergized){border='#d32f2f';if(d.type==='source'||d.type==='gen')border='#1565c0';} if(d.type==='pole'){bg='#bdc3c7';if(d.isGrounded){bg='#d5f5e3';border='#27ae60';} html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`; }else{ if(d.type==='gen')html=`<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`; else html=`<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;} const icon=L.divIcon({className:'',html:html}); const m=L.marker([d.geo.lat,d.geo.lng],{icon:icon}).addTo(map); m.bindTooltip(d.label,{permanent:true,direction:'bottom',className:'map-label'}); m.on('click',()=>window.handleDeviceClick(d.id)); mapMarkers[d.id]=m; }); }
