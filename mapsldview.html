@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.13</title>
+    <title>TAVIETNAM Monitor v9.14</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,36 +14,33 @@
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; user-select: none; }
         
         /* HEADER */
-        .app-header {
-            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
-        }
+        header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
         .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
-        
+
         /* LAYOUT */
-        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
-        .app-sidebar { 
-            width: 260px; background-color: #2c3e50; color: #ecf0f1; 
-            display: flex; flex-direction: column; transition: 0.3s; z-index: 1500; 
-        }
-        .menu-item { padding: 15px; cursor: pointer; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .menu-item.active { background: #3498db; }
+        .container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .sidebar { width: 280px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 1500; transition: 0.3s; }
         
-        /* LIST */
-        .sidebar-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); min-height: 0; }
-        .dev-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-        .dev-item:hover { background: #34495e; }
-        .dev-item b { display: block; color: white; margin-bottom: 2px; }
-        .dev-item span { font-size: 11px; color: #bdc3c7; }
-        
-        /* CONTENT PANELS */
-        .app-content { flex: 1; position: relative; }
-        #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
-        #sld-panel.active-view, #map-panel.active-view { display: block; }
-        
+        /* LIST (NO FORM) */
+        .device-list { flex: 1; overflow-y: auto; background: #fff; }
+        .device-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .device-item:hover { background: #f4f6f8; }
+        .device-item b { display: block; color: #2c3e50; margin-bottom: 2px; }
+        .device-item span { font-size: 11px; color: #7f8c8d; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #95a5a6; }
+
+        /* MAIN VIEW */
+        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1; }
+        .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
+        .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } 
+        .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
+        .tab-content { display: none; width: 100%; height: 100%; position: relative; } 
+        .tab-content.active { display: block; }
+
         /* SLD CANVAS */
         #sld-container { 
             width: 100%; height: 100%; overflow: hidden; 
@@ -53,11 +50,23 @@
         #sld-container.panning { cursor: grab; }
         #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        
+        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+        #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 
-        /* SCADA SYMBOLS */
-        .node-box { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
-        .node-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; color: #333; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; }
+        /* TOOLBAR */
+        .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
+        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .tool-btn:active { background: #eee; }
+        .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
+        /* SYMBOLS (From Admin v9.9) */
+        .admin-node { position: absolute; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
+        .admin-node:hover { filter: brightness(0.95); } /* Hover effect for operator */
+        
+        .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
+        
+        /* Device Styles */
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
         .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         
@@ -89,31 +98,23 @@
         .locked::after { content: '\f023'; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: -10px; right: -10px; color: #f39c12; font-size: 12px; background: #fff; border-radius: 50%; padding: 2px; }
         .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
 
-        .wire { position: absolute; z-index: 5; pointer-events: none; transition: none; box-sizing: border-box; }
-        .energized-line { border-color: #d32f2f !important; z-index: 5; } 
-        .safe-line { border-color: #2ecc71 !important; z-index: 5; } 
-        .dead-line { border-color: #95a5a6 !important; z-index: 1; }
+        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
+        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
 
-        /* CONTROLS */
-        .zoom-controls { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .tool-btn:active { background: #eee; }
-        .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
-
-        /* DEBUG FOOTER */
-        .debug-bar { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 11px; padding: 2px 10px; z-index: 9999; pointer-events: none; }
-
+        /* Modal & Map BTN */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 300px; text-align: center; }
+        .loto-box { background: white; padding: 25px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .btn-action { width: 100%; padding: 10px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-action:active { transform: scale(0.98); }
         
+        #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-decoration: none; color: #333; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
 
         @media (max-width: 1024px) {
-            .app-sidebar { position: absolute; height: 100%; left: -260px; }
-            .app-sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
+            .sidebar { position: absolute; height: 100%; left: -280px; }
+            .sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
             .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1400; }
             .overlay.show { display: block; }
         }
@@ -125,7 +126,7 @@
     <div class="header-left">
         <i class="fas fa-bars" style="font-size:20px; cursor:pointer; display:none" onclick="toggleSidebar()" id="menu-btn"></i>
         <a href="#" class="logo">
-            <i class="fas fa-bolt" style="color:#f1c40f"></i> SCADA MONITOR 
+            <i class="fas fa-bolt" style="color:#f1c40f"></i> SCADA 
             <span id="version-tag" class="version-tag"></span>
         </a>
     </div>
@@ -135,38 +136,37 @@
     </div>
 </header>
 
-<div class="app-body">
-    <nav class="app-sidebar" id="sidebar">
-        <div class="menu-item active" onclick="switchView('sld', this)"><i class="fas fa-project-diagram"></i> Sơ đồ Nguyên lý</div>
-        <div class="menu-item" onclick="switchView('map', this)"><i class="fas fa-map-marked-alt"></i> Bản đồ GIS</div>
-        <div style="padding:15px; font-size:11px; font-weight:bold; color:#95a5a6;">DANH SÁCH THIẾT BỊ</div>
-        <div class="sidebar-list" id="sidebarList"></div>
-        <div class="menu-footer" style="margin-top:auto; padding:15px; text-align:center; color:#95a5a6; font-size:11px; border-top:1px solid #34495e;">
-            © 2025 TaVietnam<br>v9.13 (Safe Mode)
+<div class="container">
+    <nav class="sidebar" id="sidebar">
+        <div style="display:flex; border-bottom:1px solid #ddd; background:#eee">
+            <button class="tab-btn active" onclick="switchView('sld', this)" style="flex:1; border:none; padding:15px 0;">Sơ đồ</button>
+            <button class="tab-btn" onclick="switchView('map', this)" style="flex:1; border:none; padding:15px 0;">Bản đồ</button>
         </div>
+        <div style="padding:10px; font-size:11px; font-weight:bold; color:#95a5a6; background:#fff">DANH SÁCH THIẾT BỊ</div>
+        <div class="device-list" id="sidebarList"></div>
     </nav>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <main class="app-content">
-        <div id="sld-panel" class="active-view">
+    <div class="main-editor">
+        <div id="sld-panel" class="tab-content active">
             <div id="sld-container">
-                <div id="sld-canvas"></div>
+                <div id="sld-canvas">
+                    <div id="wire-layer"></div>
+                    <div id="node-layer"></div>
+                </div>
             </div>
-            <div class="zoom-controls">
-                <div class="tool-btn" onclick="zoomToFit()" title="Fit Screen"><i class="fas fa-expand"></i></div>
-                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Pan"><i class="fas fa-hand-paper"></i></div>
+            <div class="toolbar">
+                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình"><i class="fas fa-expand"></i></div>
+                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan"><i class="fas fa-hand-paper"></i></div>
                 <div class="tool-btn" onclick="zoomSLD(0.1)"><i class="fas fa-plus"></i></div>
                 <div class="tool-btn" onclick="zoomSLD(-0.1)"><i class="fas fa-minus"></i></div>
             </div>
         </div>
-        <div id="map-panel">
-            <button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Street View</button>
-            <div id="map" style="width:100%; height:100%"></div>
+        <div id="map-panel" class="tab-content">
+            <div id="map-wrapper"><button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Map Window</button><div id="map-canvas"></div></div>
         </div>
-    </main>
+    </div>
 </div>
-
-<div id="debug-bar" class="debug-bar">Đang tải dữ liệu...</div>
 
 <div id="lotoModal" class="loto-modal">
     <div class="loto-box">
@@ -180,8 +180,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- CONFIG ---
-    const APP_VERSION = "v9.13";
+    const APP_VERSION = "v9.14";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -191,24 +190,23 @@
     const MASTER_KEY = "9999"; 
 
     let localNodes = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
-    let mapWindow = null, mapMarkers = {}, mapPolylines = [];
+    let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
     let isPanning = false;
-
-    // LOG
-    const debug = (msg) => { document.getElementById('debug-bar').innerText = msg; }
 
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     if(window.innerWidth <= 1024) document.getElementById('menu-btn').style.display='block';
 
     const sldContainer = document.getElementById('sld-container');
     const sldCanvas = document.getElementById('sld-canvas');
+    const wireLayer = document.getElementById('wire-layer');
+    const nodeLayer = document.getElementById('node-layer');
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
-    const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
+    const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
-    // --- HELPER: SAFE NODE SIZE ---
+    // --- HELPER ---
     function getNodeSize(type) {
-        if(!type) return {w:50, h:50}; // Safety check
+        if(!type) return {w:50, h:50};
         type = type.toLowerCase();
         if(['cb','ds'].includes(type)) return {w:24, h:24};
         if(type === 'tr') return {w:30, h:50};
@@ -220,7 +218,6 @@
 
     // --- GRID ---
     function loadGrids() {
-        debug("Đang kết nối Firebase...");
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
             if(!data) { 
@@ -233,67 +230,42 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
-                // Auto-fix invalid grid ID
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
-        }, (error) => {
-            debug("Lỗi kết nối: " + error.message);
         });
     }
-    window.changeGrid = () => { 
-        currentGridId = document.getElementById('grid-select').value; 
-        localStorage.setItem('currentGridId', currentGridId); 
-        loadDevices(); 
-    }
+    window.changeGrid = () => { currentGridId = document.getElementById('grid-select').value; localStorage.setItem('currentGridId', currentGridId); loadDevices(); }
 
     function loadDevices() {
-        debug(`Đang tải thiết bị cho lưới: ${currentGridId}...`);
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
-            const data = snap.val();
-            localNodes = data ? Object.values(data) : [];
-            
-            debug(`Đã tải ${localNodes.length} thiết bị.`);
-            
-            calculateSystemState(); 
-            renderSidebarList(); 
-            renderSLD(); 
-            renderMap();
-            setTimeout(window.zoomToFit, 200); 
+            localNodes = snap.val() ? Object.values(snap.val()) : [];
+            calculatePower(); renderSidebarList(); renderSLD(); renderMap();
+            setTimeout(window.zoomToFit, 200);
         });
     }
-    
-    // --- SIDEBAR LIST (SAFE MODE) ---
+
+    // --- SIDEBAR ---
     function renderSidebarList() { 
-        const c = document.getElementById('sidebarList'); 
-        c.innerHTML = ''; 
+        const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
         const validTypes = ['cb','source','gen','tr','ds','fco'];
-        
-        // Filter safe
         const items = localNodes.filter(n => n.type && validTypes.includes(n.type.toLowerCase()));
         
-        if (items.length === 0) {
-            c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị hoặc dữ liệu lỗi</div>';
-            return;
-        }
+        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#999; font-size:12px;">Chưa có thiết bị</div>'; return; }
 
         items.forEach(n => { 
-            const d = document.createElement('div'); 
-            d.className = 'dev-item'; 
-            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span>${n.id}</span></div>`; 
+            const d = document.createElement('div'); d.className = 'device-item'; 
+            let statusColor = '#95a5a6';
+            if (n.isEnergized) statusColor = '#d32f2f'; else if (n.state === 'locked') statusColor = '#f39c12';
             
-            let statusColor = '#95a5a6'; // Dead
-            if (n.isEnergized) statusColor = '#d32f2f'; // Live
-            else if (n.state === 'locked') statusColor = '#f39c12'; // LOTO
-            
-            const dot = document.createElement('div');
-            dot.style.cssText = `width:8px; height:8px; border-radius:50%; background:${statusColor};`;
-            d.appendChild(dot);
-
+            d.innerHTML = `
+                <div><b>${n.label || 'NoName'}</b><span>${n.id}</span></div>
+                <div class="status-dot" style="background:${statusColor}"></div>
+            `;
             d.onclick = () => { 
-                window.switchView('map', document.querySelectorAll('.menu-item')[1]); 
+                window.switchView('map', document.querySelectorAll('.tab-btn')[1]); 
                 if(n.geo) { map.flyTo([n.geo.lat, n.geo.lng], 19); if(mapMarkers[n.id]) mapMarkers[n.id].openPopup(); } 
                 if(window.innerWidth <= 1024) window.toggleSidebar();
             }; 
@@ -301,21 +273,19 @@
         }); 
     }
 
-    // --- ZOOM & PAN ---
+    // --- VIEW LOGIC ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
     window.togglePan = () => {
         isPanning = !isPanning;
         document.getElementById('btn-pan').classList.toggle('active');
         sldContainer.classList.toggle('panning');
     }
-
     window.zoomToFit = () => {
         if(localNodes.length === 0) return;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
         localNodes.forEach(d => {
             if(d.showOnSLD !== false && d.sld) {
-                const type = d.type ? d.type.toLowerCase() : '';
-                const w = type === 'bus' ? (d.width || 300) : 50;
+                const w = (d.type && d.type.toLowerCase() === 'bus') ? (d.width || 300) : 50;
                 minX = Math.min(minX, d.sld.x); minY = Math.min(minY, d.sld.y);
                 maxX = Math.max(maxX, d.sld.x + w); maxY = Math.max(maxY, d.sld.y + 50);
             }
@@ -325,8 +295,8 @@
         const padding = 50;
         const contentW = maxX - minX + padding*2;
         const contentH = maxY - minY + padding*2;
-        const containerW = sldContainer.clientWidth || 800;
-        const containerH = sldContainer.clientHeight || 600;
+        const containerW = sldContainer.clientWidth;
+        const containerH = sldContainer.clientHeight;
         
         const scaleX = containerW / contentW;
         const scaleY = containerH / contentH;
@@ -339,11 +309,11 @@
         sldContainer.scrollTop = (centerY * currentZoom) - (containerH/2);
     }
 
-    // MOUSE PAN
+    // PAN HANDLING
     let startX, startY, scrollLeft, scrollTop;
     sldContainer.addEventListener('mousedown', (e) => {
         if(!isPanning) return;
-        if(e.target !== sldContainer && e.target !== sldCanvas) return; 
+        if(e.target !== sldContainer && e.target !== sldCanvas && e.target !== wireLayer) return; 
         e.preventDefault();
         startX=e.pageX; startY=e.pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop;
         
@@ -356,29 +326,12 @@
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
 
-    // TOUCH PAN
-    let isDragging = false;
-    sldContainer.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1 && isPanning) {
-            isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop;
-        }
-    });
-    sldContainer.addEventListener('touchmove', (e) => {
-        if(!isDragging) return; e.preventDefault();
-        const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop;
-        const walkX = (x - startX); const walkY = (y - startY);
-        sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY;
-    });
-    sldContainer.addEventListener('touchend', () => isDragging = false);
-
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
-        // Safe check
-        if (!n || !n.sld) return {x:0, y:0};
-
-        let sx = n.sld.x||100, sy = n.sld.y||100;
+        if(!n || !n.sld) return {x:0, y:0};
+        let sx = n.sld.x, sy = n.sld.y;
         let b = { x: sx, y: sy, w: 50, h: 50 };
-        let type = n.type ? n.type.toLowerCase() : 'unknown';
+        let type = n.type ? n.type.toLowerCase() : '';
         let rot = n.rotation || 0;
 
         if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
@@ -405,9 +358,10 @@
     }
 
     function renderSLD() {
-        sldCanvas.innerHTML = '';
+        nodeLayer.innerHTML = '';
+        wireLayer.innerHTML = '';
+        
         localNodes.forEach(d => { 
-            // Fix: Check parent existence
             if(d.parent) { 
                 const p = localNodes.find(x=>x.id==d.parent); 
                 if(p) drawOrthogonalWire(p, d); 
@@ -416,11 +370,11 @@
 
         localNodes.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
-            if(!d.type) return; // Skip invalid nodes
+            if(!d.type) return;
 
             const el = document.createElement('div');
             let type = d.type.toLowerCase();
-            el.className = `node-box type-${type}`;
+            el.className = `admin-node type-${type}`; // Using admin-node class for style compatibility
             
             if(['cb','ds','fco'].includes(type)) el.classList.add(d.state==='closed'?'closed':'open');
             if(type==='gen') el.classList.add(d.state==='on'?'on':'off');
@@ -445,13 +399,16 @@
             }
             if(type==='source') el.innerHTML = "SRC";
 
-            el.onclick = () => window.handleDeviceClick(d.id);
-            sldCanvas.appendChild(el);
+            // Click Interaction
+            el.onclick = (e) => {
+                e.stopPropagation();
+                window.handleDeviceClick(d.id);
+            };
+            nodeLayer.appendChild(el);
         });
     }
 
     function drawOrthogonalWire(p, c) {
-        // Safe check
         if (!p || !c || !p.sld || !c.sld) return;
 
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
@@ -525,7 +482,7 @@
         el.style.left=Math.min(x1,x2)+'px'; el.style.top=Math.min(y1,y2)+'px';
         if(Math.abs(x1-x2)>Math.abs(y1-y2)) { el.style.width=Math.abs(x1-x2)+'px'; el.style.height='0'; el.style.borderTopWidth='2px'; }
         else { el.style.width='0'; el.style.height=Math.abs(y1-y2)+'px'; el.style.borderLeftWidth='2px'; }
-        sldCanvas.appendChild(el);
+        wireLayer.appendChild(el);
     }
 
     // --- ACTIONS ---
@@ -547,15 +504,17 @@
     }
     window.upd=(s)=>{ update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:s}); document.getElementById('lotoModal').style.display='none'; }
     window.auth=(m)=>{ const p=prompt(m==='lock'?"PIN:":"PIN mở:"); if(p) { if(m==='lock') update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:'locked',lotoPin:p}); else { const n=localNodes.find(x=>x.id===currentTargetId); if(p===n.lotoPin||p===MASTER_KEY) update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:(n.type==='gen'?'off':'open'),lotoPin:null}); else alert("Sai PIN"); } } document.getElementById('lotoModal').style.display='none'; }
-    window.toggleSidebar=()=>{document.getElementById('sidebar').classList.toggle('show');document.querySelector('.overlay').classList.toggle('show');}
-    window.switchView=(t,b)=>{document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
-    window.openSmartWindow=()=>{const c=map.getCenter();window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600');}
-    
+
+    // --- MAP & LOGIC ---
     function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; mapPolylines.forEach(l=>map.removeLayer(l)); mapPolylines=[]; localNodes.forEach(d=>{ if(d.parent&&d.geo){const p=localNodes.find(x=>x.id==d.parent);if(p&&p.geo){const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6';mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map));}} }); localNodes.forEach(d=>{ if(!d.geo)return; let html='',bg='#fff',border='#666'; if(d.isEnergized){border='#d32f2f';if(d.type==='source'||d.type==='gen')border='#1565c0';} if(d.type==='pole'){bg='#bdc3c7';if(d.isGrounded){bg='#d5f5e3';border='#27ae60';} html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`; }else{ if(d.type==='gen')html=`<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`; else html=`<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;} const icon=L.divIcon({className:'',html:html}); const m=L.marker([d.geo.lat,d.geo.lng],{icon:icon}).addTo(map); m.bindTooltip(d.label,{permanent:true,direction:'bottom',className:'map-label'}); m.on('click',()=>window.handleDeviceClick(d.id)); mapMarkers[d.id]=m; }); }
     
     function calculatePower() { localNodes.forEach(n=>n.isEnergized=false); localNodes.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
     function propagate(p) { if(p.isEnergized){ localNodes.filter(n=>n.parent===p.id).forEach(c=>{ if(isConductive(p)) { c.isEnergized=true; propagate(c); } }); } }
     function isConductive(n) { if(['source','bus','tr','load','cable','wire','pole'].includes(n.type)) return true; if(n.type==='gen') return n.state==='on'; if(['cb','ds','fco'].includes(n.type)) return n.state==='closed'; return false; }
+    
+    window.toggleSidebar=()=>{document.getElementById('sidebar').classList.toggle('show');document.querySelector('.overlay').classList.toggle('show');}
+    window.switchView=(t,b)=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
+    window.openSmartWindow=()=>{const c=map.getCenter();window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600');}
 
     loadGrids();
 </script>
