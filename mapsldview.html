@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.31</title>
+    <title>TAVIETNAM Monitor v9.32</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -37,6 +37,8 @@
         .dev-item span { font-size: 11px; color: #7f8c8d; }
         
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; border: 1px solid rgba(0,0,0,0.1); }
+        .status-dot.live { background: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
+        .status-dot.locked { background: #f39c12; }
         .info-bar { font-size: 11px; padding: 5px 15px; background: #ecf0f1; color: #2c3e50; border-top: 1px solid #ddd; font-weight: bold; }
 
         /* MAIN VIEW */
@@ -57,7 +59,7 @@
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 
-        /* TOOLBAR STYLING */
+        /* --- NEW: TOOLBAR STYLES --- */
         .zoom-controls { 
             position: absolute; bottom: 20px; right: 20px; z-index: 100; 
             display: flex; flex-direction: column; gap: 8px; 
@@ -70,6 +72,7 @@
             cursor: pointer; transition: 0.2s; color: #555;
         }
         .tool-btn:hover { background: #f0f0f0; }
+        .tool-btn:active { background: #eee; }
         .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
         /* SYMBOLS */
@@ -85,7 +88,7 @@
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
-        /* RED BUSBAR */
+        /* FIXED RED BUSBAR */
         .type-bus.energized-node { background-color: #d32f2f !important; box-shadow: 0 0 8px #d32f2f; border-color: #d32f2f !important; }
 
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
@@ -152,10 +155,10 @@
                 </div>
             </div>
             <div class="zoom-controls">
-                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình (Zoom Extent)"><i class="fas fa-expand"></i></div>
-                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan (Kéo thả)"><i class="fas fa-hand-paper"></i></div>
-                <div class="tool-btn" onclick="zoomSLD(0.1)" title="Phóng to"><i class="fas fa-plus"></i></div>
-                <div class="tool-btn" onclick="zoomSLD(-0.1)" title="Thu nhỏ"><i class="fas fa-minus"></i></div>
+                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình"><i class="fas fa-expand"></i></div>
+                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan"><i class="fas fa-hand-paper"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(0.1)"><i class="fas fa-plus"></i></div>
+                <div class="tool-btn" onclick="zoomSLD(-0.1)"><i class="fas fa-minus"></i></div>
             </div>
         </div>
         <div id="map-panel" style="width:100%; height:100%; display:none;">
@@ -177,7 +180,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.31";
+    const APP_VERSION = "v9.32";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -186,7 +189,7 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // USE ALL_DEVICES
+    // GLOBAL VARIABLES (v9.27 Stable)
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
@@ -214,6 +217,7 @@
         return {w:50, h:50}; 
     }
 
+    // --- GRID SYNC (EXACTLY AS ADMIN) ---
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
@@ -244,15 +248,18 @@
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
             calculateSystemState(); 
             renderSidebarList(); renderSLD(); renderMap();
-            // AUTO ZOOM EXTENT ON LOAD
-            setTimeout(window.zoomToFit, 100);
+            // AUTO ZOOM
+            setTimeout(window.zoomToFit, 200);
         });
     }
     
+    // --- SIDEBAR LIST ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
         const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
+        
         if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
+
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
             let statusColor = '#95a5a6';
@@ -268,7 +275,7 @@
         }); 
     }
 
-    // --- ZOOM & PAN ---
+    // --- VIEW CONTROLS (NEW) ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
     window.togglePan = () => { isPanning = !isPanning; document.getElementById('btn-pan').classList.toggle('active'); sldContainer.classList.toggle('panning'); }
     window.zoomToFit = () => {
@@ -292,6 +299,7 @@
         sldContainer.scrollTop = (centerY * currentZoom) - (containerH/2);
     }
 
+    // PAN LOGIC
     let startX, startY, scrollLeft, scrollTop;
     sldContainer.addEventListener('mousedown', (e) => {
         if(!isPanning) return;
@@ -307,11 +315,6 @@
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
     
-    let isDragging = false;
-    sldContainer.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; } });
-    sldContainer.addEventListener('touchmove', (e) => { if(!isDragging) return; e.preventDefault(); const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop; const walkX = (x - startX); const walkY = (y - startY); sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY; });
-    sldContainer.addEventListener('touchend', () => isDragging = false);
-
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
         if(!n || !n.sld) return {x:0, y:0};
