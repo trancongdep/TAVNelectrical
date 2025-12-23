@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.29</title>
+    <title>TAVIETNAM Monitor v9.30</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,10 +14,12 @@
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; user-select: none; }
         
         /* HEADER */
-        header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
+        .app-header {
+            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
+        }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
 
@@ -46,8 +48,13 @@
         #sld-panel.active-view, #map-panel.active-view { display: block; }
 
         /* SLD CANVAS */
-        #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: grab; touch-action: none; }
-        #sld-container.panning { cursor: grabbing; }
+        #sld-container { 
+            width: 100%; height: 100%; overflow: hidden; 
+            background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
+            position: relative; cursor: default; touch-action: none;
+        }
+        #sld-container.panning { cursor: grab; }
+        #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
@@ -63,13 +70,14 @@
         .admin-node:hover { filter: brightness(0.9); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
 
-        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
+        .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; } .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         
-        /* BUSBAR COLOR FIX */
+        /* BUSBAR STYLES */
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
         .type-bus.energized-node { background-color: #d32f2f !important; box-shadow: 0 0 8px #d32f2f; border-color: #d32f2f !important; }
 
@@ -90,8 +98,7 @@
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
         .street-view-btn { position: absolute; top: 15px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-decoration: none; color: #333; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
-
+        
         @media (max-width: 1024px) {
             .sidebar { position: absolute; height: 100%; left: -280px; }
             .sidebar.show { left: 0; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
@@ -163,7 +170,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.29";
+    const APP_VERSION = "v9.30";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -172,7 +179,7 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // USE ALL_DEVICES (Consistent with Admin)
+    // UNIFIED VARIABLE: allDevices (Fixed!)
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
@@ -226,19 +233,21 @@
         document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
-            // IMPORTANT: Assign to allDevices to fix list issue
-            allDevices = data ? Object.values(data) : [];
+            allDevices = data ? Object.values(data) : []; // ASSIGN TO GLOBAL VARIABLE
+            console.log("Devices loaded (View):", allDevices); // DEBUG
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
+            
             calculateSystemState(); 
-            renderSidebarList(); renderSLD(); renderMap();
+            renderSidebarList(); 
+            renderSLD(); 
+            renderMap();
             setTimeout(window.zoomToFit, 100);
         });
     }
     
-    // --- SIDEBAR LIST (Corrected Variable) ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        // Use allDevices
+        // Use allDevices, NOT localNodes
         const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
         
         if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
@@ -247,7 +256,8 @@
             const d = document.createElement('div'); d.className = 'dev-item'; 
             let statusColor = '#95a5a6';
             if (n.isEnergized) statusColor = '#d32f2f'; else if (n.state === 'locked') statusColor = '#f39c12';
-            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${n.type.toUpperCase()}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
+            let typeLabel = n.type.toUpperCase();
+            d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${typeLabel}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
             d.onclick = () => { 
                 window.switchView('map', document.querySelectorAll('.tab-btn')[1]); 
                 if(n.geo) { map.flyTo([n.geo.lat, n.geo.lng], 19); if(mapMarkers[n.id]) mapMarkers[n.id].openPopup(); } 
@@ -259,7 +269,11 @@
 
     // --- VIEW CONTROLS ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
-    window.togglePan = () => { isPanning = !isPanning; document.getElementById('btn-pan').classList.toggle('active'); sldContainer.classList.toggle('panning'); }
+    window.togglePan = () => {
+        isPanning = !isPanning;
+        document.getElementById('btn-pan').classList.toggle('active');
+        sldContainer.classList.toggle('panning');
+    }
     window.zoomToFit = () => {
         if(allDevices.length === 0) return;
         let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
@@ -334,6 +348,7 @@
 
     function renderSLD() {
         nodeLayer.innerHTML = ''; wireLayer.innerHTML = '';
+        // USE allDevices, NOT localNodes
         allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
         allDevices.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
@@ -351,9 +366,12 @@
 
             let sx = d.sld ? d.sld.x : 100;
             let sy = d.sld ? d.sld.y : 100;
-            el.style.left = sx + 'px'; el.style.top = sy + 'px';
+            el.style.left = sx + 'px'; 
+            el.style.top = sy + 'px';
+            
             if(type==='bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
+
             if(!['bus','wire','cable'].includes(type)) {
                 const lbl = document.createElement('div'); lbl.className='node-label';
                 if(d.rotation==90 || d.rotation==270) lbl.style.transform=`rotate(-${d.rotation}deg) translate(20px,0px)`;
@@ -362,6 +380,7 @@
                 lbl.innerText = t; el.appendChild(lbl);
             }
             if(type==='source') el.innerHTML = "SRC";
+
             el.onclick = () => window.handleDeviceClick(d.id);
             nodeLayer.appendChild(el);
         });
@@ -369,6 +388,7 @@
 
     function drawOrthogonalWire(p, c) {
         if (!p || !c || !p.sld || !c.sld) return;
+
         let isHot = false;
         if (c.isEnergized) isHot = true;
         else if (p.isEnergized) {
@@ -420,6 +440,7 @@
         wireLayer.appendChild(el);
     }
 
+    // --- ACTIONS ---
     window.handleDeviceClick = (id) => {
         if(isPanning) return;
         const node = allDevices.find(n => n.id === id);
