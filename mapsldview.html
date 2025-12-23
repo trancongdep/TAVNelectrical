@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.19</title>
+    <title>TAVIETNAM Monitor v9.20</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #9b59b6; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
 
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
@@ -30,6 +30,7 @@
         .menu-item { padding: 15px; cursor: pointer; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .menu-item.active { background: #3498db; }
         
+        /* LIST */
         .sidebar-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.1); min-height: 0; }
         .dev-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
         .dev-item:hover { background: #34495e; }
@@ -128,7 +129,8 @@
     </div>
     <div class="header-right">
         <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
-        <div style="font-size:12px; color:#ccc; margin-left:10px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
+        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset</button>
+        <div style="font-size:12px; color:#ccc; margin-left:5px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
     </div>
 </header>
 
@@ -151,8 +153,8 @@
                 </div>
             </div>
             <div class="zoom-controls">
-                <div class="tool-btn" onclick="zoomToFit()" title="Toàn màn hình"><i class="fas fa-expand"></i></div>
-                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Chế độ Pan"><i class="fas fa-hand-paper"></i></div>
+                <div class="tool-btn" onclick="zoomToFit()" title="Fit Screen"><i class="fas fa-expand"></i></div>
+                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Pan Mode"><i class="fas fa-hand-paper"></i></div>
                 <div class="tool-btn" onclick="zoomSLD(0.1)"><i class="fas fa-plus"></i></div>
                 <div class="tool-btn" onclick="zoomSLD(-0.1)"><i class="fas fa-minus"></i></div>
             </div>
@@ -176,7 +178,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.19";
+    const APP_VERSION = "v9.20";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -185,10 +187,13 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+    let localNodes = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapWindow = null, mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
     let isPanning = false;
+
+    // Reset App
+    window.resetApp = () => { localStorage.removeItem('currentGridId'); location.reload(); }
 
     setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}); }, 1000);
     if(window.innerWidth <= 1024) document.getElementById('menu-btn').style.display='block';
@@ -200,7 +205,7 @@
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
     const map = L.map('map', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
 
-    // --- HELPER: NODE SIZE ---
+    // --- HELPER ---
     function getNodeSize(type) {
         if(!type) return {w:50, h:50};
         type = type.toLowerCase();
@@ -212,22 +217,21 @@
         return {w:50, h:50}; 
     }
 
-    // --- GRID SYNC (EXACTLY LIKE ADMIN) ---
+    // --- GRID SYNC ---
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
+            let gridList = [];
             if(!data) { 
                 sel.appendChild(new Option("Lưới mặc định", 'default_grid')); 
                 currentGridId = 'default_grid'; 
             }
             else { 
-                let firstId = null;
                 for(let id in data) { 
                     sel.appendChild(new Option(data[id].name, id)); 
-                    if(!firstId) firstId = id;
+                    gridList.push(id);
                 }
-                // AUTO FIX: Nếu lưới hiện tại ko có trong DB, lấy cái đầu tiên
-                if(!data[currentGridId]) currentGridId = firstId;
+                if(!data[currentGridId] && gridList.length > 0) currentGridId = gridList[0];
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
@@ -240,21 +244,23 @@
         document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
-            allDevices = data ? Object.values(data) : [];
-            document.getElementById('status-bar').innerText = `OK: ${allDevices.length} thiết bị.`;
-            calculatePower(); renderSidebarList(); renderSLD(); renderMap();
+            localNodes = data ? Object.values(data) : [];
+            document.getElementById('status-bar').innerText = `OK: ${localNodes.length} thiết bị.`;
+            calculateSystemState(); // NEW ALGORITHM
+            renderSidebarList(); 
+            renderSLD(); 
+            renderMap();
             setTimeout(window.zoomToFit, 100);
         });
     }
     
-    // --- SIDEBAR LIST ---
+    // --- SIDEBAR ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
         const validTypes = ['cb','source','gen','tr','ds','fco'];
-        // Robust check for type
-        const items = allDevices.filter(n => n.type && validTypes.includes(n.type.toLowerCase()));
+        const items = localNodes.filter(n => n.type && validTypes.includes(n.type.toLowerCase()));
         
-        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị hoặc dữ liệu lỗi</div>'; return; }
+        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
 
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
@@ -270,7 +276,7 @@
         }); 
     }
 
-    // --- VIEW CONTROLS ---
+    // --- ZOOM & PAN ---
     window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); sldCanvas.style.transform = `scale(${currentZoom})`; }
     window.togglePan = () => {
         isPanning = !isPanning;
@@ -278,12 +284,11 @@
         sldContainer.classList.toggle('panning');
     }
     window.zoomToFit = () => {
-        if(allDevices.length === 0) return;
+        if(localNodes.length === 0) return;
         let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-        allDevices.forEach(d => {
+        localNodes.forEach(d => {
             if(d.showOnSLD !== false && d.sld) {
-                const type = d.type ? d.type.toLowerCase() : '';
-                const w = type === 'bus' ? (d.width || 300) : 50;
+                const w = (d.type && d.type.toLowerCase() === 'bus') ? (d.width || 300) : 50;
                 minX = Math.min(minX, d.sld.x); minY = Math.min(minY, d.sld.y);
                 maxX = Math.max(maxX, d.sld.x + w); maxY = Math.max(maxY, d.sld.y + 50);
             }
@@ -299,7 +304,6 @@
         sldContainer.scrollTop = (centerY * currentZoom) - (containerH/2);
     }
 
-    // PAN
     let startX, startY, scrollLeft, scrollTop;
     sldContainer.addEventListener('mousedown', (e) => {
         if(!isPanning) return;
@@ -315,10 +319,22 @@
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
 
+    let isDragging = false;
+    sldContainer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; }
+    });
+    sldContainer.addEventListener('touchmove', (e) => {
+        if(!isDragging) return; e.preventDefault();
+        const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop;
+        const walkX = (x - startX); const walkY = (y - startY);
+        sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY;
+    });
+    sldContainer.addEventListener('touchend', () => isDragging = false);
+
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
         if(!n || !n.sld) return {x:0, y:0};
-        let sx = n.sld.x||100, sy = n.sld.y||100;
+        let sx = n.sld.x || 100, sy = n.sld.y || 100;
         let b = { x: sx, y: sy, w: 50, h: 50 };
         let type = n.type ? n.type.toLowerCase() : '';
         let rot = n.rotation || 0;
@@ -348,14 +364,8 @@
 
     function renderSLD() {
         nodeLayer.innerHTML = ''; wireLayer.innerHTML = '';
-        allDevices.forEach(d => { 
-            if(d.parent) { 
-                const p = allDevices.find(x=>x.id==d.parent); 
-                if(p) drawOrthogonalWire(p, d); 
-            } 
-        });
-
-        allDevices.forEach(d => {
+        localNodes.forEach(d => { if(d.parent) { const p = localNodes.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
+        localNodes.forEach(d => {
             if(d.type==='pole' && d.showOnSLD===false) return;
             if(!d.type) return; 
 
@@ -371,8 +381,7 @@
 
             let sx = d.sld ? d.sld.x : 100;
             let sy = d.sld ? d.sld.y : 100;
-            el.style.left = sx + 'px'; 
-            el.style.top = sy + 'px';
+            el.style.left = sx + 'px'; el.style.top = sy + 'px';
             
             if(type==='bus') el.style.width = (d.width || 300) + 'px';
             else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
@@ -470,36 +479,62 @@
     // --- ACTIONS ---
     window.handleDeviceClick = (id) => {
         if(isPanning) return;
-        const node = allDevices.find(n => n.id === id);
+        const node = localNodes.find(n => n.id === id);
         currentTargetId = id;
         if(node.type==='pole') { if(confirm(`Tiếp địa cột ${node.label}?`)) update(ref(db, `grids/${currentGridId}/nodes/${id}`), {isGrounded:!node.isGrounded}); return; }
         if(!['cb','ds','fco','gen'].includes(node.type.toLowerCase())) return;
         
         const div = document.getElementById('lotoContent'); div.innerHTML = '';
-        if(node.type==='gen') { 
-            if(node.state==='on') div.innerHTML+=`<button class="btn-action" style="background:#e74c3c" onclick="upd('off')">DỪNG MÁY</button>`;
-            else div.innerHTML+=`<button class="btn-action" style="background:#27ae60" onclick="upd('on')">KHỞI ĐỘNG</button>`; 
-        } else { 
-            if(node.state==='closed') div.innerHTML+=`<button class="btn-action" style="background:#e74c3c" onclick="upd('open')">CẮT ĐIỆN</button>`;
-            else div.innerHTML+=`<button class="btn-action" style="background:#27ae60" onclick="upd('closed')">ĐÓNG ĐIỆN</button>`; 
-        }
+        const modal = document.getElementById('lotoModal');
         
-        if(node.state!=='locked') div.innerHTML+=`<button class="btn-action" style="background:#f39c12" onclick="auth('lock')">KHÓA LOTO</button>`;
-        else div.innerHTML+=`<button class="btn-action" style="background:#f39c12" onclick="auth('unlock')">MỞ KHÓA LOTO</button>`;
-        div.innerHTML+=`<button class="btn-action" style="background:#999" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
-        document.getElementById('lotoModal').style.display = 'flex';
+        if(node.type === 'gen') {
+            if (node.state === 'locked') div.innerHTML = `<button class="btn-action" style="background:#f39c12" onclick="auth('unlock')">MỞ KHÓA LOTO</button>`;
+            else if (node.state === 'on') div.innerHTML = `<button class="btn-action" style="background:#e74c3c" onclick="upd('off')">DỪNG MÁY</button>`;
+            else div.innerHTML = `<button class="btn-action" style="background:#27ae60" onclick="upd('on')">KHỞI ĐỘNG</button><button class="btn-action" style="background:#f39c12" onclick="auth('lock')">KHÓA LOTO</button>`;
+        } 
+        else {
+            if (node.state === 'locked') div.innerHTML = `<button class="btn-action" style="background:#f39c12" onclick="auth('unlock')">MỞ KHÓA LOTO</button>`;
+            else if (node.state === 'closed') div.innerHTML = `<button class="btn-action" style="background:#e74c3c" onclick="upd('open')">CẮT ĐIỆN</button>`;
+            else div.innerHTML = `<button class="btn-action" style="background:#27ae60" onclick="upd('closed')">ĐÓNG ĐIỆN</button><button class="btn-action" style="background:#f39c12" onclick="auth('lock')">KHÓA LOTO</button>`;
+        }
+
+        div.innerHTML += `<button class="btn-action" style="background:#95a5a6; margin-top:20px" onclick="document.getElementById('lotoModal').style.display='none'">Đóng</button>`;
+        modal.style.display = 'flex';
     }
+
     window.upd=(s)=>{ update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:s}); document.getElementById('lotoModal').style.display='none'; }
-    window.auth=(m)=>{ const p=prompt(m==='lock'?"PIN:":"PIN mở:"); if(p) { if(m==='lock') update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:'locked',lotoPin:p}); else { const n=allDevices.find(x=>x.id===currentTargetId); if(p===n.lotoPin||p===MASTER_KEY) update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:(n.type==='gen'?'off':'open'),lotoPin:null}); else alert("Sai PIN"); } } document.getElementById('lotoModal').style.display='none'; }
+    window.auth=(m)=>{ const p=prompt(m==='lock'?"PIN:":"PIN mở:"); if(p) { if(m==='lock') update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:'locked',lotoPin:p}); else { const n=localNodes.find(x=>x.id===currentTargetId); if(p===n.lotoPin||p===MASTER_KEY) update(ref(db,`grids/${currentGridId}/nodes/${currentTargetId}`),{state:(n.type==='gen'?'off':'open'),lotoPin:null}); else alert("Sai PIN"); } } document.getElementById('lotoModal').style.display='none'; }
+    
+    // --- FLOOD FILL POWER ---
+    function calculateSystemState() {
+        localNodes.forEach(n => { n.isEnergized = false; });
+        let queue = localNodes.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'));
+        queue.forEach(n => n.isEnergized = true);
+        
+        let changed = true;
+        let loopLimit = 100;
+        while(changed && loopLimit > 0) {
+            changed = false;
+            loopLimit--;
+            localNodes.forEach(child => {
+                if(child.isEnergized) return;
+                const parent = localNodes.find(n => n.id === child.parent);
+                if(!parent) return;
+                
+                if (parent.isEnergized) {
+                    let parentPasses = true;
+                    if (['cb','ds','fco'].includes(parent.type) && parent.state !== 'closed') parentPasses = false;
+                    if (parentPasses) { child.isEnergized = true; changed = true; }
+                }
+            });
+        }
+    }
+
+    // --- OTHER ---
+    function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; mapPolylines.forEach(l=>map.removeLayer(l)); mapPolylines=[]; localNodes.forEach(d=>{ if(d.parent&&d.geo){const p=localNodes.find(x=>x.id==d.parent);if(p&&p.geo){const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6';mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map));}} }); localNodes.forEach(d=>{ if(!d.geo)return; let html='',bg='#fff',border='#666'; if(d.isEnergized){border='#d32f2f';if(d.type==='source'||d.type==='gen')border='#1565c0';} if(d.type==='pole'){bg='#bdc3c7';if(d.isGrounded){bg='#d5f5e3';border='#27ae60';} html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`; }else{ if(d.type==='gen')html=`<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`; else html=`<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;} const icon=L.divIcon({className:'',html:html}); const m=L.marker([d.geo.lat,d.geo.lng],{icon:icon}).addTo(map); m.bindTooltip(d.label,{permanent:true,direction:'bottom',className:'map-label'}); m.on('click',()=>window.handleDeviceClick(d.id)); mapMarkers[d.id]=m; }); }
     window.toggleSidebar=()=>{document.getElementById('sidebar').classList.toggle('show');document.querySelector('.overlay').classList.toggle('show');}
     window.switchView=(t,b)=>{document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('sld-panel').classList.remove('active-view');document.getElementById('map-panel').classList.remove('active-view');document.getElementById(t+'-panel').classList.add('active-view');if(t==='map')setTimeout(()=>map.invalidateSize(),200);}
     window.openSmartWindow=()=>{const c=map.getCenter();window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600');}
-    
-    function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; mapPolylines.forEach(l=>map.removeLayer(l)); mapPolylines=[]; allDevices.forEach(d=>{ if(d.parent&&d.geo){const p=allDevices.find(x=>x.id==d.parent);if(p&&p.geo){const c=(p.isEnergized||d.isEnergized)?'#d32f2f':'#95a5a6';mapPolylines.push(L.polyline([[p.geo.lat,p.geo.lng],[d.geo.lat,d.geo.lng]],{color:c,weight:2}).addTo(map));}} }); allDevices.forEach(d=>{ if(!d.geo)return; let html='',bg='#fff',border='#666'; if(d.isEnergized){border='#d32f2f';if(d.type==='source'||d.type==='gen')border='#1565c0';} if(d.type==='pole'){bg='#bdc3c7';if(d.isGrounded){bg='#d5f5e3';border='#27ae60';} html=`<div style="width:12px;height:12px;background:${bg};border:1px solid #555;border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:10px;color:white;font-weight:bold">${d.isGrounded?'⏚':''}</div>`; }else{ if(d.type==='gen')html=`<div style="width:20px;height:20px;background:${bg};border:2px solid ${border};border-radius:50%;text-align:center;font-weight:bold;color:${border}">G</div>`; else html=`<div class="map-label" style="background:${bg};border:2px solid ${border};color:#333">${d.label}</div>`;} const icon=L.divIcon({className:'',html:html}); const m=L.marker([d.geo.lat,d.geo.lng],{icon:icon}).addTo(map); m.bindTooltip(d.label,{permanent:true,direction:'bottom',className:'map-label'}); m.on('click',()=>window.handleDeviceClick(d.id)); mapMarkers[d.id]=m; }); }
-    
-    function calculatePower() { allDevices.forEach(n=>n.isEnergized=false); allDevices.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
-    function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if(isConductive(p)) { c.isEnergized=true; propagate(c); } }); } }
-    function isConductive(n) { if(['source','bus','tr','load','cable','wire','pole'].includes(n.type)) return true; if(n.type==='gen') return n.state==='on'; if(['cb','ds','fco'].includes(n.type)) return n.state==='closed'; return false; }
 
     loadGrids();
 </script>
