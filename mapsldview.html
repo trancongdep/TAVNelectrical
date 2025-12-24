@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TAVIETNAM Monitor v9.33</title>
+    <title>TAVIETNAM Monitor v9.34</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,14 +14,13 @@
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; user-select: none; }
         
         /* HEADER */
-        .app-header {
-            height: 60px; background-color: #1a252f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2000; flex-shrink: 0;
-        }
+        header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
         .header-right { display: flex; align-items: center; gap: 10px; }
+        .grid-debug { font-size: 10px; color: #f1c40f; font-family: monospace; }
 
         /* LAYOUT */
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
@@ -61,7 +60,7 @@
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 
         /* TOOLBAR */
-        .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
+        .zoom-controls { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .tool-btn:active { background: #eee; } .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
@@ -119,8 +118,9 @@
     </div>
     <div class="header-right">
         <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
-        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset</button>
-        <div style="font-size:12px; color:#ccc; margin-left:10px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
+        <span id="grid-debug-id" class="grid-debug" style="margin-left:5px;"></span>
+        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset Cache</button>
+        <div style="font-size:12px; color:#ccc; margin-left:5px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
     </div>
 </header>
 
@@ -170,7 +170,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const APP_VERSION = "v9.33";
+    const APP_VERSION = "v9.34";
     document.getElementById('version-tag').innerText = APP_VERSION;
     document.title = `TAVIETNAM Monitor ${APP_VERSION}`;
 
@@ -179,7 +179,7 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // GLOBAL VARIABLES (v9.27 Stable)
+    // GLOBAL VARIABLES
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
@@ -220,10 +220,12 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
+                // Check if currentGridId exists
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
+            document.getElementById('grid-debug-id').innerText = currentGridId; // SHOW DEBUG ID
             loadDevices();
         });
     }
@@ -234,24 +236,28 @@
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
             allDevices = data ? Object.values(data) : [];
+            
+            // SHOW EVERYTHING TO DEBUG
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
+            
             calculateSystemState(); 
             renderSidebarList(); renderSLD(); renderMap();
-            setTimeout(window.zoomToFit, 100);
+            setTimeout(window.zoomToFit, 200);
         });
     }
     
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        const items = allDevices.filter(n => n.type && !['wire','cable'].includes(n.type.toLowerCase()));
+        // REMOVED ALL FILTERS TO FORCE SHOW DATA
+        const items = allDevices; 
         
-        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
+        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">KHÔNG CÓ DỮ LIỆU. BẤM RESET MÀU ĐỎ!</div>'; return; }
 
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
             let statusColor = '#95a5a6';
             if (n.isEnergized) statusColor = '#d32f2f'; else if (n.state === 'locked') statusColor = '#f39c12';
-            let typeLabel = n.type.toUpperCase();
+            let typeLabel = n.type ? n.type.toUpperCase() : '???';
             d.innerHTML = `<div><b>${n.label || 'No Name'}</b><span style="font-size:10px; color:#999">[${typeLabel}] ${n.id}</span></div><div class="status-dot" style="background:${statusColor};box-shadow:${n.isEnergized?'0 0 5px #d32f2f':'none'}"></div>`;
             d.onclick = () => { 
                 window.switchView('map', document.querySelectorAll('.tab-btn')[1]); 
@@ -485,4 +491,3 @@
 </script>
 </body>
 </html>
-
