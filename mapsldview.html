@@ -9,23 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* CORE CSS */
+        /* CSS COPY TỪ ADMIN V9.9 NHƯNG TỐI GIẢN CHO VIEW */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; user-select: none; }
         
-        /* HEADER */
         header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
-        .version-tag { font-size: 11px; background: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .version-tag { font-size: 11px; background: #27ae60; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .grid-selector select { background: #34495e; color: white; border: 1px solid #7f8c8d; padding: 6px; border-radius: 4px; font-size: 13px; outline: none; }
-        .header-right { display: flex; align-items: center; gap: 10px; }
-        .grid-debug { font-size: 10px; color: #f1c40f; font-family: monospace; }
-
-        /* LAYOUT */
+        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .sidebar { width: 280px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 1500; transition: 0.3s; }
-        
         .sidebar-tabs { display: flex; border-bottom: 1px solid #ddd; background: #eee; }
         .tab-btn { flex: 1; border: none; padding: 15px 0; background: #eee; color: #666; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background: #3498db; color: white; }
@@ -35,64 +30,54 @@
         .dev-item:hover { background: #f4f6f8; }
         .dev-item b { display: block; color: #2c3e50; margin-bottom: 2px; }
         .dev-item span { font-size: 11px; color: #7f8c8d; }
-        
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; border: 1px solid rgba(0,0,0,0.1); }
-        .status-dot.live { background: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
-        .status-dot.locked { background: #f39c12; }
         .info-bar { font-size: 11px; padding: 5px 15px; background: #ecf0f1; color: #2c3e50; border-top: 1px solid #ddd; font-weight: bold; }
 
-        /* MAIN VIEW */
         .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1; }
         #sld-panel, #map-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
         #sld-panel.active-view, #map-panel.active-view { display: block; }
 
-        /* SLD CANVAS */
-        #sld-container { 
-            width: 100%; height: 100%; overflow: hidden; 
-            background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; 
-            position: relative; cursor: default; touch-action: none;
-        }
-        #sld-container.panning { cursor: grab; }
-        #sld-container.panning:active { cursor: grabbing; }
+        #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: default; touch-action: none; }
+        #sld-container.panning { cursor: grab; } #sld-container.panning:active { cursor: grabbing; }
         #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         
         #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 
-        /* TOOLBAR */
         .zoom-controls { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .tool-btn:active { background: #eee; } .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
 
-        /* SYMBOLS */
+        /* SYMBOLS (ADMIN v9.9 Standard) */
         .admin-node { position: absolute; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; pointer-events: auto; }
         .admin-node:hover { filter: brightness(0.9); }
         .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.7); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
 
         .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } 
         .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        
         .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
+        
         .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; } .type-tr.energized-node::before, .type-tr.energized-node::after { border-color: #d32f2f; box-shadow: 0 0 5px #d32f2f; }
+        
         .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
+        
         .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
         
         .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } 
-        /* RED BUSBAR FIX */
         .type-bus.energized-node { background-color: #d32f2f !important; box-shadow: 0 0 8px #d32f2f; border-color: #d32f2f !important; }
-
+        
         .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
         .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
         .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
         .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
         .locked::after { content: '\f023'; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: -10px; right: -10px; color: #f39c12; font-size: 12px; background: #fff; border-radius: 50%; padding: 2px; }
-        
         .energized-node { background-color: #ffccbc !important; border-color: #d32f2f !important; }
 
         .wire { position: absolute; z-index: 5; pointer-events: none; transition: none; box-sizing: border-box; }
         .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
         .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
 
-        /* MODAL */
         .loto-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
         .loto-box { background: white; padding: 25px; border-radius: 10px; width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .btn-action { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
@@ -118,8 +103,7 @@
     </div>
     <div class="header-right">
         <div class="grid-selector"><select id="grid-select" onchange="changeGrid()"></select></div>
-        <span id="grid-debug-id" class="grid-debug" style="margin-left:5px;"></span>
-        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset Cache</button>
+        <button class="btn-action" style="padding:4px 8px; margin:0 5px; font-size:10px; background:#e74c3c" onclick="resetApp()">Reset</button>
         <div style="font-size:12px; color:#ccc; margin-left:5px;"><i class="fas fa-clock"></i> <span id="clock">00:00</span></div>
     </div>
 </header>
@@ -179,7 +163,7 @@
     const db = getDatabase(app);
     const MASTER_KEY = "9999"; 
 
-    // GLOBAL VARIABLES
+    // USE ALL_DEVICES (Consistent with Admin v9.9)
     let allDevices = [], currentTargetId = null, currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, mapPolylines = [];
     let currentZoom = 1;
@@ -207,6 +191,7 @@
         return {w:50, h:50}; 
     }
 
+    // --- GRID SYNC (EXACTLY AS ADMIN) ---
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
@@ -220,12 +205,11 @@
                     sel.appendChild(new Option(data[id].name, id)); 
                     if(!firstId) firstId = id;
                 }
-                // Check if currentGridId exists
+                // AUTO FIX: If cached ID is invalid, pick the first one
                 if(!data[currentGridId]) currentGridId = firstId;
             }
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
-            document.getElementById('grid-debug-id').innerText = currentGridId; // SHOW DEBUG ID
             loadDevices();
         });
     }
@@ -235,23 +219,22 @@
         document.getElementById('status-bar').innerText = `Đang tải: ${currentGridId}...`;
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
+            // IMPORTANT: Assign to allDevices to fix list issue
             allDevices = data ? Object.values(data) : [];
-            
-            // SHOW EVERYTHING TO DEBUG
             document.getElementById('status-bar').innerText = `Kết nối: ${allDevices.length} thiết bị.`;
-            
             calculateSystemState(); 
             renderSidebarList(); renderSLD(); renderMap();
             setTimeout(window.zoomToFit, 200);
         });
     }
     
+    // --- SIDEBAR LIST ---
     function renderSidebarList() { 
         const c = document.getElementById('sidebarList'); c.innerHTML = ''; 
-        // REMOVED ALL FILTERS TO FORCE SHOW DATA
+        // REMOVED FILTERS to debug - Show everything
         const items = allDevices; 
         
-        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">KHÔNG CÓ DỮ LIỆU. BẤM RESET MÀU ĐỎ!</div>'; return; }
+        if (items.length === 0) { c.innerHTML = '<div style="padding:20px; text-align:center; color:#7f8c8d; font-size:12px;">Không có thiết bị</div>'; return; }
 
         items.forEach(n => { 
             const d = document.createElement('div'); d.className = 'dev-item'; 
@@ -306,11 +289,6 @@
         const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
         document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
     });
-    
-    let isDragging = false;
-    sldContainer.addEventListener('touchstart', (e) => { if (e.touches.length === 1 && isPanning) { isDragging = true; startX=e.touches[0].pageX; startY=e.touches[0].pageY; scrollLeft=sldContainer.scrollLeft; scrollTop=sldContainer.scrollTop; } });
-    sldContainer.addEventListener('touchmove', (e) => { if(!isDragging) return; e.preventDefault(); const x = e.touches[0].pageX - sldContainer.offsetLeft; const y = e.touches[0].pageY - sldContainer.offsetTop; const walkX = (x - startX); const walkY = (y - startY); sldContainer.scrollLeft = scrollLeft - walkX; sldContainer.scrollTop = scrollTop - walkY; });
-    sldContainer.addEventListener('touchend', () => isDragging = false);
 
     // --- RENDER SLD ---
     function getAnchor(n, targetPos) { 
