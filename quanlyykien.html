@@ -13,6 +13,13 @@
         
         <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Meeting App</h1>
 
+        <div id="local-warning" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 text-sm">
+            <p class="font-bold">Lưu ý quan trọng:</p>
+            <p>Bạn đang chạy file trực tiếp từ máy tính (`file://`).</p>
+            <p class="mt-1">Mã QR sẽ <strong>không hoạt động</strong> trên điện thoại khác.</p>
+            <p class="mt-1">Vui lòng đưa file này lên Netlify hoặc Firebase Hosting để sử dụng.</p>
+        </div>
+
         <div id="admin-view" class="hidden space-y-4">
             <h2 class="text-lg font-semibold text-gray-700">Tạo cuộc họp mới</h2>
             <input type="text" id="meeting-name" placeholder="Tên cuộc họp (VD: Daily Scrum)" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -62,11 +69,17 @@
         const adminView = document.getElementById('admin-view');
         const userView = document.getElementById('user-view');
         const loading = document.getElementById('loading');
+        const localWarning = document.getElementById('local-warning');
 
         // Khởi tạo
         async function init() {
             loading.classList.add('hidden');
             
+            // Kiểm tra protocol file:// (Mới v1.1)
+            if (window.location.protocol === 'file:') {
+                localWarning.classList.remove('hidden');
+            }
+
             if (meetingId) {
                 // Có ID -> Chế độ User
                 userView.classList.remove('hidden');
@@ -90,6 +103,7 @@
                 });
 
                 // 2. Tạo Link
+                // Lưu ý: Nếu đang chạy file://, link này sẽ không hoạt động trên thiết bị khác
                 const link = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
                 
                 // 3. Hiển thị QR
@@ -104,7 +118,7 @@
 
             } catch (e) {
                 console.error("Lỗi: ", e);
-                alert("Không thể tạo cuộc họp. Kiểm tra Console.");
+                alert("Không thể tạo cuộc họp. Kiểm tra Console (F12).");
             }
         });
 
@@ -129,7 +143,6 @@
             if (!answer) return alert("Vui lòng nhập nội dung");
 
             try {
-                // Lưu câu trả lời vào sub-collection 'answers' của meeting đó
                 await addDoc(collection(db, `meetings/${meetingId}/answers`), {
                     content: answer,
                     createdAt: serverTimestamp()
