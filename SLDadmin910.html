@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.10 (CB Params)</title>
+    <title>Admin Panel - TAVIETNAM v9.11</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -83,7 +83,7 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.10</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.11</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
@@ -111,7 +111,31 @@
                     <div class="col form-group"><label>U (kV)</label><input type="text" id="inp-voltage" placeholder="22"></div>
                     <div class="col form-group"><label>I (A)</label><input type="text" id="inp-current" placeholder="630"></div>
                 </div>
-                <div class="form-group"><label>Curve</label><input type="text" id="inp-curve" placeholder="5P20"></div>
+                <div class="form-group">
+                    <label>Đặc tuyến (Curve)</label>
+                    <select id="inp-curve">
+                        <option value="">-- Chọn --</option>
+                        <optgroup label="MCB/MCCB">
+                            <option value="B">Loại B</option>
+                            <option value="C">Loại C</option>
+                            <option value="D">Loại D</option>
+                            <option value="K">Loại K</option>
+                            <option value="Z">Loại Z</option>
+                        </optgroup>
+                        <optgroup label="Bảo vệ (Protection)">
+                            <option value="5P10">5P10</option>
+                            <option value="5P20">5P20</option>
+                            <option value="10P10">10P10</option>
+                            <option value="10P20">10P20</option>
+                        </optgroup>
+                        <optgroup label="Rơ le (IEC)">
+                            <option value="SI">Standard Inverse</option>
+                            <option value="VI">Very Inverse</option>
+                            <option value="EI">Extremely Inverse</option>
+                            <option value="DT">Definite Time</option>
+                        </optgroup>
+                    </select>
+                </div>
             </div>
 
             <div class="row">
@@ -302,18 +326,12 @@
         else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
 
         if (type === 'bus') {
-            let safeStart = b.x + 20; let safeEnd = b.x + b.w - 20;
-            if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
-            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
+            let projX = Math.max(b.x + 20, Math.min(b.x + b.w - 20, targetPos.x));
             let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
             return { x: projX, y: projY };
         }
-
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        if (['cb','ds','fco','tr','gen'].includes(type)) {
-            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
-        }
+        if (['cb','ds','fco','tr','gen'].includes(type)) { if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) }; else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy }; }
         if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy };
         else return { x: cx, y: (targetPos.y > cy ? b.y+b.h : b.y) };
     }
