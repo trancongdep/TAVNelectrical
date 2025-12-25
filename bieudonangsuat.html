@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống Kê Bảo Trì - Biểu Đồ Hoàn Thành</title>
+    
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        
+        .controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 20px; padding: 20px; background-color: #ecf0f1; border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        .control-group label { margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
+        
+        input[type="file"], input[type="date"] { padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1rem; }
+        button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        .chart-container { position: relative; height: 500px; width: 100%; margin-top: 30px; }
+        .summary { margin-top: 20px; font-weight: bold; text-align: right; color: #27ae60; font-size: 1.2em; }
+        
+        #error-msg { color: #e74c3c; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 Biểu Đồ Theo Dõi Bảo Trì Hoàn Thành</h1>
+
+    <div class="controls">
+        <div class="control-group" style="flex: 2;">
+            <label>1. Tải lên file Excel (.xlsx, .csv)</label>
+            <input type="file" id="uploadFile" accept=".xlsx, .xls, .csv">
+        </div>
+        <div class="control-group">
+            <label>Từ ngày:</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="control-group">
+            <label>Đến ngày:</label>
+            <input type="date" id="endDate">
+        </div>
+        <div class="control-group">
+            <button id="btnFilter" onclick="processData()" disabled>Vẽ Biểu Đồ</button>
+        </div>
+    </div>
+
+    <div id="error-msg"></div>
+    <div class="summary" id="summaryText"></div>
+
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let rawData = []; // Chứa dữ liệu gốc từ Excel
+    let chartInstance = null; // Biến chứa biểu đồ
+
+    // Lắng nghe sự kiện chọn file
+    document.getElementById('uploadFile').addEventListener('change', handleFileSelect, false);
+
+    function handleFileSelect(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+
+                // Giả định dữ liệu nằm ở Sheet đầu tiên hoặc sheet tên 'Data'
+                let sheetName = workbook.SheetNames.find(name => name.includes("Data")) || workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Đọc dữ liệu: Dựa vào file mẫu, dòng tiêu đề nằm ở dòng thứ 2 (Index 1)
+                // range: 1 nghĩa là bỏ qua dòng đầu tiên (dòng 0)
+                const json = XLSX.utils.sheet_to_json(worksheet, { range: 1, defval: "" });
+
+                if (json.length === 0) {
+                    throw new Error("Không tìm thấy dữ liệu trong file.");
+                }
+
+                // Kiểm tra xem có đúng cột cần thiết không
+                if (!json[0].hasOwnProperty('TRẠNG THÁI') || !json[0].hasOwnProperty('NGÀY HOÀN THÀNH')) {
+                    throw new Error("File không đúng mẫu. Cần có cột 'TRẠNG THÁI' và 'NGÀY HOÀN THÀNH'.");
+                }
+
+                rawData = json;
+                document.getElementById('btnFilter').disabled = false;
+                document.getElementById('error-msg').style.display = 'none';
+                
+                // Tự động vẽ luôn với toàn bộ thời gian
+                processData(); 
+
+            } catch (err) {
+                const errorDiv = document.getElementById('error-msg');
+                errorDiv.innerText = "Lỗi đọc file: " + err.message;
+                errorDiv.style.display = 'block';
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function formatDate(dateObj) {
+        // Chuyển đổi Date object thành chuỗi YYYY-MM-DD để so sánh và hiển thị
+        if (!dateObj || isNaN(dateObj.getTime())) return null;
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function processData() {
+        if (rawData.length === 0) return;
+
+        const startDateInput = document.getElementById('startDate').value;
+        const endDateInput = document.getElementById('endDate').value;
+        
+        const start = startDateInput ? new Date(startDateInput) : new Date('2000-01-01');
+        const end = endDateInput ? new Date(endDateInput) : new Date('2100-01-01');
+        // Đặt giờ cuối ngày cho ngày kết thúc
+        end.setHours(23, 59, 59, 999);
+
+        // Đối tượng đếm: { "2025-11-09": 5, "2025-11-10": 2 }
+        const dailyCounts = {};
+        let totalCompleted = 0;
+
+        rawData.forEach(row => {
+            // 1. Kiểm tra Trạng thái là "Done" (hoặc Hoàn thành)
+            let status = (row['TRẠNG THÁI'] || '').toString().trim().toLowerCase();
+            if (status === 'done' || status === 'hoàn thành') {
+                
+                // 2. Xử lý ngày tháng
+                let dateVal = row['NGÀY HOÀN THÀNH'];
+                let dateObj = null;
+
+                // Xử lý nếu là Date object (do SheetJS parse) hoặc chuỗi
+                if (dateVal instanceof Date) {
+                    dateObj = dateVal;
+                } else if (typeof dateVal === 'string') {
+                    dateObj = new Date(dateVal);
+                }
+
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                    // 3. Kiểm tra khoảng thời gian
+                    if (dateObj >= start && dateObj <= end) {
+                        const dateString = formatDate(dateObj);
+                        if (dateString) {
+                            dailyCounts[dateString] = (dailyCounts[dateString] || 0) + 1;
+                            totalCompleted++;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Sắp xếp ngày tăng dần
+        const sortedDates = Object.keys(dailyCounts).sort();
+        const dataValues = sortedDates.map(date => dailyCounts[date]);
+
+        updateChart(sortedDates, dataValues);
+        document.getElementById('summaryText').innerText = `Tổng số đơn hoàn thành trong giai đoạn này: ${totalCompleted}`;
+    }
+
+    function updateChart(labels, data) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Số lượng hoàn thành',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Số lượng (Đơn)'
+                        },
+                        ticks: {
+                            stepSize: 1 // Chỉ hiện số nguyên
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Ngày hoàn thành'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                // Format lại ngày trong tooltip cho đẹp (DD/MM/YYYY)
+                                const dateStr = context[0].label;
+                                const [y, m, d] = dateStr.split('-');
+                                return `Ngày: ${d}/${m}/${y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
