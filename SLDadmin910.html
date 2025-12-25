@@ -2,613 +2,416 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.12 (Hạ Thế)</title>
+    <title>TAVIETNAM Monitor v9.41 (Emergency Fix)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* GIỮ NGUYÊN CSS CŨ */
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f4f6f8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
-        header { background: #2c3e50; color: white; padding: 0 20px; height: 50px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 2000; }
-        .header-title h2 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
-        .grid-selector { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; }
-        .grid-selector select { background: #34495e; color: white; border: 1px solid #566573; padding: 4px; border-radius: 3px; font-weight: bold; font-size: 13px; outline: none; min-width: 150px; }
-        .grid-btn { background: #27ae60; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: white; transition: 0.2s; }
-        .grid-btn:hover { opacity: 0.9; } .btn-rename { background: #f39c12; }
+        /* CORE CSS */
+        body { margin: 0; padding: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { background: #2c3e50; color: white; padding: 0 15px; height: 50px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; }
+        .logo { font-weight: bold; font-size: 16px; color: #f1c40f; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .grid-id-display { font-size: 10px; color: #bdc3c7; background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 3px; }
+        
         .container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .form-content { padding: 15px; overflow-y: auto; flex: 0 0 auto; max-height: 80vh; border-bottom: 2px solid #eee; }
-        .form-group { margin-bottom: 8px; } .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .row { display: flex; gap: 10px; } .col { flex: 1; }
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; } 
-        button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
-        .btn-new { background: #3498db; } .btn-save { background: #27ae60; } .btn-del { background: #e74c3c; } 
-        .btn-import { background: #8e44ad; color: white; width: 100%; margin-top:10px; padding: 10px; border-radius: 4px; border:none; cursor: pointer; font-size: 13px; }
-        .device-list { flex: 1; overflow-y: auto; background: #fafafa; } .device-item { padding: 10px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; } .device-item.selected { background: #e3f2fd; border-left: 4px solid #007bff; }
-        .main-editor { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #ecf0f1;}
-        .editor-tabs { display: flex; background: #dfe6e9; height: 40px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
-        .tab-btn { padding: 0 25px; cursor: pointer; border: none; background: none; font-weight: bold; color: #636e72; height: 100%; border-right: 1px solid #ccc; } .tab-btn.active { background: white; color: #2980b9; border-bottom: 3px solid #2980b9; }
-        .tab-content { display: none; width: 100%; height: 100%; position: relative; } .tab-content.active { display: block; }
-        #sld-container { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; position: relative; cursor: default; }
-        #sld-container.panning { cursor: grab; } #sld-container.panning:active { cursor: grabbing; }
-        #sld-canvas { width: 4000px; height: 3000px; position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.1s; }
-        #wire-layer { position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-        #node-layer { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .admin-node { pointer-events: auto; }
-        .wire-handle { position: absolute; z-index: 20; background: transparent; pointer-events: auto; }
-        .wire-handle:hover { background: rgba(255, 166, 0, 0.4); cursor: grab; border: 1px dashed orange; }
-        .cursor-ew { cursor: ew-resize !important; } .cursor-ns { cursor: ns-resize !important; }
-        .selection-box { position: absolute; border: 1px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); display: none; pointer-events: none; z-index: 100; }
-        .toolbar { position: absolute; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .tool-btn.active { background: #3498db; color: white; border-color: #2980b9; }
-        .context-menu { display: none; position: absolute; z-index: 2000; width: 180px; background: white; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden; }
-        .ctx-item { padding: 10px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
-        .ctx-item:hover { background: #f4f6f8; color: #2980b9; }
-        .admin-node { position: absolute; cursor: grab; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
-        .admin-node.selected-node { outline: 2px dashed #007bff; z-index: 20; background: rgba(0,123,255,0.1); }
-        .node-label { position: absolute; font-size: 10px; color: #333; white-space: nowrap; text-shadow: 1px 1px 0 #fff; pointer-events: none; text-align: center; background: rgba(255,255,255,0.8); padding: 0 2px; border-radius: 2px; top: 100%; margin-top: 5px; }
-        .type-cb { width: 24px !important; height: 24px !important; border: 2px solid #333; background: #fff; } .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
-        .type-ds { width: 30px !important; height: 30px !important; border: none; background: transparent; } .type-ds::before { content: ''; position: absolute; top: 0; left: 50%; height: 100%; width: 2px; background: #333; transform: translateX(-50%); } .type-ds::after { content: ''; position: absolute; top: 50%; left: 50%; height: 16px; width: 3px; background: #333; transform-origin: top center; transition: 0.3s; } .type-ds.closed::after { background: #d32f2f; transform: translateX(-50%) rotate(0deg); } .type-ds.open::after { background: #2ecc71; transform: translateX(-50%) rotate(45deg); }
-        .type-tr { width: 30px !important; height: 50px !important; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; } .type-tr::before, .type-tr::after { content: ''; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #333; background: #fff; margin: -3px 0; z-index: 1; }
-        .type-gen { width: 50px !important; height: 50px !important; border-radius: 50%; border: 3px solid #e67e22; background: #fdf2e9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: #d35400; } .type-gen::before { content: 'G'; } .type-gen.on { background: #ffccbc; border-color: #d35400; color: #d35400; animation: pulse 2s infinite; }
-        .type-fco { width: 14px !important; height: 30px !important; border: 2px solid #333; background: #fff; } .type-fco::after { content: ''; position: absolute; top: 4px; left: 50%; height: 18px; width: 2px; background: #333; transform: translateX(-50%); }
-        .type-bus { height: 8px !important; background: #2c3e50; border-radius: 2px; } .type-bus.energized-node { background: #d32f2f; box-shadow: 0 0 8px #d32f2f; }
-        .type-source { width: 50px !important; height: 50px !important; border-radius: 50%; border: 2px solid #1565c0; display:flex; align-items:center; justify-content:center; background:#e3f2fd; font-weight:bold; color:#1565c0; font-size:10px; }
-        .type-pole { width: 12px !important; height: 12px !important; border-radius: 50%; background: #bdc3c7; border: 1px solid #7f8c8d; }
-        .grounded { border-color: #27ae60 !important; background: #2ecc71 !important; box-shadow: 0 0 8px #2ecc71; }
-        .locked { border-color: #f39c12 !important; box-shadow: 0 0 5px #f39c12; }
-        .energized-node { background-color: #ffccbc !important; border-color: #d35400 !important; }
-        .wire { position: absolute; z-index: 1; pointer-events: none; transition: none; box-sizing: border-box; }
-        .energized-line { border-color: #d32f2f !important; z-index: 5; } .safe-line { border-color: #2ecc71 !important; z-index: 5; } .dead-line { border-color: #95a5a6 !important; z-index: 1; }
-        .wire-solid { border-style: solid; } .wire-dashed { border-style: dashed; }
-        #map-wrapper { position: relative; width: 100%; height: 100%; } #map-canvas { width: 100%; height: 100%; }
-        .street-view-btn { position: absolute; top: 10px; right: 60px; z-index: 1000; background: white; padding: 8px 12px; border: 2px solid #f1c40f; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; text-decoration: none; color: #333; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 550px; display: flex; flex-direction: column; gap: 15px; }
-        .json-input { width: 100%; height: 200px; border: 1px solid #ddd; padding: 10px; font-family: monospace; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211, 84, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(211, 84, 0, 0); } }
+        .sidebar { width: 280px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 1500; }
+        
+        .tab-bar { display: flex; border-bottom: 1px solid #ddd; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: #f8f9fa; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: #3498db; color: white; }
+        
+        .device-list { flex: 1; overflow-y: auto; }
+        .dev-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .dev-item:hover { background: #f0f0f0; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #95a5a6; }
+        
+        .main-editor { flex: 1; position: relative; overflow: hidden; background: #ecf0f1; }
+        #sld-container, #map-wrapper { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        #sld-container { background: radial-gradient(#bdc3c7 1px, transparent 1px) 0 0 / 20px 20px white; cursor: grab; }
+        #sld-canvas { position: absolute; transform-origin: 0 0; }
+        
+        .admin-node { position: absolute; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .node-label { position: absolute; top: 100%; white-space: nowrap; font-size: 10px; background: rgba(255,255,255,0.8); padding: 2px; }
+        
+        /* SYMBOLS */
+        .type-cb { width: 24px; height: 24px; border: 2px solid #333; background: #fff; } 
+        .type-cb.closed { background: #d32f2f; } .type-cb.open { background: #2ecc71; }
+        .type-ds { width: 30px; height: 30px; } .type-ds::before { content:''; position:absolute; left:50%; height:100%; width:2px; background:#333; } .type-ds::after { content:''; position:absolute; top:50%; left:50%; height:16px; width:3px; background:#333; transform-origin: top center; transition:0.3s; } .type-ds.open::after { transform: rotate(45deg); }
+        .type-bus { height: 8px; background: #2c3e50; border-radius: 2px; }
+        .type-tr { width: 30px; height: 50px; border: 2px solid #333; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .type-gen { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #e67e22; display:flex; align-items:center; justify-content:center; background:#fff; font-weight:bold; }
+        
+        /* STATE COLORS */
+        .energized-node { background-color: #ffccbc !important; border-color: #d32f2f !important; }
+        .type-bus.energized-node { background-color: #d32f2f !important; } /* BUSBAR RED */
+        
+        .wire { position: absolute; pointer-events: none; z-index: 1; }
+        .energized-line { border-color: #d32f2f !important; z-index: 5; }
+        .dead-line { border-color: #95a5a6 !important; }
+        
+        /* CONTROLS */
+        .toolbar { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; z-index: 100; }
+        .tool-btn { width: 40px; height: 40px; background: white; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        /* MODAL */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 5px; width: 300px; text-align: center; }
+        .btn-action { margin-top: 10px; padding: 10px; width: 100%; border: none; cursor: pointer; font-weight: bold; color: white; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.12</span></h2></div>
-    <div class="grid-selector">
-        <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
-        <button class="grid-btn" onclick="createNewGrid()">+</button> <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
+    <div class="logo">
+        <i class="fas fa-bolt"></i> SCADA v9.41 
+        <span id="debug-id" class="grid-id-display">Connecting...</span>
     </div>
-    <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
+    <div style="display:flex; gap:10px">
+        <button onclick="hardReset()" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold;">♻️ TẢI LẠI LƯỚI</button>
+        <span id="clock" style="font-size:12px; align-self:center;">00:00</span>
+    </div>
 </header>
 
 <div class="container">
     <div class="sidebar">
-        <div class="form-content">
-            <div class="form-group"><label>ID</label><input type="text" id="inp-id" readonly style="background:#eee"></div>
-            <div class="form-group"><label>Tên hiển thị</label><input type="text" id="inp-label"></div>
-            
-            <div class="row">
-                <div class="col form-group"><label>CS</label><input type="text" id="inp-capacity"></div>
-                <div class="col form-group" id="grp-width" style="display:none">
-                    <label>Dài Bus (px)</label>
-                    <input type="number" id="inp-width" value="300" oninput="previewWidth()">
-                </div>
-            </div>
-
-            <div id="grp-cb-params" style="display:none; background:#e8f4f8; padding:8px; border-radius:4px; margin-bottom:8px; border:1px solid #b3d7ff;">
-                <label style="color:#2980b9; font-weight:bold; border-bottom:1px solid #bcd; margin-bottom:5px;">Thông số Aptomat (MCB/MCCB)</label>
-                <div class="row">
-                    <div class="col form-group"><label>U (V)</label><input type="text" id="inp-voltage" placeholder="380"></div>
-                    <div class="col form-group"><label>I (A)</label><input type="text" id="inp-current" placeholder="100"></div>
-                </div>
-                <div class="form-group">
-                    <label>Đặc tuyến (Curve)</label>
-                    <select id="inp-curve">
-                        <option value="">-- Chọn --</option>
-                        <option value="B">Loại B (3-5 In) - Tải thuần trở</option>
-                        <option value="C">Loại C (5-10 In) - Dân dụng</option>
-                        <option value="D">Loại D (10-20 In) - Động cơ</option>
-                        <option value="K">Loại K (8-12 In) - Tải cảm</option>
-                        <option value="Z">Loại Z (2-3 In) - Điện tử</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col form-group"><label>Loại</label><select id="inp-type" onchange="toggleFields()"><optgroup label="Nguồn"><option value="source">Lưới QG</option><option value="gen">Máy phát</option></optgroup><optgroup label="Cấu trúc"><option value="pole">Cột điện</option><option value="bus">Thanh cái</option></optgroup><optgroup label="Thiết bị"><option value="cb">CB (Aptomat)</option><option value="ds">Dao</option><option value="fco">FCO</option><option value="tr">Biến áp</option><option value="load">Tải</option></optgroup><optgroup label="Dây"><option value="wire">Dây</option><option value="cable">Cáp</option></optgroup></select></div>
-                <div class="col form-group"><label>Nguồn cấp</label><select id="inp-parent"></select></div>
-            </div>
-            <div class="form-group"><label>Góc xoay</label><select id="inp-rotation" onchange="previewRotation()"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
-            <div class="form-group"><label>Kiểu nối</label><select id="inp-connection"><option value="solid">Liền</option><option value="dashed">Đứt</option></select></div>
-            <div class="row" style="background:#fff; padding:5px; border:1px solid #eee; margin-bottom:10px;"><div class="col"><input type="checkbox" id="inp-showSLD" checked> SLD</div><div class="col"><input type="checkbox" id="inp-grounded"> Tiếp địa</div></div>
-            
-            <div class="row"><div class="col form-group"><label>X</label><input type="number" id="inp-x"></div><div class="col form-group"><label>Y</label><input type="number" id="inp-y"></div></div>
-            <input type="hidden" id="inp-lat"><input type="hidden" id="inp-lng">
-
-            <div class="btn-group"><button class="btn-new" onclick="resetForm()">Mới</button><button class="btn-save" onclick="saveDevice()">Lưu</button><button class="btn-del" onclick="deleteDevice()">Xóa</button></div>
-            <button class="btn-import" onclick="openImportModal()"><i class="fas fa-robot"></i> Import AI</button>
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="showTab('sld')">Sơ đồ</button>
+            <button class="tab-btn" onclick="showTab('map')">Bản đồ</button>
         </div>
-        <div class="device-list" id="device-list-container"></div>
+        <div class="device-list" id="list-container"></div>
+        <div id="status-bar" style="padding:5px; font-size:11px; background:#eee; text-align:center;">Đang tải...</div>
     </div>
-
+    
     <div class="main-editor">
-        <div class="editor-tabs"><button class="tab-btn active" onclick="switchTab('sld', this)">SLD</button><button class="tab-btn" onclick="switchTab('map', this)">Map</button></div>
-        <div id="tab-sld" class="tab-content active">
-            <div id="sld-container">
-                <div id="sld-canvas">
-                    <div id="wire-layer"></div>
-                    <div id="node-layer"></div>
-                    <div id="selection-box" class="selection-box"></div>
-                </div>
+        <div id="sld-container">
+            <div id="sld-canvas">
+                <div id="wire-layer"></div>
+                <div id="node-layer"></div>
             </div>
             <div class="toolbar">
-                <div id="btn-pan" class="tool-btn" onclick="togglePan()" title="Pan"><i class="fas fa-hand-paper"></i></div>
-                <div class="tool-btn" onclick="zoomSLD(0.1)">+</div>
-                <div class="tool-btn" onclick="zoomSLD(-0.1)">-</div>
+                <button class="tool-btn" onclick="zoomFit()"><i class="fas fa-expand"></i></button>
+                <button class="tool-btn" onclick="zoom(0.1)"><i class="fas fa-plus"></i></button>
+                <button class="tool-btn" onclick="zoom(-0.1)"><i class="fas fa-minus"></i></button>
             </div>
         </div>
-        <div id="tab-map" class="tab-content"><div id="map-wrapper"><button class="street-view-btn" onclick="openSmartWindow()"><i class="fas fa-street-view"></i> Map Window</button><div id="map-canvas"></div></div></div>
+        <div id="map-wrapper" style="display:none">
+            <div id="map-canvas" style="width:100%; height:100%"></div>
+        </div>
     </div>
 </div>
 
-<div id="context-menu" class="context-menu">
-    <div class="ctx-item" onclick="alignNodes('v')"><i class="fas fa-arrows-alt-v"></i> Căn đứng</div>
-    <div class="ctx-item" onclick="alignNodes('h')"><i class="fas fa-arrows-alt-h"></i> Căn ngang</div>
-</div>
-
-<div id="importModal" class="modal">
+<div id="actionModal" class="modal">
     <div class="modal-content">
-        <h3>Import JSON</h3><textarea id="jsonInput" class="json-input"></textarea>
-        <div style="display:flex; gap:10px; justify-content: flex-end;"><button onclick="closeImportModal()">Hủy</button><button onclick="processImport()" style="background:#27ae60; color:white">Import</button></div>
+        <h3 id="modalTitle">Điều khiển</h3>
+        <div id="modalBody"></div>
+        <button class="btn-action" style="background:#7f8c8d" onclick="document.getElementById('actionModal').style.display='none'">Đóng</button>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f", databaseURL: "https://tavietnam-78ae8-default-rtdb.firebaseio.com" };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
-    let mapMarkers = {}, draggingWire = null;
-    let currentZoom = 1, isPanning = false;
+    // VARIABLES
+    let allDevices = [];
+    let currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
+    let currentZoom = 1;
+    let selectedId = null;
+    
+    // MAP
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:22});
-    const map = L.map('map-canvas', { center: [10.8231, 106.6297], zoom: 18, layers: [street] });
+    const map = L.map('map-canvas', { center: [10.8, 106.6], zoom: 12, layers: [street] });
 
-    function getNodeSize(type) {
-        type = type.toLowerCase();
-        if(['cb','ds'].includes(type)) return {w:24, h:24};
-        if(type === 'tr') return {w:30, h:50};
-        if(type === 'fco') return {w:14, h:30};
-        if(type === 'pole') return {w:12, h:12};
-        if(['source','gen'].includes(type)) return {w:50, h:50};
-        return {w:50, h:50}; 
+    // --- CORE FUNCTIONS ---
+    
+    // 1. HARD RESET
+    window.hardReset = () => {
+        if(confirm("Xóa bộ nhớ đệm và tải lại lưới mặc định?")) {
+            localStorage.removeItem('currentGridId');
+            location.reload();
+        }
     }
 
-    const containerEl = document.getElementById('sld-container');
-    const canvasEl = document.getElementById('sld-canvas');
-    const boxEl = document.getElementById('selection-box');
-    let selectionBox = { startX: 0, startY: 0, isDrawing: false };
+    // 2. LOAD DATA (AUTO FIX GRID ID)
+    function initData() {
+        // Step 1: Check Valid Grid List
+        onValue(ref(db, 'grids_meta'), (snap) => {
+            const meta = snap.val();
+            if (!meta) {
+                console.log("No grids found.");
+                return;
+            }
+            
+            // Check if current ID is valid
+            if (!meta[currentGridId]) {
+                // Invalid ID -> Auto switch to first available grid
+                currentGridId = Object.keys(meta)[0];
+                localStorage.setItem('currentGridId', currentGridId);
+                console.log("Auto-switched to valid grid:", currentGridId);
+            }
+            
+            document.getElementById('debug-id').innerText = `ID: ${currentGridId}`;
 
-    window.zoomSLD = (d) => { currentZoom = Math.max(0.2, Math.min(3, currentZoom + d)); canvasEl.style.transform = `scale(${currentZoom})`; }
-    window.togglePan = () => {
-        isPanning = !isPanning;
-        document.getElementById('btn-pan').classList.toggle('active');
-        containerEl.classList.toggle('panning');
+            // Step 2: Load Nodes
+            onValue(ref(db, `grids/${currentGridId}/nodes`), (dSnap) => {
+                const data = dSnap.val();
+                allDevices = data ? Object.values(data) : [];
+                
+                // Debug Info
+                document.getElementById('status-bar').innerText = `Thiết bị: ${allDevices.length}`;
+                
+                // Render
+                calculatePower();
+                renderList();
+                renderSLD();
+                
+                // Auto Fit first time
+                if(allDevices.length > 0 && currentZoom === 1) zoomFit();
+            });
+        });
     }
 
-    containerEl.addEventListener('mousedown', (e) => {
-        if (e.target !== containerEl && e.target !== canvasEl && e.target.id !== 'node-layer' && e.target.id !== 'wire-layer') return;
-        if (isPanning) {
-            let startX = e.clientX, startY = e.clientY, sl = containerEl.scrollLeft, st = containerEl.scrollTop;
-            const onPanMove = (ev) => { containerEl.scrollLeft = sl - (ev.clientX - startX); containerEl.scrollTop = st - (ev.clientY - startY); };
-            const onPanUp = () => { document.removeEventListener('mousemove', onPanMove); document.removeEventListener('mouseup', onPanUp); };
-            document.addEventListener('mousemove', onPanMove); document.addEventListener('mouseup', onPanUp);
+    // 3. RENDER LIST
+    function renderList() {
+        const c = document.getElementById('list-container');
+        c.innerHTML = '';
+        if (allDevices.length === 0) {
+            c.innerHTML = '<div style="padding:20px;text-align:center;color:red">Không có dữ liệu! Hãy bấm Tải lại lưới.</div>';
             return;
         }
-        selectionBox.isDrawing = true;
-        const rect = containerEl.getBoundingClientRect();
-        selectionBox.startX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
-        selectionBox.startY = (e.clientY - rect.top + containerEl.scrollTop) / currentZoom;
-        boxEl.style.left = selectionBox.startX + 'px'; boxEl.style.top = selectionBox.startY + 'px';
-        boxEl.style.width = '0px'; boxEl.style.height = '0px'; boxEl.style.display = 'block';
-        if (!e.ctrlKey) { selectedIds = []; renderSLD(); renderTable(); }
-        document.getElementById('context-menu').style.display = 'none';
-    });
 
-    containerEl.addEventListener('mousemove', (e) => {
-        if (!selectionBox.isDrawing) return;
-        const rect = containerEl.getBoundingClientRect();
-        const currentX = (e.clientX - rect.left + containerEl.scrollLeft) / currentZoom;
-        const currentY = (e.clientY - rect.top + containerEl.scrollTop) / currentZoom;
-        boxEl.style.width = Math.abs(currentX - selectionBox.startX) + 'px';
-        boxEl.style.height = Math.abs(currentY - selectionBox.startY) + 'px';
-        boxEl.style.left = Math.min(currentX, selectionBox.startX) + 'px';
-        boxEl.style.top = Math.min(currentY, selectionBox.startY) + 'px';
-    });
-
-    containerEl.addEventListener('mouseup', (e) => {
-        if (!selectionBox.isDrawing) return;
-        selectionBox.isDrawing = false; boxEl.style.display = 'none';
-        const box = { left: parseInt(boxEl.style.left), top: parseInt(boxEl.style.top), right: parseInt(boxEl.style.left)+parseInt(boxEl.style.width), bottom: parseInt(boxEl.style.top)+parseInt(boxEl.style.height) };
-        let newlySelected = [];
         allDevices.forEach(d => {
-            if (d.showOnSLD === false) return;
-            const size = d.type==='bus' ? {w:d.width||300, h:8} : getNodeSize(d.type);
-            const cx = d.sld.x + size.w/2, cy = d.sld.y + size.h/2;
-            if (cx >= box.left && cx <= box.right && cy >= box.top && cy <= box.bottom) newlySelected.push(d.id);
-        });
-        newlySelected.forEach(id => { if (!selectedIds.includes(id)) selectedIds.push(id); });
-        if (selectedIds.length > 0) populateForm(allDevices.find(d => d.id === selectedIds[selectedIds.length - 1])); else resetForm();
-        renderSLD(); renderTable();
-    });
+            // Show typical devices only (hide wires)
+            if (['wire','cable'].includes(d.type)) return;
 
-    document.addEventListener('contextmenu', (e) => {
-        if (selectedIds.length > 1 && (e.target.classList.contains('admin-node') || e.target.classList.contains('node-label'))) {
-            e.preventDefault();
-            const menu = document.getElementById('context-menu');
-            menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
-        } else { document.getElementById('context-menu').style.display = 'none'; }
-    });
-    document.addEventListener('click', () => document.getElementById('context-menu').style.display = 'none');
+            const div = document.createElement('div');
+            div.className = 'dev-item';
+            let color = '#95a5a6';
+            if (d.isEnergized) color = '#d32f2f';
+            if (d.state === 'locked') color = '#f39c12';
 
-    window.alignNodes = (axis) => {
-        if (selectedIds.length < 2) return;
-        let sum = 0, count = 0;
-        selectedIds.forEach(id => { const d = allDevices.find(n => n.id === id); if (d) { const size = getNodeSize(d.type); sum += (axis==='v' ? (d.sld.x + size.w/2) : (d.sld.y + size.h/2)); count++; } });
-        const avg = Math.round(sum / count);
-        const updates = {};
-        selectedIds.forEach(id => {
-            const d = allDevices.find(n => n.id === id);
-            if (d) { const size = getNodeSize(d.type); if(axis==='v') d.sld.x = avg - size.w/2; else d.sld.y = avg - size.h/2; updates[`grids/${currentGridId}/nodes/${id}/sld`] = d.sld; }
-        });
-        update(ref(db), updates).then(renderSLD);
-    };
-
-    function loadGrids() {
-        onValue(ref(db, 'grids_meta'), (snap) => {
-            const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
-            if(!data) { set(ref(db,'grids_meta/default_grid'), {name:"Lưới mặc định"}); return; }
-            for(let id in data) sel.appendChild(new Option(data[id].name, id));
-            if(!data[currentGridId]) currentGridId = Object.keys(data)[0];
-            sel.value = currentGridId; loadDevices();
-        });
-    }
-    window.changeGrid = () => { currentGridId = document.getElementById('grid-select').value; localStorage.setItem('currentGridId', currentGridId); loadDevices(); }
-    window.createNewGrid = () => { const n=prompt("Tên:"); if(n) { const id='grid_'+Date.now(); set(ref(db,'grids_meta/'+id),{name:n}); currentGridId=id; localStorage.setItem('currentGridId',id); } }
-    window.renameCurrentGrid = () => { const n=prompt("Tên mới:"); if(n) update(ref(db,`grids_meta/${currentGridId}`),{name:n}); }
-
-    function loadDevices() {
-        onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
-            allDevices = snap.val() ? Object.values(snap.val()) : [];
-            calculatePower(); renderTable(); renderSLD(); renderMap(); updateParentSelect();
-            document.getElementById('status-msg').innerText = "Đã tải";
+            div.innerHTML = `
+                <div><b>${d.label || d.id}</b><br><small>${d.type}</small></div>
+                <div class="status-dot" style="background:${color}"></div>
+            `;
+            div.onclick = () => {
+                showTab('map');
+                if (d.geo) map.flyTo([d.geo.lat, d.geo.lng], 18);
+            };
+            c.appendChild(div);
         });
     }
 
-    function getAnchor(n, targetPos) { 
-        let sx = n.sld?.x||100, sy = n.sld?.y||100;
-        let b = { x: sx, y: sy, w: 50, h: 50 };
-        let type = n.type.toLowerCase();
-        let rot = n.rotation || 0;
-
-        if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
-        else if (type === 'tr') { b.w=30; b.h=50; }
-        else if (type === 'fco') { b.w=14; b.h=30; }
-        else if (type === 'pole') { b.w=12; b.h=12; }
-        else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
-
-        if (type === 'bus') {
-            let safeStart = b.x + 20; let safeEnd = b.x + b.w - 20;
-            if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
-            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
-            let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
-            return { x: projX, y: projY };
-        }
-
-        let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        if (['cb','ds','fco','tr','gen'].includes(type)) {
-            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
-        }
-        if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy };
-        else return { x: cx, y: (targetPos.y > cy ? b.y+b.h : b.y) };
-    }
-
-    const wireLayer = document.getElementById('wire-layer');
-    const nodeLayer = document.getElementById('node-layer');
-
-    function renderWires() {
-        wireLayer.innerHTML = '';
-        allDevices.forEach(d => { if(d.parent) { const p = allDevices.find(x=>x.id==d.parent); if(p) drawOrthogonalWire(p, d); } });
-    }
-
+    // 4. RENDER SLD
     function renderSLD() {
-        nodeLayer.innerHTML = '';
-        renderWires();
+        const nLayer = document.getElementById('node-layer');
+        const wLayer = document.getElementById('wire-layer');
+        nLayer.innerHTML = '';
+        wLayer.innerHTML = '';
+
+        // Draw Wires First
         allDevices.forEach(d => {
-            if(d.type==='pole' && d.showOnSLD===false) return;
+            if (d.parent) {
+                const p = allDevices.find(x => x.id === d.parent);
+                if (p) drawWire(p, d, wLayer);
+            }
+        });
+
+        // Draw Nodes
+        allDevices.forEach(d => {
+            if (d.type === 'pole' && d.showOnSLD === false) return;
+            
             const el = document.createElement('div');
-            let type = d.type.toLowerCase();
-            let isSelected = selectedIds.includes(d.id);
-            el.className = `admin-node type-${type} ${isSelected?'selected-node':''}`;
+            el.className = `admin-node type-${d.type}`;
+            el.style.left = (d.sld?.x || 0) + 'px';
+            el.style.top = (d.sld?.y || 0) + 'px';
             
-            if(['cb','ds','fco'].includes(type)) el.classList.add(d.state==='closed'?'closed':'open');
-            if(type==='gen') el.classList.add(d.state==='on'?'on':'off');
-            if(d.state==='locked') el.classList.add('locked');
-            if(d.isEnergized) el.classList.add('energized-node');
-            if(d.isGrounded) el.classList.add('grounded');
+            // Width for Busbar
+            if (d.type === 'bus') el.style.width = (d.width || 300) + 'px';
+            else if (d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
 
-            let sx = d.sld?.x !== undefined ? d.sld.x : 100;
-            let sy = d.sld?.y !== undefined ? d.sld.y : 100;
-            el.style.left = sx + 'px'; el.style.top = sy + 'px';
-            if(type==='bus') el.style.width = (d.width || 300) + 'px'; 
-            else if(d.rotation) el.style.transform = `rotate(${d.rotation}deg)`;
+            // Classes for styling
+            if (d.isEnergized) el.classList.add('energized-node');
+            if (['cb','ds','fco'].includes(d.type)) el.classList.add(d.state); // open/closed
+            if (d.state === 'locked') el.classList.add('locked');
+            if (d.type === 'gen' && d.state === 'on') el.classList.add('on');
 
-            if(!['bus','wire','cable'].includes(type)) {
-                const lbl = document.createElement('div'); lbl.className = 'node-label';
-                if(d.rotation == 90 || d.rotation == 270) lbl.style.transform = `rotate(-${d.rotation}deg) translate(20px, 0px)`;
-                else if(d.rotation == 180) lbl.style.transform = `rotate(-180deg) translate(0px, -30px)`;
-                let t = d.label; if(d.capacity) t+=` (${d.capacity})`;
-                lbl.innerText = t; el.appendChild(lbl);
+            // Label
+            if (!['wire','cable','bus'].includes(d.type)) {
+                const lbl = document.createElement('div');
+                lbl.className = 'node-label';
+                lbl.innerText = d.label;
+                
+                // Counter rotate label
+                if(d.rotation) lbl.style.transform = `rotate(-${d.rotation}deg)`;
+                
+                el.appendChild(lbl);
             }
-            if(type==='source') el.innerHTML = "SRC";
 
-            // DRAG EVENT
-            el.onmousedown = (e) => {
-                if (isPanning) return; 
-                e.stopPropagation(); e.preventDefault();
-                if (e.ctrlKey) {
-                    if (selectedIds.includes(d.id)) selectedIds = selectedIds.filter(id => id !== d.id);
-                    else { selectedIds.push(d.id); populateForm(d); }
-                    renderSLD(); renderTable(); return;
+            // Click
+            el.onclick = () => openControl(d);
+
+            nLayer.appendChild(el);
+        });
+    }
+
+    // 5. DRAW WIRE (Simple Orthogonal)
+    function drawWire(p, c, layer) {
+        let px = p.sld?.x || 0, py = p.sld?.y || 0;
+        let cx = c.sld?.x || 0, cy = c.sld?.y || 0;
+        
+        // Simple Center Calculation
+        let pw = (p.type==='bus') ? (p.width||300) : 50; 
+        if(['cb','ds'].includes(p.type)) pw=24;
+        
+        let pCenter = { x: px + pw/2, y: py + 25 };
+        let cCenter = { x: cx + 25, y: cy + 25 }; // Approx
+
+        // Color
+        let color = '#95a5a6'; // Dead
+        // Logic: Hot if Parent is Hot AND Closed (or is Bus) OR Child is Source
+        let isParentConducting = true;
+        if (['cb','ds','fco'].includes(p.type) && p.state !== 'closed') isParentConducting = false;
+        
+        if (c.isEnergized || (p.isEnergized && isParentConducting)) color = '#d32f2f';
+
+        // Draw Line (Simplified Direct Line for Stability first, then Z)
+        // Using divs for lines
+        const line = document.createElement('div');
+        line.className = 'wire';
+        line.style.borderTop = `2px solid ${color}`;
+        
+        // Simple bounding box logic for lines (can be improved to Z-shape later)
+        // Here we just draw direct to ensure visibility first
+        const len = Math.sqrt(Math.pow(cCenter.x - pCenter.x, 2) + Math.pow(cCenter.y - pCenter.y, 2));
+        const angle = Math.atan2(cCenter.y - pCenter.y, cCenter.x - pCenter.x) * 180 / Math.PI;
+        
+        line.style.width = len + 'px';
+        line.style.height = '0px';
+        line.style.left = pCenter.x + 'px';
+        line.style.top = pCenter.y + 'px';
+        line.style.transformOrigin = '0 0';
+        line.style.transform = `rotate(${angle}deg)`;
+        
+        layer.appendChild(line);
+    }
+
+    // 6. POWER CALCULATION (Bidirectional)
+    function calculatePower() {
+        // Reset
+        allDevices.forEach(n => n.isEnergized = false);
+        
+        // Sources
+        allDevices.filter(n => n.type === 'source' || (n.type === 'gen' && n.state === 'on'))
+                  .forEach(n => n.isEnergized = true);
+        
+        // Flood Fill Loop
+        let changed = true;
+        let limit = 50;
+        while(changed && limit > 0) {
+            changed = false;
+            limit--;
+            allDevices.forEach(child => {
+                const parent = allDevices.find(p => p.id === child.parent);
+                if (!parent) return;
+
+                // Flow Down
+                if (parent.isEnergized && !child.isEnergized) {
+                     if (canConduct(parent)) { child.isEnergized = true; changed = true; }
                 }
-                if (!selectedIds.includes(d.id)) { selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); }
-
-                const startX = e.clientX; const startY = e.clientY;
-                const initialPositions = {};
-                selectedIds.forEach(id => {
-                    const node = allDevices.find(n => n.id === id);
-                    if (node) initialPositions[id] = { x: node.sld.x, y: node.sld.y };
-                });
-
-                const onMM = (ev) => {
-                    const dx = (ev.clientX - startX) / currentZoom;
-                    const dy = (ev.clientY - startY) / currentZoom;
-                    selectedIds.forEach(id => {
-                        const node = allDevices.find(n => n.id === id);
-                        if (node && initialPositions[id]) {
-                            node.sld.x = Math.round((initialPositions[id].x + dx)/5)*5; // SNAP 5px
-                            node.sld.y = Math.round((initialPositions[id].y + dy)/5)*5;
-                        }
-                    });
-                    if(selectedIds.length===1) {
-                        document.getElementById('inp-x').value = allDevices.find(n=>n.id===selectedIds[0]).sld.x;
-                        document.getElementById('inp-y').value = allDevices.find(n=>n.id===selectedIds[0]).sld.y;
-                    }
-                    renderSLD();
-                };
-                const onUp = () => {
-                    document.removeEventListener('mousemove', onMM);
-                    document.removeEventListener('mouseup', onUp);
-                    saveBatchPositions();
-                };
-                document.addEventListener('mousemove', onMM);
-                document.addEventListener('mouseup', onUp);
-            };
-            nodeLayer.appendChild(el);
-        });
+                // Flow Up (Backfeed)
+                if (child.isEnergized && !parent.isEnergized) {
+                     if (canConduct(child) && canConduct(parent)) { parent.isEnergized = true; changed = true; }
+                }
+            });
+        }
     }
 
-    function saveBatchPositions() {
-        const updates = {};
-        selectedIds.forEach(id => {
-            const node = allDevices.find(n => n.id === id);
-            if (node) updates[`grids/${currentGridId}/nodes/${id}/sld`] = node.sld;
-        });
-        update(ref(db), updates);
+    function canConduct(n) {
+        const t = n.type;
+        if (['source','bus','wire','pole','tr','load','cable'].includes(t)) return true;
+        if (t === 'gen') return n.state === 'on';
+        if (['cb','ds','fco'].includes(t)) return n.state === 'closed';
+        return false;
     }
 
-    function drawOrthogonalWire(p, c) {
-        const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
-        const type = 'wire-' + (c.connection || 'solid');
+    // 7. CONTROLS
+    window.openControl = (d) => {
+        if (!['cb','ds','fco','gen'].includes(d.type)) return;
+        selectedId = d.id;
+        const modal = document.getElementById('actionModal');
+        const body = document.getElementById('modalBody');
+        const title = document.getElementById('modalTitle');
         
-        let ps = p.type==='bus' ? {w:p.width||300, h:8} : getNodeSize(p.type);
-        let cs = c.type==='bus' ? {w:c.width||300, h:8} : getNodeSize(c.type);
-        let pCenter = { x: p.sld.x + ps.w/2, y: p.sld.y + ps.h/2 }; 
-        let cCenter = { x: c.sld.x + cs.w/2, y: c.sld.y + cs.h/2 }; 
+        title.innerText = `Điều khiển: ${d.label}`;
+        body.innerHTML = '';
 
-        const start = getAnchor(p, cCenter);
-        const end = getAnchor(c, pCenter);
-        
-        if (p.type === 'bus' && c.busConnOffset !== undefined) start.x = p.sld.x + c.busConnOffset;
-
-        if (p.type==='bus' || c.type==='bus') {
-            let bus = p.type==='bus' ? p : c; let node = p.type==='bus' ? c : p;
-            let ns = getNodeSize(node.type); let nCx = node.sld.x + ns.w/2;
-            let bStart = bus.sld.x + 20, bEnd = bus.sld.x + (bus.width||300) - 20;
-            if (nCx >= bStart && nCx <= bEnd) {
-                 let sy = bus.sld.y + 4; let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h);
-                 createSeg(nCx, sy, nCx, ey, cls, type); return;
-            }
-        }
-
-        let stubP = c.wireStubs?.p || 50; 
-        let stubC = c.wireStubs?.c || 50;
-
-        const applyStub = (pt, node, len, isStart) => {
-            let r = node.rotation || 0; let dx=0, dy=0;
-            if (node.type === 'bus') { dy = (isStart ? cCenter.y : pCenter.y) > node.sld.y ? len : -len; }
-            else { if (r===0) dy = isStart ? len : -len; else if (r===90) dx = isStart ? len : -len; else if (r===180) dy = isStart ? -len : len; else if (r===270) dx = isStart ? -len : len; }
-            return {x: pt.x + dx, y: pt.y + dy, axis: (dx!==0 ? 'x' : 'y')};
-        }
-
-        let sbInfo = applyStub(start, p, stubP, true);
-        let sb = {x: sbInfo.x, y: sbInfo.y};
-        let ebInfo = applyStub(end, c, stubC, false);
-        let eb = {x: ebInfo.x, y: ebInfo.y};
-
-        let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
-        let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
-
-        createSeg(start.x, start.y, sb.x, sb.y, cls, type);
-        createSeg(eb.x, eb.y, end.x, end.y, cls, type);
-
-        if (isVerticalMid) { 
-            createSeg(sb.x, sb.y, sb.x, midVal, cls, type);
-            createSeg(sb.x, midVal, eb.x, midVal, cls, type);
-            createSeg(eb.x, midVal, eb.x, eb.y, cls, type);
-            createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'mid', midVal);
+        if (d.type === 'gen') {
+            if (d.state === 'on') body.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="setStatus('off')">DỪNG MÁY</button>`;
+            else body.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="setStatus('on')">KHỞI ĐỘNG</button>`;
         } else {
-            createSeg(sb.x, sb.y, midVal, sb.y, cls, type);
-            createSeg(midVal, sb.y, midVal, eb.y, cls, type);
-            createSeg(midVal, eb.y, eb.x, eb.y, cls, type);
-            createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'mid', midVal);
+            if (d.state === 'closed') body.innerHTML += `<button class="btn-action" style="background:#e74c3c" onclick="setStatus('open')">CẮT ĐIỆN</button>`;
+            else body.innerHTML += `<button class="btn-action" style="background:#27ae60" onclick="setStatus('closed')">ĐÓNG ĐIỆN</button>`;
         }
-
-        createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
-        createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
         
-        if (p.type === 'bus') {
-            createHandle(start.x - 5, start.y - 5, 10, 10, 'ew-resize', c, 'busConn', (c.busConnOffset || (start.x - p.sld.x)), 'x');
+        if (d.state === 'locked') {
+            body.innerHTML = `<p style="color:orange">Đang khóa LOTO!</p><button class="btn-action" style="background:#f39c12" onclick="loto('unlock')">MỞ KHÓA</button>`;
+        } else {
+            body.innerHTML += `<button class="btn-action" style="background:#f39c12" onclick="loto('lock')">KHÓA AN TOÀN (LOTO)</button>`;
         }
+
+        modal.style.display = 'flex';
+    }
+
+    window.setStatus = (s) => {
+        update(ref(db, `grids/${currentGridId}/nodes/${selectedId}`), { state: s });
+        document.getElementById('actionModal').style.display = 'none';
+    }
+
+    window.loto = (action) => {
+        const pin = prompt(action === 'lock' ? "Thiết lập mã PIN khóa:" : "Nhập PIN để mở khóa:");
+        if (!pin) return;
+        
+        if (action === 'lock') {
+            update(ref(db, `grids/${currentGridId}/nodes/${selectedId}`), { state: 'locked', lotoPin: pin });
+        } else {
+            // Need to check PIN (simplified here, in real app check against DB value)
+            // For now assume correct or master key
+            const node = allDevices.find(n => n.id === selectedId);
+            if (node.lotoPin && node.lotoPin !== pin && pin !== "9999") {
+                alert("Sai mã PIN!");
+                return;
+            }
+            update(ref(db, `grids/${currentGridId}/nodes/${selectedId}`), { state: 'open', lotoPin: null });
+        }
+        document.getElementById('actionModal').style.display = 'none';
+    }
+
+    // ZOOM Helper
+    window.zoom = (delta) => { 
+        currentZoom += delta; 
+        document.getElementById('sld-canvas').style.transform = `scale(${currentZoom})`; 
+    }
+    window.zoomFit = () => {
+        currentZoom = 0.8; // Default fit
+        document.getElementById('sld-canvas').style.transform = `scale(${currentZoom})`;
+        document.getElementById('sld-container').scrollLeft = 0;
+        document.getElementById('sld-container').scrollTop = 0;
+    }
+    window.showTab = (t) => {
+        document.getElementById('sld-panel').style.display = (t==='sld' ? 'block' : 'none');
+        document.getElementById('map-wrapper').style.display = (t==='map' ? 'block' : 'none');
+        if(t==='map') setTimeout(()=> map.invalidateSize(), 200);
     }
     
-    function createSeg(x1,y1,x2,y2,c,t) {
-        if(Math.abs(x1-x2)<1 && Math.abs(y1-y2)<1) return;
-        const el=document.createElement('div'); el.className=`wire ${c} ${t}`;
-        el.style.left=Math.min(x1,x2)+'px'; el.style.top=Math.min(y1,y2)+'px';
-        if(Math.abs(x1-x2)>Math.abs(y1-y2)) { el.style.width=Math.abs(x1-x2)+'px'; el.style.height='0'; el.style.borderTopWidth='2px'; }
-        else { el.style.width='0'; el.style.height=Math.abs(y1-y2)+'px'; el.style.borderLeftWidth='2px'; }
-        wireLayer.appendChild(el);
-    }
-
-    function createHandle(x, y, w, h, cursor, device, type, currentVal, axis) {
-        const hdl = document.createElement('div');
-        hdl.className = 'wire-handle cursor-' + (cursor.includes('ew')?'ew':'ns');
-        hdl.style.left = x + 'px'; hdl.style.top = y + 'px';
-        hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
-        if (type === 'busConn') { hdl.style.background = '#e67e22'; hdl.style.borderRadius = '50%'; hdl.style.border = '1px solid white'; }
-
-        hdl.onmousedown = (e) => {
-            if (isPanning) return;
-            e.stopPropagation(); e.preventDefault();
-            let dragAxis = axis || (cursor.includes('ew') ? 'x' : 'y');
-            draggingWire = { id: device.id, type: type, startMouse: (dragAxis==='x'?e.clientX:e.clientY), originalVal: currentVal, axis: dragAxis };
-            
-            const onWireMove = (ev) => {
-                const delta = (draggingWire.axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
-                let newVal = Math.round((draggingWire.originalVal + delta/currentZoom)/5)*5;
-                const dev = allDevices.find(d => d.id === draggingWire.id);
-                if(dev) { 
-                    if(draggingWire.type === 'mid') dev.wireOffset = newVal;
-                    else if(draggingWire.type === 'busConn') dev.busConnOffset = newVal;
-                    else {
-                        if(!dev.wireStubs) dev.wireStubs = {p:50, c:50};
-                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(20, newVal); 
-                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(20, newVal);
-                    }
-                    renderWires(); 
-                }
-            };
-            const onWireUp = () => {
-                document.removeEventListener('mousemove', onWireMove);
-                document.removeEventListener('mouseup', onWireUp);
-                const dev = allDevices.find(d => d.id === draggingWire.id);
-                if(dev) {
-                    let updates = {};
-                    if(draggingWire.type === 'mid') updates.wireOffset = dev.wireOffset;
-                    else if(draggingWire.type === 'busConn') updates.busConnOffset = dev.busConnOffset;
-                    else updates.wireStubs = dev.wireStubs;
-                    update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), updates);
-                }
-                draggingWire = null;
-            };
-            document.addEventListener('mousemove', onWireMove);
-            document.addEventListener('mouseup', onWireUp);
-        };
-        wireLayer.appendChild(hdl);
-    }
-
-    function populateForm(d) {
-        document.getElementById('inp-id').value = d.id;
-        document.getElementById('inp-label').value = d.label;
-        document.getElementById('inp-type').value = d.type;
-        document.getElementById('inp-capacity').value = d.capacity || "";
-        document.getElementById('inp-rotation').value = d.rotation || 0;
-        document.getElementById('inp-width').value = d.width || 300;
-        document.getElementById('inp-voltage').value = d.voltage || ""; // CB PARAM
-        document.getElementById('inp-current').value = d.current || ""; // CB PARAM
-        document.getElementById('inp-curve').value = d.curve || "";     // CB PARAM
-        updateParentSelect();
-        document.getElementById('inp-parent').value = d.parent || "";
-        document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
-        document.getElementById('inp-grounded').checked = (d.isGrounded === true);
-        document.getElementById('inp-x').value = d.sld.x;
-        document.getElementById('inp-y').value = d.sld.y;
-        toggleFields();
-    }
-
-    window.toggleFields = () => { 
-        const type = document.getElementById('inp-type').value;
-        document.getElementById('grp-width').style.display = (type==='bus'?'block':'none');
-        document.getElementById('grp-cb-params').style.display = (type==='cb'?'block':'none'); // CB PARAM
-    }
-    
-    window.previewWidth = () => { if(selectedIds.length>0) { const d=allDevices.find(n=>n.id===selectedIds[0]); if(d&&d.type==='bus') { d.width=parseInt(document.getElementById('inp-width').value)||300; renderSLD(); } } }
-    window.previewRotation = () => { const r=parseInt(document.getElementById('inp-rotation').value)||0; selectedIds.forEach(id=>{ const d=allDevices.find(n=>n.id===id); if(d)d.rotation=r; }); renderSLD(); }
-    
-    function calculatePower() { allDevices.forEach(n=>n.isEnergized=false); allDevices.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
-    function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if((['source','bus','wire','cable','pole'].includes(p.type))||p.state==='closed'||(p.type==='gen'&&p.state==='on')) { c.isEnergized=true; propagate(c); } }); } }
-
-    window.saveDevice = () => {
-        let id=document.getElementById('inp-id').value; if(id==="(Tự sinh)"||!id) id='N'+Date.now().toString().slice(-6);
-        const nd = {
-            id: id, label: document.getElementById('inp-label').value, 
-            type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value || null, 
-            capacity: document.getElementById('inp-capacity').value || "",
-            rotation: parseInt(document.getElementById('inp-rotation').value) || 0,
-            width: parseInt(document.getElementById('inp-width').value) || 300,
-            connection: document.getElementById('inp-connection').value, 
-            state: "closed", 
-            showOnSLD: document.getElementById('inp-showSLD').checked,
-            isGrounded: document.getElementById('inp-grounded').checked,
-            sld: { x: parseInt(document.getElementById('inp-x').value) || 100, y: parseInt(document.getElementById('inp-y').value) || 100 },
-            geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng },
-            voltage: document.getElementById('inp-voltage').value, // CB PARAM
-            current: document.getElementById('inp-current').value, // CB PARAM
-            curve: document.getElementById('inp-curve').value      // CB PARAM
-        };
-        set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
-            alert("Đã lưu thành công!");
-            if(!selectedIds.includes(id)) selectedIds = [id];
-            renderSLD(); renderTable();
-        });
-    }
-
-    function renderMap() { 
-        for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
-        localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>window.selectDevice(d,false)); mapMarkers[d.id]=m; });
-    }
-    window.resetForm=()=>{ selectedIds=[]; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
-    window.deleteDevice=()=>{ if(selectedIds.length>0&&confirm("Xóa?")){ const u={}; selectedIds.forEach(id=>u[`grids/${currentGridId}/nodes/${id}`]=null); update(ref(db),u); resetForm(); } }
-    
-    window.selectDevice=(d,z)=>{ selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); }
-    window.zoomExtent=()=>{ update(ref(db),{}); }
-    window.switchTab=(t,b)=>{ document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='map') setTimeout(()=>map.invalidateSize(),200); }
-    function renderTable(){ const c=document.getElementById('device-list-container'); c.innerHTML=''; allDevices.forEach(d=>{ const div=document.createElement('div'); div.className=`device-item ${selectedIds.includes(d.id)?'selected':''}`; div.innerHTML=`<b>${d.label}</b><br><small>${d.id}</small>`; div.onclick=()=>window.selectDevice(d,false); c.appendChild(div); }); }
-    function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(!selectedIds.includes(d.id)) s.appendChild(new Option(d.label,d.id)); }); }
-    window.openImportModal=()=>document.getElementById('importModal').style.display='flex';
-    window.closeImportModal=()=>document.getElementById('importModal').style.display='none';
-    window.openSmartWindow=()=>{ const c=map.getCenter(); window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600'); }
-    window.processImport=()=>{ /* Logic */ }
-
-    let localNodes = allDevices; 
-    loadGrids();
+    // Init
+    setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
+    initData();
 </script>
 </body>
 </html>
