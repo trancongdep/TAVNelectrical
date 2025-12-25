@@ -3,197 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Link Manager</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <title>Quản Lý Mã QR - Ver 2.1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        /* CSS Tùy chỉnh để khôi phục giao diện */
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            background: white;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        .qr-preview {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+            padding: 10px 20px;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+        .table img {
+            max-width: 80px;
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .version-tag {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 10px;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+<body>
 
-    <div class="max-w-4xl mx-auto">
-        
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-700">QR Link Manager</h1>
-            <p class="text-gray-500 mt-2">Quản lý danh sách link và tạo mã QR truy cập nhanh</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div class="md:col-span-1">
-                <div class="bg-white p-6 rounded-lg shadow-md sticky top-4">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Thêm Link Mới</h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tên gợi nhớ</label>
-                            <input type="text" id="link-name" placeholder="VD: Website Công ty" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Đường dẫn (URL)</label>
-                            <input type="url" id="link-url" placeholder="https://example.com" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                            <p class="text-xs text-gray-400 mt-1">*Phải bắt đầu bằng http:// hoặc https://</p>
-                        </div>
-
-                        <button id="btn-create" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-bold shadow">
-                            <i class="fas fa-qrcode mr-2"></i> Tạo & Lưu
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="md:col-span-2">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex justify-between items-center">
-                        Danh sách đã tạo
-                        <span id="count-badge" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
-                    </h2>
-
-                    <div id="loading" class="text-center py-8">
-                        <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-                    </div>
-
-                    <div id="link-list" class="space-y-4"></div>
-                </div>
-            </div>
-        </div>
-
+<div class="container main-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary"><i class="fa-solid fa-qrcode me-2"></i>Quản Lý Mã QR</h2>
+        <span class="badge bg-secondary version-tag">Ver 2.1</span>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // Cấu hình Firebase của bạn
-        const firebaseConfig = { 
-            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
-            authDomain: "tavietnam-78ae8.firebaseapp.com", 
-            projectId: "tavietnam-78ae8", 
-            storageBucket: "tavietnam-78ae8.firebasestorage.app", 
-            messagingSenderId: "670121705534", 
-            appId: "1:670121705534:web:1027ad98550573ad37116f" 
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // --- LOGIC TẠO MỚI ---
-        document.getElementById('btn-create').addEventListener('click', async () => {
-            const nameInput = document.getElementById('link-name');
-            const urlInput = document.getElementById('link-url');
-            const btn = document.getElementById('btn-create');
-
-            const name = nameInput.value.trim();
-            let url = urlInput.value.trim();
-
-            if (!name || !url) return alert("Vui lòng nhập đầy đủ thông tin!");
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fa-solid fa-plus me-2"></i>Tạo Mã Mới
+                </div>
+                <div class="card-body">
+                    <form id="qrForm">
+                        <div class="mb-3">
+                            <label for="qrName" class="form-label">Tên mô tả</label>
+                            <input type="text" class="form-control" id="qrName" placeholder="Ví dụ: Wifi Tầng 1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="qrContent" class="form-label">Nội dung / URL</label>
+                            <textarea class="form-control" id="qrContent" rows="3" placeholder="https://..." required></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="btnCreate">
+                                <span class="spinner-border spinner-border-sm loading-spinner me-1" role="status" aria-hidden="true"></span>
+                                Tạo & Lưu QR
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             
-            // Tự động thêm https nếu thiếu
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
+            <div class="card mt-3">
+                <div class="card-header bg-secondary">
+                    <i class="fa-solid fa-eye me-2"></i>Xem trước
+                </div>
+                <div class="card-body">
+                    <div id="previewArea" class="qr-preview">
+                        <span class="text-muted">Mã QR sẽ hiện ở đây</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-list me-2"></i>Danh sách đã lưu</span>
+                    <button class="btn btn-sm btn-light text-primary" onclick="loadQRCodes()">
+                        <i class="fa-solid fa-rotate-right"></i> Tải lại
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" width="100">Hình QR</th>
+                                    <th scope="col">Thông tin</th>
+                                    <th scope="col" width="150">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qrTableBody">
+                                <tr>
+                                    <td colspan="3" class="text-center py-4">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-            try {
-                // Lưu vào collection 'managed_links'
-                await addDoc(collection(db, "managed_links"), {
-                    name: name,
-                    url: url,
-                    createdAt: serverTimestamp()
-                });
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-                // Reset form
-                nameInput.value = '';
-                urlInput.value = '';
-                
-            } catch (e) {
-                alert("Lỗi: " + e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-qrcode mr-2"></i> Tạo & Lưu';
-            }
-        });
+    // Cấu hình Firebase của bạn
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
+        authDomain: "tavietnam-78ae8.firebaseapp.com", 
+        projectId: "tavietnam-78ae8", 
+        storageBucket: "tavietnam-78ae8.firebasestorage.app", 
+        messagingSenderId: "670121705534", 
+        appId: "1:670121705534:web:1027ad98550573ad37116f" 
+    };
 
-        // --- LOGIC HIỂN THỊ DANH SÁCH (REALTIME) ---
-        const q = query(collection(db, "managed_links"), orderBy('createdAt', 'desc'));
+    // Khởi tạo Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const qrCollection = collection(db, "qr_codes");
+
+    // QR Code API Generator URL (Sử dụng API Google Chart hoặc tương tự để tạo ảnh)
+    const generateQRUrl = (text) => `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(text)}`;
+
+    // DOM Elements
+    const qrForm = document.getElementById('qrForm');
+    const tableBody = document.getElementById('qrTableBody');
+    const previewArea = document.getElementById('previewArea');
+    const btnCreate = document.getElementById('btnCreate');
+    const spinner = document.querySelector('.loading-spinner');
+
+    // Xử lý Form Submit
+    qrForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('qrName').value;
+        const content = document.getElementById('qrContent').value;
+        const imageUrl = generateQRUrl(content);
+
+        // UI Loading
+        btnCreate.disabled = true;
+        spinner.style.display = 'inline-block';
+
+        try {
+            // Xem trước ngay lập tức
+            previewArea.innerHTML = `<img src="${imageUrl}" alt="QR Preview" class="img-fluid">`;
+
+            // Lưu vào Firestore
+            await addDoc(qrCollection, {
+                name: name,
+                content: content,
+                imageUrl: imageUrl,
+                createdAt: serverTimestamp()
+            });
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: 'Đã tạo và lưu mã QR mới.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            qrForm.reset();
+            loadQRCodes(); // Tải lại danh sách
+        } catch (error) {
+            console.error("Lỗi:", error);
+            Swal.fire('Lỗi', 'Không thể lưu dữ liệu: ' + error.message, 'error');
+        } finally {
+            btnCreate.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+
+    // Hàm tải danh sách QR
+    window.loadQRCodes = async () => {
+        tableBody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
         
-        onSnapshot(q, (snapshot) => {
-            document.getElementById('loading').classList.add('hidden');
-            const listEl = document.getElementById('link-list');
-            document.getElementById('count-badge').innerText = snapshot.size;
+        try {
+            const q = query(qrCollection, orderBy("createdAt", "desc"));
+            const querySnapshot = await getDocs(q);
+            
+            tableBody.innerHTML = ''; // Xóa loading
 
-            listEl.innerHTML = ''; // Xóa danh sách cũ để render lại
-
-            if (snapshot.empty) {
-                listEl.innerHTML = '<p class="text-center text-gray-400 italic">Chưa có link nào được tạo.</p>';
+            if (querySnapshot.empty) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Chưa có mã QR nào được tạo.</td></tr>';
                 return;
             }
 
-            snapshot.forEach((docSnap) => {
+            querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 const id = docSnap.id;
                 
-                // Tạo thẻ HTML cho từng item
-                const item = document.createElement('div');
-                item.className = "bg-gray-50 border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition";
-                
-                item.innerHTML = `
-                    <div class="flex-1 w-full text-center sm:text-left overflow-hidden">
-                        <h3 class="font-bold text-gray-800 text-lg">${escapeHtml(data.name)}</h3>
-                        <a href="${data.url}" target="_blank" class="text-blue-600 text-sm hover:underline truncate block w-full" title="${data.url}">
-                            ${data.url} <i class="fas fa-external-link-alt text-xs ml-1"></i>
-                        </a>
-                        <button class="btn-delete mt-2 text-red-500 text-xs hover:text-red-700 font-semibold" data-id="${id}">
-                            <i class="fas fa-trash"></i> Xóa link này
-                        </button>
-                    </div>
-
-                    <div class="flex-shrink-0 bg-white p-2 rounded border border-gray-200 shadow-sm group relative">
-                        <div id="qr-${id}"></div>
-                        <div class="text-[10px] text-center text-gray-400 mt-1">Quét để truy cập</div>
-                    </div>
+                const row = `
+                    <tr>
+                        <td>
+                            <img src="${data.imageUrl}" alt="QR">
+                        </td>
+                        <td>
+                            <strong>${data.name}</strong><br>
+                            <small class="text-muted text-break">${data.content.substring(0, 50)}${data.content.length > 50 ? '...' : ''}</small><br>
+                            <small class="text-secondary" style="font-size: 0.75rem;">ID: ${id}</small>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewQR('${data.imageUrl}')" title="Xem lớn">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteQR('${id}')" title="Xóa">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
                 `;
-
-                listEl.appendChild(item);
-
-                // Tạo QR Code cho item này
-                new QRCode(document.getElementById(`qr-${id}`), {
-                    text: data.url, // QR trỏ thẳng về link gốc
-                    width: 100,
-                    height: 100
-                });
+                tableBody.innerHTML += row;
             });
+        } catch (error) {
+            console.error("Lỗi tải data:", error);
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Lỗi tải dữ liệu. Kiểm tra Console.</td></tr>`;
+        }
+    };
 
-            // Gán sự kiện xóa cho các nút vừa tạo
-            document.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.addEventListener('click', handleDelete);
-            });
+    // Hàm xóa QR
+    window.deleteQR = async (id) => {
+        const result = await Swal.fire({
+            title: 'Bạn chắc chắn chứ?',
+            text: "Không thể khôi phục sau khi xóa!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Vâng, xóa nó!',
+            cancelButtonText: 'Hủy'
         });
 
-        // --- LOGIC XÓA ---
-        async function handleDelete(e) {
-            const id = e.currentTarget.getAttribute('data-id');
-            if (confirm("Bạn có chắc muốn xóa link này khỏi danh sách?")) {
-                try {
-                    await deleteDoc(doc(db, "managed_links", id));
-                } catch (e) {
-                    alert("Lỗi khi xóa: " + e.message);
-                }
+        if (result.isConfirmed) {
+            try {
+                await deleteDoc(doc(db, "qr_codes", id));
+                Swal.fire('Đã xóa!', 'Mã QR đã bị xóa.', 'success');
+                loadQRCodes();
+            } catch (error) {
+                Swal.fire('Lỗi', 'Không thể xóa: ' + error.message, 'error');
             }
         }
+    };
 
-        // Hàm bảo mật chống XSS đơn giản
-        function escapeHtml(text) {
-            if (!text) return "";
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-    </script>
+    // Hàm xem ảnh lớn
+    window.viewQR = (url) => {
+        Swal.fire({
+            imageUrl: url,
+            imageWidth: 300,
+            imageHeight: 300,
+            imageAlt: 'QR Code Image',
+            showCloseButton: true,
+            showConfirmButton: false
+        });
+    };
+
+    // Tải dữ liệu khi trang web load
+    loadQRCodes();
+
+</script>
+
 </body>
 </html>
