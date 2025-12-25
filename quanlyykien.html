@@ -3,51 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Meeting Feedback</title>
+    <title>QR Link Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
 
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+    <div class="max-w-4xl mx-auto">
         
-        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Meeting App</h1>
-
-        <div id="local-warning" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 text-sm">
-            <p class="font-bold">Lưu ý quan trọng:</p>
-            <p>Bạn đang chạy file trực tiếp từ máy tính (`file://`).</p>
-            <p class="mt-1">Mã QR sẽ <strong>không hoạt động</strong> trên điện thoại khác.</p>
-            <p class="mt-1">Vui lòng đưa file này lên Netlify hoặc Firebase Hosting để sử dụng.</p>
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700">QR Link Manager</h1>
+            <p class="text-gray-500 mt-2">Quản lý danh sách link và tạo mã QR truy cập nhanh</p>
         </div>
 
-        <div id="admin-view" class="hidden space-y-4">
-            <h2 class="text-lg font-semibold text-gray-700">Tạo cuộc họp mới</h2>
-            <input type="text" id="meeting-name" placeholder="Tên cuộc họp (VD: Daily Scrum)" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button id="btn-create" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Tạo QR Code</button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div id="qr-container" class="hidden flex flex-col items-center mt-4 p-4 border rounded bg-gray-50">
-                <p class="text-sm text-gray-500 mb-2">Quét mã để tham gia:</p>
-                <div id="qrcode"></div>
-                <p id="meeting-link" class="text-xs text-blue-500 mt-2 break-all text-center"></p>
+            <div class="md:col-span-1">
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Thêm Link Mới</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tên gợi nhớ</label>
+                            <input type="text" id="link-name" placeholder="VD: Website Công ty" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Đường dẫn (URL)</label>
+                            <input type="url" id="link-url" placeholder="https://example.com" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                            <p class="text-xs text-gray-400 mt-1">*Phải bắt đầu bằng http:// hoặc https://</p>
+                        </div>
+
+                        <button id="btn-create" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-bold shadow">
+                            <i class="fas fa-qrcode mr-2"></i> Tạo & Lưu
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex justify-between items-center">
+                        Danh sách đã tạo
+                        <span id="count-badge" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                    </h2>
+
+                    <div id="loading" class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                    </div>
+
+                    <div id="link-list" class="space-y-4"></div>
+                </div>
             </div>
         </div>
-
-        <div id="user-view" class="hidden space-y-4">
-            <h2 class="text-lg font-semibold text-gray-700">Gửi phản hồi</h2>
-            <p id="display-meeting-name" class="text-sm text-gray-500 font-bold"></p>
-            
-            <textarea id="user-answer" rows="4" placeholder="Nhập câu trả lời của bạn..." class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
-            <button id="btn-submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 transition">Gửi câu trả lời</button>
-            <div id="success-msg" class="hidden text-center text-green-600 font-bold mt-2">Đã gửi thành công!</div>
-        </div>
-
-        <div id="loading" class="text-center text-gray-500">Đang tải...</div>
 
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // Cấu hình Firebase của bạn
         const firebaseConfig = { 
@@ -62,103 +77,123 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Logic chính
-        const urlParams = new URLSearchParams(window.location.search);
-        const meetingId = urlParams.get('id');
-
-        const adminView = document.getElementById('admin-view');
-        const userView = document.getElementById('user-view');
-        const loading = document.getElementById('loading');
-        const localWarning = document.getElementById('local-warning');
-
-        // Khởi tạo
-        async function init() {
-            loading.classList.add('hidden');
-            
-            // Kiểm tra protocol file:// (Mới v1.1)
-            if (window.location.protocol === 'file:') {
-                localWarning.classList.remove('hidden');
-            }
-
-            if (meetingId) {
-                // Có ID -> Chế độ User
-                userView.classList.remove('hidden');
-                await loadMeetingInfo(meetingId);
-            } else {
-                // Không có ID -> Chế độ Admin
-                adminView.classList.remove('hidden');
-            }
-        }
-
-        // --- ADMIN FUNCTIONS ---
+        // --- LOGIC TẠO MỚI ---
         document.getElementById('btn-create').addEventListener('click', async () => {
-            const name = document.getElementById('meeting-name').value;
-            if (!name) return alert("Vui lòng nhập tên cuộc họp");
+            const nameInput = document.getElementById('link-name');
+            const urlInput = document.getElementById('link-url');
+            const btn = document.getElementById('btn-create');
+
+            const name = nameInput.value.trim();
+            let url = urlInput.value.trim();
+
+            if (!name || !url) return alert("Vui lòng nhập đầy đủ thông tin!");
+            
+            // Tự động thêm https nếu thiếu
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
 
             try {
-                // 1. Lưu vào Firestore
-                const docRef = await addDoc(collection(db, "meetings"), {
+                // Lưu vào collection 'managed_links'
+                await addDoc(collection(db, "managed_links"), {
                     name: name,
+                    url: url,
                     createdAt: serverTimestamp()
                 });
 
-                // 2. Tạo Link
-                // Lưu ý: Nếu đang chạy file://, link này sẽ không hoạt động trên thiết bị khác
-                const link = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
+                // Reset form
+                nameInput.value = '';
+                urlInput.value = '';
                 
-                // 3. Hiển thị QR
-                document.getElementById('qr-container').classList.remove('hidden');
-                document.getElementById('qrcode').innerHTML = ""; // Xóa QR cũ
-                new QRCode(document.getElementById("qrcode"), {
-                    text: link,
-                    width: 128,
-                    height: 128
-                });
-                document.getElementById('meeting-link').innerText = link;
-
             } catch (e) {
-                console.error("Lỗi: ", e);
-                alert("Không thể tạo cuộc họp. Kiểm tra Console (F12).");
+                alert("Lỗi: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-qrcode mr-2"></i> Tạo & Lưu';
             }
         });
 
-        // --- USER FUNCTIONS ---
-        async function loadMeetingInfo(id) {
-            try {
-                const docRef = doc(db, "meetings", id);
-                const docSnap = await getDoc(docRef);
+        // --- LOGIC HIỂN THỊ DANH SÁCH (REALTIME) ---
+        const q = query(collection(db, "managed_links"), orderBy('createdAt', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
+            document.getElementById('loading').classList.add('hidden');
+            const listEl = document.getElementById('link-list');
+            document.getElementById('count-badge').innerText = snapshot.size;
 
-                if (docSnap.exists()) {
-                    document.getElementById('display-meeting-name').innerText = "Đang tham gia: " + docSnap.data().name;
-                } else {
-                    document.getElementById('user-view').innerHTML = "<p class='text-red-500 text-center'>Cuộc họp không tồn tại!</p>";
+            listEl.innerHTML = ''; // Xóa danh sách cũ để render lại
+
+            if (snapshot.empty) {
+                listEl.innerHTML = '<p class="text-center text-gray-400 italic">Chưa có link nào được tạo.</p>';
+                return;
+            }
+
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+                
+                // Tạo thẻ HTML cho từng item
+                const item = document.createElement('div');
+                item.className = "bg-gray-50 border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition";
+                
+                item.innerHTML = `
+                    <div class="flex-1 w-full text-center sm:text-left overflow-hidden">
+                        <h3 class="font-bold text-gray-800 text-lg">${escapeHtml(data.name)}</h3>
+                        <a href="${data.url}" target="_blank" class="text-blue-600 text-sm hover:underline truncate block w-full" title="${data.url}">
+                            ${data.url} <i class="fas fa-external-link-alt text-xs ml-1"></i>
+                        </a>
+                        <button class="btn-delete mt-2 text-red-500 text-xs hover:text-red-700 font-semibold" data-id="${id}">
+                            <i class="fas fa-trash"></i> Xóa link này
+                        </button>
+                    </div>
+
+                    <div class="flex-shrink-0 bg-white p-2 rounded border border-gray-200 shadow-sm group relative">
+                        <div id="qr-${id}"></div>
+                        <div class="text-[10px] text-center text-gray-400 mt-1">Quét để truy cập</div>
+                    </div>
+                `;
+
+                listEl.appendChild(item);
+
+                // Tạo QR Code cho item này
+                new QRCode(document.getElementById(`qr-${id}`), {
+                    text: data.url, // QR trỏ thẳng về link gốc
+                    width: 100,
+                    height: 100
+                });
+            });
+
+            // Gán sự kiện xóa cho các nút vừa tạo
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', handleDelete);
+            });
+        });
+
+        // --- LOGIC XÓA ---
+        async function handleDelete(e) {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (confirm("Bạn có chắc muốn xóa link này khỏi danh sách?")) {
+                try {
+                    await deleteDoc(doc(db, "managed_links", id));
+                } catch (e) {
+                    alert("Lỗi khi xóa: " + e.message);
                 }
-            } catch (e) {
-                console.error(e);
             }
         }
 
-        document.getElementById('btn-submit').addEventListener('click', async () => {
-            const answer = document.getElementById('user-answer').value;
-            if (!answer) return alert("Vui lòng nhập nội dung");
-
-            try {
-                await addDoc(collection(db, `meetings/${meetingId}/answers`), {
-                    content: answer,
-                    createdAt: serverTimestamp()
-                });
-                
-                document.getElementById('success-msg').classList.remove('hidden');
-                document.getElementById('user-answer').value = "";
-                setTimeout(() => document.getElementById('success-msg').classList.add('hidden'), 3000);
-            } catch (e) {
-                console.error(e);
-                alert("Gửi thất bại.");
-            }
-        });
-
-        // Chạy app
-        init();
+        // Hàm bảo mật chống XSS đơn giản
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
     </script>
 </body>
 </html>
