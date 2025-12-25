@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel - TAVIETNAM v9.13</title>
+    <title>Admin Panel - TAVIETNAM v9.14 (Fix Import)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -81,12 +81,12 @@
 <body>
 
 <header>
-    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.13</span></h2></div>
+    <div class="header-title"><h2><i class="fas fa-bolt"></i> Admin <span style="font-size:12px;background:#f1c40f;color:#333;padding:2px 5px;border-radius:3px">V9.14</span></h2></div>
     <div class="grid-selector">
         <label>Lưới:</label> <select id="grid-select" onchange="changeGrid()"></select>
         <button class="grid-btn" onclick="createNewGrid()">+</button> 
         <button class="grid-btn btn-rename" onclick="renameCurrentGrid()">Sửa</button>
-        <button class="grid-btn btn-reset" onclick="resetApp()">Reset Cache</button>
+        <button class="grid-btn btn-reset" onclick="resetApp()">Reset</button>
     </div>
     <div style="font-size: 12px; color: #ccc;"><span id="status-msg">Sẵn sàng</span></div>
 </header>
@@ -182,7 +182,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // USE ALL_DEVICES (Consistent with View)
     let allDevices = [], selectedIds = [], currentGridId = localStorage.getItem('currentGridId') || 'default_grid';
     let mapMarkers = {}, draggingWire = null;
     let currentZoom = 1, isPanning = false;
@@ -290,19 +289,12 @@
     function loadGrids() {
         onValue(ref(db, 'grids_meta'), (snap) => {
             const data = snap.val(); const sel = document.getElementById('grid-select'); sel.innerHTML = '';
-            if(!data) { 
-                sel.appendChild(new Option("Lưới mặc định", 'default_grid')); 
-                currentGridId = 'default_grid'; 
-            }
-            else { 
-                let firstId = null;
-                for(let id in data) { 
-                    sel.appendChild(new Option(data[id].name, id)); 
-                    if(!firstId) firstId = id;
-                }
-                // AUTO FIX GRID ID
-                if(!data[currentGridId]) currentGridId = firstId;
-            }
+            if(!data) { set(ref(db,'grids_meta/default_grid'), {name:"Lưới mặc định"}); return; }
+            for(let id in data) sel.appendChild(new Option(data[id].name, id));
+            
+            // AUTO FIX GRID ID
+            if(!data[currentGridId]) currentGridId = Object.keys(data)[0];
+            
             sel.value = currentGridId; 
             localStorage.setItem('currentGridId', currentGridId);
             loadDevices();
@@ -315,10 +307,8 @@
     function loadDevices() {
         onValue(ref(db, `grids/${currentGridId}/nodes`), (snap) => {
             const data = snap.val();
-            // USE allDevices
             allDevices = data ? Object.values(data) : [];
-            document.getElementById('status-msg').innerText = `Đã tải: ${allDevices.length} thiết bị`;
-            
+            document.getElementById('status-msg').innerText = `Đã tải ${allDevices.length} thiết bị`;
             calculatePower(); renderTable(); renderSLD(); renderMap(); updateParentSelect();
         });
     }
@@ -328,28 +318,11 @@
         let b = { x: sx, y: sy, w: 50, h: 50 };
         let type = n.type.toLowerCase();
         let rot = n.rotation || 0;
-
-        if (['cb','ds'].includes(type)) { b.w=24; b.h=24; }
-        else if (type === 'tr') { b.w=30; b.h=50; }
-        else if (type === 'fco') { b.w=14; b.h=30; }
-        else if (type === 'pole') { b.w=12; b.h=12; }
-        else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
-
-        if (type === 'bus') {
-            let safeStart = b.x + 20; let safeEnd = b.x + b.w - 20;
-            if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; 
-            let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x));
-            let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y;
-            return { x: projX, y: projY };
-        }
-
+        if (['cb','ds'].includes(type)) { b.w=24; b.h=24; } else if (type === 'tr') { b.w=30; b.h=50; } else if (type === 'fco') { b.w=14; b.h=30; } else if (type === 'pole') { b.w=12; b.h=12; } else if (type === 'bus') { b.w = n.width || 300; b.h = 8; }
+        if (type === 'bus') { let safeStart = b.x + 20; let safeEnd = b.x + b.w - 20; if (safeStart > safeEnd) safeStart = safeEnd = b.x + b.w/2; let projX = Math.max(safeStart, Math.min(safeEnd, targetPos.x)); let projY = (targetPos.y > b.y) ? (b.y + b.h) : b.y; return { x: projX, y: projY }; }
         let cx = b.x + b.w/2, cy = b.y + b.h/2;
-        if (['cb','ds','fco','tr','gen'].includes(type)) {
-            if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) };
-            else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy };
-        }
-        if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy };
-        else return { x: cx, y: (targetPos.y > cy ? b.y+b.h : b.y) };
+        if (['cb','ds','fco','tr','gen'].includes(type)) { if (rot === 0 || rot === 180) return { x: cx, y: (targetPos.y < cy ? b.y : b.y + b.h) }; else return { x: (targetPos.x < cx ? b.x : b.x + b.w), y: cy }; }
+        if (Math.abs(targetPos.x - cx) > Math.abs(targetPos.y - cy)) return { x: (targetPos.x > cx ? b.x+b.w : b.x), y: cy }; else return { x: cx, y: (targetPos.y > cy ? b.y+b.h : b.y) };
     }
 
     const wireLayer = document.getElementById('wire-layer');
@@ -449,66 +422,34 @@
     function drawOrthogonalWire(p, c) {
         const cls = (p.isEnergized || c.isEnergized) ? 'energized-line' : 'dead-line';
         const type = 'wire-' + (c.connection || 'solid');
-        
         let ps = p.type==='bus' ? {w:p.width||300, h:8} : getNodeSize(p.type);
         let cs = c.type==='bus' ? {w:c.width||300, h:8} : getNodeSize(c.type);
         let pCenter = { x: p.sld.x + ps.w/2, y: p.sld.y + ps.h/2 }; 
         let cCenter = { x: c.sld.x + cs.w/2, y: c.sld.y + cs.h/2 }; 
-
         const start = getAnchor(p, cCenter);
         const end = getAnchor(c, pCenter);
-        
         if (p.type === 'bus' && c.busConnOffset !== undefined) start.x = p.sld.x + c.busConnOffset;
-
         if (p.type==='bus' || c.type==='bus') {
             let bus = p.type==='bus' ? p : c; let node = p.type==='bus' ? c : p;
             let ns = getNodeSize(node.type); let nCx = node.sld.x + ns.w/2;
             let bStart = bus.sld.x + 20, bEnd = bus.sld.x + (bus.width||300) - 20;
-            if (nCx >= bStart && nCx <= bEnd) {
-                 let sy = bus.sld.y + 4; let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h);
-                 createSeg(nCx, sy, nCx, ey, cls, type); return;
-            }
+            if (nCx >= bStart && nCx <= bEnd) { let sy = bus.sld.y + 4; let ey = node.sld.y + (node.sld.y > bus.sld.y ? 0 : ns.h); createSeg(nCx, sy, nCx, ey, cls, type); return; }
         }
-
-        let stubP = c.wireStubs?.p || 50; 
-        let stubC = c.wireStubs?.c || 50;
-
+        let stubP = c.wireStubs?.p || 50; let stubC = c.wireStubs?.c || 50;
         const applyStub = (pt, node, len, isStart) => {
             let r = node.rotation || 0; let dx=0, dy=0;
             if (node.type === 'bus') { dy = (isStart ? cCenter.y : pCenter.y) > node.sld.y ? len : -len; }
             else { if (r===0) dy = isStart ? len : -len; else if (r===90) dx = isStart ? len : -len; else if (r===180) dy = isStart ? -len : len; else if (r===270) dx = isStart ? -len : len; }
             return {x: pt.x + dx, y: pt.y + dy, axis: (dx!==0 ? 'x' : 'y')};
         }
-
-        let sbInfo = applyStub(start, p, stubP, true);
-        let sb = {x: sbInfo.x, y: sbInfo.y};
-        let ebInfo = applyStub(end, c, stubC, false);
-        let eb = {x: ebInfo.x, y: ebInfo.y};
-
+        let sbInfo = applyStub(start, p, stubP, true); let sb = {x: sbInfo.x, y: sbInfo.y}; let ebInfo = applyStub(end, c, stubC, false); let eb = {x: ebInfo.x, y: ebInfo.y};
         let isVerticalMid = (Math.abs(sb.y - eb.y) > Math.abs(sb.x - eb.x));
         let midVal = c.wireOffset !== undefined ? c.wireOffset : (isVerticalMid ? (sb.y + eb.y)/2 : (sb.x + eb.x)/2);
-
-        createSeg(start.x, start.y, sb.x, sb.y, cls, type);
-        createSeg(eb.x, eb.y, end.x, end.y, cls, type);
-
-        if (isVerticalMid) { 
-            createSeg(sb.x, sb.y, sb.x, midVal, cls, type);
-            createSeg(sb.x, midVal, eb.x, midVal, cls, type);
-            createSeg(eb.x, midVal, eb.x, eb.y, cls, type);
-            createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'mid', midVal);
-        } else {
-            createSeg(sb.x, sb.y, midVal, sb.y, cls, type);
-            createSeg(midVal, sb.y, midVal, eb.y, cls, type);
-            createSeg(midVal, eb.y, eb.x, eb.y, cls, type);
-            createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'mid', midVal);
-        }
-
-        createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis);
-        createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
-        
-        if (p.type === 'bus') {
-            createHandle(start.x - 5, start.y - 5, 10, 10, 'ew-resize', c, 'busConn', (c.busConnOffset || (start.x - p.sld.x)), 'x');
-        }
+        createSeg(start.x, start.y, sb.x, sb.y, cls, type); createSeg(eb.x, eb.y, end.x, end.y, cls, type);
+        if (isVerticalMid) { createSeg(sb.x, sb.y, sb.x, midVal, cls, type); createSeg(sb.x, midVal, eb.x, midVal, cls, type); createSeg(eb.x, midVal, eb.x, eb.y, cls, type); createHandle(Math.min(sb.x, eb.x), midVal - 5, Math.abs(sb.x - eb.x), 10, 'ns-resize', c, 'mid', midVal); } 
+        else { createSeg(sb.x, sb.y, midVal, sb.y, cls, type); createSeg(midVal, sb.y, midVal, eb.y, cls, type); createSeg(midVal, eb.y, eb.x, eb.y, cls, type); createHandle(midVal - 5, Math.min(sb.y, eb.y), 10, Math.abs(sb.y - eb.y), 'ew-resize', c, 'mid', midVal); }
+        createHandle(sb.x-5, sb.y-5, 10, 10, (sbInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubP', stubP, sbInfo.axis); createHandle(eb.x-5, eb.y-5, 10, 10, (ebInfo.axis==='x'?'ew-resize':'ns-resize'), c, 'stubC', stubC, ebInfo.axis);
+        if (p.type === 'bus') { createHandle(start.x - 5, start.y - 5, 10, 10, 'ew-resize', c, 'busConn', (c.busConnOffset || (start.x - p.sld.x)), 'x'); }
     }
     
     function createSeg(x1,y1,x2,y2,c,t) {
@@ -526,13 +467,11 @@
         hdl.style.left = x + 'px'; hdl.style.top = y + 'px';
         hdl.style.width = Math.max(w, 10) + 'px'; hdl.style.height = Math.max(h, 10) + 'px'; 
         if (type === 'busConn') { hdl.style.background = '#e67e22'; hdl.style.borderRadius = '50%'; hdl.style.border = '1px solid white'; }
-
         hdl.onmousedown = (e) => {
             if (isPanning) return;
             e.stopPropagation(); e.preventDefault();
             let dragAxis = axis || (cursor.includes('ew') ? 'x' : 'y');
             draggingWire = { id: device.id, type: type, startMouse: (dragAxis==='x'?e.clientX:e.clientY), originalVal: currentVal, axis: dragAxis };
-            
             const onWireMove = (ev) => {
                 const delta = (draggingWire.axis==='x' ? ev.clientX : ev.clientY) - draggingWire.startMouse;
                 let newVal = Math.round((draggingWire.originalVal + delta/currentZoom)/5)*5;
@@ -540,29 +479,12 @@
                 if(dev) { 
                     if(draggingWire.type === 'mid') dev.wireOffset = newVal;
                     else if(draggingWire.type === 'busConn') dev.busConnOffset = newVal;
-                    else {
-                        if(!dev.wireStubs) dev.wireStubs = {p:50, c:50};
-                        if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(20, newVal); 
-                        if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(20, newVal);
-                    }
+                    else { if(!dev.wireStubs) dev.wireStubs = {p:50, c:50}; if(draggingWire.type === 'stubP') dev.wireStubs.p = Math.max(20, newVal); if(draggingWire.type === 'stubC') dev.wireStubs.c = Math.max(20, newVal); }
                     renderWires(); 
                 }
             };
-            const onWireUp = () => {
-                document.removeEventListener('mousemove', onWireMove);
-                document.removeEventListener('mouseup', onWireUp);
-                const dev = allDevices.find(d => d.id === draggingWire.id);
-                if(dev) {
-                    let updates = {};
-                    if(draggingWire.type === 'mid') updates.wireOffset = dev.wireOffset;
-                    else if(draggingWire.type === 'busConn') updates.busConnOffset = dev.busConnOffset;
-                    else updates.wireStubs = dev.wireStubs;
-                    update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), updates);
-                }
-                draggingWire = null;
-            };
-            document.addEventListener('mousemove', onWireMove);
-            document.addEventListener('mouseup', onWireUp);
+            const onWireUp = () => { document.removeEventListener('mousemove', onWireMove); document.removeEventListener('mouseup', onWireUp); const dev = allDevices.find(d => d.id === draggingWire.id); if(dev) { let updates = {}; if(draggingWire.type === 'mid') updates.wireOffset = dev.wireOffset; else if(draggingWire.type === 'busConn') updates.busConnOffset = dev.busConnOffset; else updates.wireStubs = dev.wireStubs; update(ref(db, `grids/${currentGridId}/nodes/${dev.id}`), updates); } draggingWire = null; };
+            document.addEventListener('mousemove', onWireMove); document.addEventListener('mouseup', onWireUp);
         };
         wireLayer.appendChild(hdl);
     }
@@ -574,9 +496,9 @@
         document.getElementById('inp-capacity').value = d.capacity || "";
         document.getElementById('inp-rotation').value = d.rotation || 0;
         document.getElementById('inp-width').value = d.width || 300;
-        document.getElementById('inp-voltage').value = d.voltage || ""; // CB PARAM
-        document.getElementById('inp-current').value = d.current || ""; // CB PARAM
-        document.getElementById('inp-curve').value = d.curve || "";     // CB PARAM
+        document.getElementById('inp-voltage').value = d.voltage || "";
+        document.getElementById('inp-current').value = d.current || "";
+        document.getElementById('inp-curve').value = d.curve || "";
         updateParentSelect();
         document.getElementById('inp-parent').value = d.parent || "";
         document.getElementById('inp-showSLD').checked = (d.showOnSLD !== false);
@@ -589,33 +511,24 @@
     window.toggleFields = () => { 
         const type = document.getElementById('inp-type').value;
         document.getElementById('grp-width').style.display = (type==='bus'?'block':'none');
-        document.getElementById('grp-cb-params').style.display = (type==='cb'?'block':'none'); // CB PARAM
+        document.getElementById('grp-cb-params').style.display = (type==='cb'?'block':'none');
     }
-    
     window.previewWidth = () => { if(selectedIds.length>0) { const d=allDevices.find(n=>n.id===selectedIds[0]); if(d&&d.type==='bus') { d.width=parseInt(document.getElementById('inp-width').value)||300; renderSLD(); } } }
     window.previewRotation = () => { const r=parseInt(document.getElementById('inp-rotation').value)||0; selectedIds.forEach(id=>{ const d=allDevices.find(n=>n.id===id); if(d)d.rotation=r; }); renderSLD(); }
-    
     function calculatePower() { allDevices.forEach(n=>n.isEnergized=false); allDevices.filter(n=>n.type==='source'||(n.type==='gen'&&n.state==='on')).forEach(s=>{s.isEnergized=true;propagate(s)}); }
     function propagate(p) { if(p.isEnergized){ allDevices.filter(n=>n.parent===p.id).forEach(c=>{ if((['source','bus','wire','cable','pole'].includes(p.type))||p.state==='closed'||(p.type==='gen'&&p.state==='on')) { c.isEnergized=true; propagate(c); } }); } }
 
     window.saveDevice = () => {
         let id=document.getElementById('inp-id').value; if(id==="(Tự sinh)"||!id) id='N'+Date.now().toString().slice(-6);
         const nd = {
-            id: id, label: document.getElementById('inp-label').value, 
-            type: document.getElementById('inp-type').value,
-            parent: document.getElementById('inp-parent').value || null, 
-            capacity: document.getElementById('inp-capacity').value || "",
-            rotation: parseInt(document.getElementById('inp-rotation').value) || 0,
-            width: parseInt(document.getElementById('inp-width').value) || 300,
-            connection: document.getElementById('inp-connection').value, 
-            state: "closed", 
-            showOnSLD: document.getElementById('inp-showSLD').checked,
-            isGrounded: document.getElementById('inp-grounded').checked,
+            id: id, label: document.getElementById('inp-label').value, type: document.getElementById('inp-type').value,
+            parent: document.getElementById('inp-parent').value || null, capacity: document.getElementById('inp-capacity').value || "",
+            rotation: parseInt(document.getElementById('inp-rotation').value) || 0, width: parseInt(document.getElementById('inp-width').value) || 300,
+            connection: document.getElementById('inp-connection').value, state: "closed", 
+            showOnSLD: document.getElementById('inp-showSLD').checked, isGrounded: document.getElementById('inp-grounded').checked,
             sld: { x: parseInt(document.getElementById('inp-x').value) || 100, y: parseInt(document.getElementById('inp-y').value) || 100 },
             geo: { lat: parseFloat(document.getElementById('inp-lat').value) || map.getCenter().lat, lng: parseFloat(document.getElementById('inp-lng').value) || map.getCenter().lng },
-            voltage: document.getElementById('inp-voltage').value, // CB PARAM
-            current: document.getElementById('inp-current').value, // CB PARAM
-            curve: document.getElementById('inp-curve').value      // CB PARAM
+            voltage: document.getElementById('inp-voltage').value, current: document.getElementById('inp-current').value, curve: document.getElementById('inp-curve').value
         };
         set(ref(db, `grids/${currentGridId}/nodes/${id}`), nd).then(() => {
             alert("Đã lưu thành công!");
@@ -624,22 +537,41 @@
         });
     }
 
-    function renderMap() { 
-        for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={};
-        localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>window.selectDevice(d,false)); mapMarkers[d.id]=m; });
-    }
+    function renderMap() { for(let k in mapMarkers) map.removeLayer(mapMarkers[k]); mapMarkers={}; localNodes.forEach(d => { if(!d.geo)return; const m=L.marker([d.geo.lat,d.geo.lng]).addTo(map); m.on('click',()=>window.selectDevice(d,false)); mapMarkers[d.id]=m; }); }
     window.resetForm=()=>{ selectedIds=[]; document.getElementById('inp-id').value="(Tự sinh)"; document.getElementById('inp-label').value=""; renderTable(); renderSLD(); }
     window.deleteDevice=()=>{ if(selectedIds.length>0&&confirm("Xóa?")){ const u={}; selectedIds.forEach(id=>u[`grids/${currentGridId}/nodes/${id}`]=null); update(ref(db),u); resetForm(); } }
-    
     window.selectDevice=(d,z)=>{ selectedIds = [d.id]; populateForm(d); renderSLD(); renderTable(); }
     window.zoomExtent=()=>{ update(ref(db),{}); }
     window.switchTab=(t,b)=>{ document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='map') setTimeout(()=>map.invalidateSize(),200); }
     function renderTable(){ const c=document.getElementById('device-list-container'); c.innerHTML=''; allDevices.forEach(d=>{ const div=document.createElement('div'); div.className=`device-item ${selectedIds.includes(d.id)?'selected':''}`; div.innerHTML=`<b>${d.label}</b><br><small>${d.id}</small>`; div.onclick=()=>window.selectDevice(d,false); c.appendChild(div); }); }
     function updateParentSelect(){ const s=document.getElementById('inp-parent'); s.innerHTML='<option value="">-- Gốc --</option>'; allDevices.forEach(d=>{ if(!selectedIds.includes(d.id)) s.appendChild(new Option(d.label,d.id)); }); }
+    
+    // IMPORT LOGIC (FIXED)
     window.openImportModal=()=>document.getElementById('importModal').style.display='flex';
     window.closeImportModal=()=>document.getElementById('importModal').style.display='none';
+    window.processImport = () => {
+        try {
+            const jsonStr = document.getElementById('jsonInput').value;
+            const data = JSON.parse(jsonStr);
+            const updates = {};
+            for (const key in data) {
+                const node = data[key];
+                if (!node.id || !node.type) continue; // Basic check
+                // Ensure default values to prevent crash
+                if (!node.sld) node.sld = {x:100, y:100};
+                if (!node.state) node.state = 'closed';
+                updates[`grids/${currentGridId}/nodes/${node.id}`] = node;
+            }
+            update(ref(db), updates).then(() => {
+                alert("Import thành công!");
+                closeImportModal();
+            });
+        } catch (e) {
+            alert("Lỗi JSON: " + e.message);
+        }
+    }
+    
     window.openSmartWindow=()=>{ const c=map.getCenter(); window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$3{c.lat},${c.lng}`,'GM','width=400,height=600'); }
-    window.processImport=()=>{ /* Logic */ }
 
     let localNodes = allDevices; 
     loadGrids();
