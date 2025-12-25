@@ -3,582 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kiểm Tra Tủ Điện (v1.2.0 - Firebase)</title>
+    <title>Thống Kê Bảo Trì - Biểu Đồ Hoàn Thành</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
     <style>
-        :root {
-            --primary-color: #0056b3;
-            --secondary-color: #6c757d;
-            --danger-color: #dc3545;
-            --success-color: #28a745;
-            --bg-color: #f4f4f9;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        /* --- Login Screen --- */
-        #login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .login-box {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            text-align: center;
-            width: 300px;
-        }
-
-        .login-box input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        /* --- Main Layout --- */
-        #app-container {
-            display: none;
-            background: white;
-            width: 100%;
-            max-width: 900px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h2 { margin: 0; font-size: 1.2rem; }
-        .header-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-
-        /* --- Views (Form vs List) --- */
-        .view-section {
-            display: none; /* Controlled by JS */
-            padding: 20px;
-            animation: fadeIn 0.3s;
-        }
-
-        .view-section.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* --- Form Styles --- */
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
-        .form-control { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
         
-        .checklist-item {
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            padding: 15px;
-            background-color: #fff;
-        }
-        .checklist-title { font-weight: bold; margin-bottom: 5px; color: #333; }
-        .checklist-desc { font-size: 0.9rem; color: #666; margin-bottom: 10px; font-style: italic; }
-        .options-group { display: flex; gap: 20px; margin-bottom: 10px; }
-        .radio-label { cursor: pointer; display: flex; align-items: center; }
-        .radio-label input { margin-right: 5px; }
+        .controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 20px; padding: 20px; background-color: #ecf0f1; border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        .control-group label { margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
         
-        .note-input {
-            width: 100%; padding: 8px; border: 1px dashed #ccc;
-            border-radius: 4px; box-sizing: border-box; background-color: #fafafa;
-        }
-        .note-input:focus { background-color: #fff; border-color: var(--primary-color); outline: none; }
+        input[type="file"], input[type="date"] { padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1rem; }
+        button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
 
-        /* --- Table Styles --- */
-        .table-controls {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
+        .chart-container { position: relative; height: 500px; width: 100%; margin-top: 30px; }
+        .summary { margin-top: 20px; font-weight: bold; text-align: right; color: #27ae60; font-size: 1.2em; }
         
-        .data-table th, .data-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-
-        .data-table th { background-color: #f2f2f2; }
-        
-        .data-table tr:hover {
-            background-color: #f1f8ff;
-            cursor: pointer;
-        }
-
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            color: white;
-            font-weight: bold;
-        }
-        .bg-ok { background-color: var(--success-color); }
-        .bg-nok { background-color: var(--danger-color); }
-
-        /* --- Modal (Detail View) --- */
-        #detail-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1500;
-            overflow-y: auto;
-        }
-        .modal-content {
-            background: white;
-            margin: 5% auto;
-            padding: 20px;
-            width: 90%;
-            max-width: 600px;
-            border-radius: 8px;
-            position: relative;
-        }
-        .close-modal {
-            position: absolute;
-            top: 10px; right: 15px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #aaa;
-        }
-        .detail-row {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .detail-label { font-weight: bold; color: #555; }
-        .detail-val { color: #000; margin-left: 10px; }
-
-        /* --- Buttons --- */
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-success { background-color: var(--success-color); color: white; }
-        .btn-secondary { background-color: var(--secondary-color); color: white; }
-        .btn:hover { opacity: 0.9; }
-        .btn:disabled { background-color: #cccccc; cursor: not-allowed; }
-
-        @media (max-width: 600px) {
-            .options-group { flex-direction: column; gap: 5px; }
-            .data-table th:nth-child(3), .data-table td:nth-child(3) { display: none; } /* Hide Technician on mobile */
-        }
-        
-        #loading-msg {
-            display: none;
-            text-align: center;
-            color: var(--primary-color);
-            font-style: italic;
-        }
+        #error-msg { color: #e74c3c; margin-top: 10px; display: none; padding: 10px; background-color: #fadbd8; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="login-box">
-            <h3>Bảo Mật</h3>
-            <p>Nhập mật khẩu để truy cập hệ thống</p>
-            <input type="password" id="password-input" placeholder="Mật khẩu (1234)">
-            <button class="btn btn-primary" onclick="checkPassword()" style="width:100%">Đăng nhập</button>
-            <div id="login-error" style="color: red; margin-top: 10px; display: none;">Sai mật khẩu!</div>
+<div class="container">
+    <h1>📊 Biểu Đồ Theo Dõi Bảo Trì Hoàn Thành</h1>
+
+    <div class="controls">
+        <div class="control-group" style="flex: 2;">
+            <label>1. Tải lên file Excel (.xlsx)</label>
+            <input type="file" id="uploadFile" accept=".xlsx, .xls, .csv">
+        </div>
+        <div class="control-group">
+            <label>Từ ngày:</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="control-group">
+            <label>Đến ngày:</label>
+            <input type="date" id="endDate">
+        </div>
+        <div class="control-group">
+            <button id="btnFilter" onclick="processData()" disabled>Vẽ Biểu Đồ</button>
         </div>
     </div>
 
-    <div id="app-container">
-        <div class="header">
-            <div>
-                <h2>KIỂM TRA TỦ ĐIỆN (ONLINE)</h2>
-                <small>TA-MNT-PC01-WI01-F01.02</small>
-            </div>
-            <button class="header-btn" onclick="logout()">Thoát</button>
-        </div>
+    <div id="error-msg"></div>
+    <div class="summary" id="summaryText"></div>
 
-        <div id="view-form" class="view-section active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3>Phiếu Mới</h3>
-                <button class="btn btn-secondary" onclick="switchView('list')">Xem Danh Sách</button>
-            </div>
-            
-            <form id="checklistForm" onsubmit="handleFormSubmit(event)">
-                <div class="form-group">
-                    <label>Khu vực / Xưởng:</label>
-                    <input type="text" name="area" class="form-control" required placeholder="Ví dụ: Xưởng 1">
-                </div>
-                <div class="form-group">
-                    <label>Ngày kiểm tra:</label>
-                    <input type="date" name="date" id="dateInput" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Tên Kỹ thuật viên:</label>
-                    <input type="text" name="technician" class="form-control" required>
-                </div>
-
-                <hr>
-
-                <div id="checklist-container">
-                    </div>
-
-                <div class="form-group">
-                    <label>Ghi chú chung / Vấn đề cần khắc phục:</label>
-                    <textarea name="general_remark" class="form-control" rows="3"></textarea>
-                </div>
-
-                <div style="text-align: right; margin-top: 20px;">
-                    <button type="submit" id="submit-btn" class="btn btn-success">Lưu vào Firebase</button>
-                </div>
-            </form>
-        </div>
-
-        <div id="view-list" class="view-section">
-            <div class="table-controls">
-                <h3>Lịch Sử Kiểm Tra</h3>
-                <button class="btn btn-primary" onclick="prepareNewForm()">+ Tạo Phiếu Mới</button>
-            </div>
-            
-            <div id="loading-msg">Đang tải dữ liệu từ Firebase...</div>
-
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Ngày</th>
-                            <th>Khu vực</th>
-                            <th>Kỹ thuật viên</th>
-                            <th>Kết quả</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body">
-                        </tbody>
-                </table>
-                <p id="empty-msg" style="text-align: center; color: #888; margin-top: 20px; display:none">Chưa có dữ liệu nào.</p>
-            </div>
-        </div>
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
     </div>
+</div>
 
-    <div id="detail-modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h3 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px;">Chi Tiết Phiếu Kiểm Tra</h3>
-            <div id="modal-body">
-                </div>
-            <div style="text-align: right; margin-top: 20px;">
-                <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
-            </div>
-        </div>
-    </div>
+<script>
+    let rawData = []; // Chứa dữ liệu gốc từ Excel
+    let chartInstance = null; // Biến chứa biểu đồ
 
-    <script type="module">
-        // 1. Import Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+    // Lắng nghe sự kiện chọn file
+    document.getElementById('uploadFile').addEventListener('change', handleFileSelect, false);
 
-        // 2. Firebase Config (User Provided)
-        const firebaseConfig = { 
-            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
-            authDomain: "tavietnam-78ae8.firebaseapp.com", 
-            projectId: "tavietnam-78ae8", 
-            storageBucket: "tavietnam-78ae8.firebasestorage.app", 
-            messagingSenderId: "670121705534", 
-            appId: "1:670121705534:web:1027ad98550573ad37116f" 
-        };
+    function handleFileSelect(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
 
-        // 3. Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const COLLECTION_NAME = "checklist_tudien";
+        // Reset thông báo lỗi
+        document.getElementById('error-msg').style.display = 'none';
 
-        // --- CẤU HÌNH APP ---
-        const APP_PASSWORD = "1234";
-        let loadedDataCache = []; // Cache dữ liệu để xem chi tiết
-
-        const checklistItems = [
-            { id: 1, title: "1. Ngoại quan hư hỏng vật lý", desc: "Tủ, cửa, bản lề, thiết bị đóng cắt, dây cáp..." },
-            { id: 2, title: "2. Tình trạng bụi", desc: "Bụi bẩn, mạng nhện, vật lạ, lưới quạt..." },
-            { id: 3, title: "3. Đồng hồ và đèn báo", desc: "Đèn báo pha, chỉ số V, I, Kwh..." },
-            { id: 4, title: "4. Scan nhiệt", desc: "Nhiệt độ môi trường < 50°C, điểm nối < 70°C" },
-            { id: 5, title: "5. Điện trở cách điện", desc: "Pha-pha, pha-N, pha-PE > 2 MΩ" }
-        ];
-
-        // --- FUNCTIONS (Gắn vào window để gọi từ HTML) ---
-
-        window.toggleNoteColor = function(radio, noteId) {
-            const noteInput = document.getElementById(noteId);
-            if (radio.value === 'NOK') {
-                noteInput.style.backgroundColor = '#ffe6e6';
-                noteInput.style.borderColor = '#dc3545';
-                noteInput.focus();
-            } else {
-                noteInput.style.backgroundColor = '#fafafa';
-                noteInput.style.borderColor = '#ccc';
-            }
-        };
-
-        window.checkPassword = function() {
-            const input = document.getElementById('password-input').value;
-            if (input === APP_PASSWORD) {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('app-container').style.display = 'block';
-                // Load dữ liệu lần đầu
-                loadDataFromFirebase();
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
-        };
-
-        window.logout = function() {
-            location.reload();
-        };
-
-        window.switchView = function(viewName) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.getElementById(`view-${viewName}`).classList.add('active');
-            
-            if (viewName === 'list') {
-                loadDataFromFirebase();
-            }
-        };
-
-        window.prepareNewForm = function() {
-            document.getElementById('checklistForm').reset();
-            document.getElementById('dateInput').valueAsDate = new Date();
-            document.querySelectorAll('.note-input').forEach(input => {
-                input.style.backgroundColor = '#fafafa';
-                input.style.borderColor = '#ccc';
-            });
-            window.switchView('form');
-        };
-
-        window.closeModal = function() {
-            document.getElementById('detail-modal').style.display = 'none';
-        };
-        
-        // Đóng modal khi click ra ngoài
-        window.onclick = function(event) {
-            const modal = document.getElementById('detail-modal');
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        };
-
-        window.showDetail = function(docId) {
-            const data = loadedDataCache.find(d => d.id === docId);
-            if (!data) return;
-
-            const modalBody = document.getElementById('modal-body');
-            let html = `
-                <div class="detail-row"><span class="detail-label">Ngày kiểm tra:</span> <span class="detail-val">${data.date}</span></div>
-                <div class="detail-row"><span class="detail-label">Khu vực:</span> <span class="detail-val">${data.area}</span></div>
-                <div class="detail-row"><span class="detail-label">Kỹ thuật viên:</span> <span class="detail-val">${data.technician}</span></div>
-                <br>
-                <h4>Kết quả chi tiết:</h4>
-            `;
-
-            checklistItems.forEach(item => {
-                const result = data[`item${item.id}`];
-                const note = data[`note${item.id}`] || "";
-                const style = result === 'NOK' ? 'color: red; font-weight:bold' : 'color: green; font-weight:bold';
-
-                html += `
-                    <div style="background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                        <div style="font-weight:600">${item.title}</div>
-                        <div>Kết quả: <span style="${style}">${result}</span></div>
-                        ${result === 'NOK' ? `<div>Lý do: <i>${note}</i></div>` : ''}
-                    </div>
-                `;
-            });
-
-            if (data.general_remark) {
-                html += `<div style="margin-top:15px"><strong>Ghi chú chung:</strong><br>${data.general_remark}</div>`;
-            }
-
-            modalBody.innerHTML = html;
-            document.getElementById('detail-modal').style.display = 'block';
-        };
-
-        // --- LOGIC CHÍNH: SUBMIT ---
-        window.handleFormSubmit = async function(event) {
-            event.preventDefault();
-            const submitBtn = document.getElementById('submit-btn');
-            
-            // Disable button để tránh gửi 2 lần
-            submitBtn.disabled = true;
-            submitBtn.innerText = "Đang gửi...";
-
-            const formData = new FormData(event.target);
-            const data = {
-                createdAt: serverTimestamp(), // Firebase timestamp
-                timestampStr: new Date().toLocaleString('vi-VN'),
-                // Lấy các trường từ form
-                area: formData.get('area'),
-                date: formData.get('date'),
-                technician: formData.get('technician'),
-                general_remark: formData.get('general_remark'),
-            };
-
-            // Loop lấy data item
-            checklistItems.forEach(item => {
-                data[`item${item.id}`] = formData.get(`item${item.id}`);
-                data[`note${item.id}`] = formData.get(`note${item.id}`);
-            });
-
-            // Validate Logic
-            let isValid = true;
-            for (let i = 1; i <= 5; i++) {
-                if (data[`item${i}`] === 'NOK' && (!data[`note${i}`] || data[`note${i}`].trim() === "")) {
-                    alert(`Mục ${i} chọn NOK thì phải nhập ghi chú!`);
-                    document.getElementById(`note${i}`).focus();
-                    isValid = false;
-                    break;
-                }
-            }
-
-            if (!isValid) {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Lưu vào Firebase";
-                return;
-            }
-
+        const reader = new FileReader();
+        reader.onload = function(e) {
             try {
-                // GỬI LÊN FIREBASE
-                await addDoc(collection(db, COLLECTION_NAME), data);
+                // Kiểm tra xem thư viện đã tải được chưa
+                if (typeof XLSX === 'undefined') {
+                    throw new Error("Thư viện xử lý Excel chưa tải được. Vui lòng kiểm tra kết nối mạng.");
+                }
+
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+
+                // Tìm sheet chứa dữ liệu (Ưu tiên tên chứa 'Data' hoặc lấy sheet đầu tiên)
+                let sheetName = workbook.SheetNames.find(name => name.includes("Data")) || workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Đọc dữ liệu: Dòng tiêu đề ở dòng thứ 2 (Index 1) => range: 1
+                const json = XLSX.utils.sheet_to_json(worksheet, { range: 1, defval: "" });
+
+                if (json.length === 0) {
+                    throw new Error("Không tìm thấy dữ liệu trong file.");
+                }
+
+                // Kiểm tra cột bắt buộc
+                if (!json[0].hasOwnProperty('TRẠNG THÁI') || !json[0].hasOwnProperty('NGÀY HOÀN THÀNH')) {
+                    throw new Error("File thiếu cột 'TRẠNG THÁI' hoặc 'NGÀY HOÀN THÀNH'. Vui lòng kiểm tra lại file mẫu.");
+                }
+
+                rawData = json;
+                document.getElementById('btnFilter').disabled = false;
                 
-                alert("Đã lưu thành công lên Firebase!");
-                event.target.reset();
-                document.getElementById('dateInput').valueAsDate = new Date();
-                window.switchView('list');
-            } catch (e) {
-                console.error("Lỗi khi gửi: ", e);
-                alert("Có lỗi xảy ra: " + e.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Lưu vào Firebase";
+                // Tự động vẽ luôn
+                processData(); 
+
+            } catch (err) {
+                const errorDiv = document.getElementById('error-msg');
+                errorDiv.innerText = "Lỗi: " + err.message;
+                errorDiv.style.display = 'block';
+                console.error(err);
             }
         };
+        reader.readAsArrayBuffer(file);
+    }
 
-        // --- LOGIC CHÍNH: LOAD DATA ---
-        async function loadDataFromFirebase() {
-            const tbody = document.getElementById('table-body');
-            const emptyMsg = document.getElementById('empty-msg');
-            const loadingMsg = document.getElementById('loading-msg');
+    function formatDate(dateObj) {
+        if (!dateObj || isNaN(dateObj.getTime())) return null;
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
-            tbody.innerHTML = '';
-            emptyMsg.style.display = 'none';
-            loadingMsg.style.display = 'block';
-            loadedDataCache = []; // Reset cache
+    function processData() {
+        if (rawData.length === 0) return;
 
-            try {
-                // Query dữ liệu, sắp xếp theo thời gian tạo mới nhất
-                const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
-                const querySnapshot = await getDocs(q);
+        const startDateInput = document.getElementById('startDate').value;
+        const endDateInput = document.getElementById('endDate').value;
+        
+        const start = startDateInput ? new Date(startDateInput) : new Date('2000-01-01');
+        const end = endDateInput ? new Date(endDateInput) : new Date('2100-01-01');
+        end.setHours(23, 59, 59, 999);
 
-                loadingMsg.style.display = 'none';
+        const dailyCounts = {};
+        let totalCompleted = 0;
 
-                if (querySnapshot.empty) {
-                    emptyMsg.style.display = 'block';
-                    return;
+        rawData.forEach(row => {
+            // Lấy trạng thái
+            let status = (row['TRẠNG THÁI'] || '').toString().trim().toLowerCase();
+            
+            // Chỉ đếm nếu trạng thái là Done hoặc Hoàn thành
+            if (status === 'done' || status === 'hoàn thành') {
+                
+                let dateVal = row['NGÀY HOÀN THÀNH'];
+                let dateObj = null;
+
+                if (dateVal instanceof Date) {
+                    dateObj = dateVal;
+                } else if (typeof dateVal === 'string') {
+                    dateObj = new Date(dateVal);
                 }
 
-                querySnapshot.forEach((doc) => {
-                    const item = doc.data();
-                    // Gán ID document vào object để dùng cho việc click xem chi tiết
-                    item.id = doc.id; 
-                    loadedDataCache.push(item);
-
-                    // Kiểm tra trạng thái chung
-                    let hasNok = false;
-                    checklistItems.forEach(ci => {
-                        if(item[`item${ci.id}`] === 'NOK') hasNok = true;
-                    });
-                    
-                    const statusHtml = hasNok 
-                        ? `<span class="status-badge bg-nok">CÓ LỖI</span>` 
-                        : `<span class="status-badge bg-ok">TỐT</span>`;
-
-                    const tr = document.createElement('tr');
-                    tr.onclick = () => window.showDetail(item.id);
-                    tr.innerHTML = `
-                        <td>${item.date}</td>
-                        <td>${item.area}</td>
-                        <td>${item.technician}</td>
-                        <td>${statusHtml}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-
-            } catch (error) {
-                console.error("Lỗi tải dữ liệu:", error);
-                loadingMsg.innerText = "Lỗi tải dữ liệu: " + error.message;
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                    if (dateObj >= start && dateObj <= end) {
+                        const dateString = formatDate(dateObj);
+                        if (dateString) {
+                            dailyCounts[dateString] = (dailyCounts[dateString] || 0) + 1;
+                            totalCompleted++;
+                        }
+                    }
+                }
             }
+        });
+
+        const sortedDates = Object.keys(dailyCounts).sort();
+        const dataValues = sortedDates.map(date => dailyCounts[date]);
+
+        updateChart(sortedDates, dataValues);
+        document.getElementById('summaryText').innerText = `Tổng số đơn hoàn thành trong giai đoạn này: ${totalCompleted}`;
+    }
+
+    function updateChart(labels, data) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        if (chartInstance) {
+            chartInstance.destroy();
         }
 
-        // --- INIT: RENDER FORM ITEMS ---
-        (function init() {
-            const container = document.getElementById('checklist-container');
-            container.innerHTML = checklistItems.map(item => `
-                <div class="checklist-item">
-                    <div class="checklist-title">${item.title}</div>
-                    <div class="checklist-desc">${item.desc}</div>
-                    <div class="options-group">
-                        <label class="radio-label">
-                            <input type="radio" name="item${item.id}" value="OK" required onchange="toggleNoteColor(this, 'note${item.id}')"> 
-                            Đạt (OK)
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="item${item.id}" value="NOK" onchange="toggleNoteColor(this, 'note${item.id}')"> 
-                            Không Đạt (NOK)
-                        </label>
-                    </div>
-                    <input type="text" id="note${item.id}" name="note${item.id}" class="note-input" placeholder="Ghi chú (Bắt buộc nếu NOK)...">
-                </div>
-            `).join('');
-            
-            // Set date default
-            document.getElementById('dateInput').valueAsDate = new Date();
-        })();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Số lượng hoàn thành',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Số lượng (Đơn)' },
+                        ticks: { stepSize: 1 }
+                    },
+                    x: {
+                        title: { display: true, text: 'Ngày hoàn thành' }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const dateStr = context[0].label;
+                                const [y, m, d] = dateStr.split('-');
+                                return `Ngày: ${d}/${m}/${y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
 
-    </script>
 </body>
 </html>
