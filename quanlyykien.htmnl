@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Meeting Feedback</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        
+        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Meeting App</h1>
+
+        <div id="admin-view" class="hidden space-y-4">
+            <h2 class="text-lg font-semibold text-gray-700">Tạo cuộc họp mới</h2>
+            <input type="text" id="meeting-name" placeholder="Tên cuộc họp (VD: Daily Scrum)" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="btn-create" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">Tạo QR Code</button>
+            
+            <div id="qr-container" class="hidden flex flex-col items-center mt-4 p-4 border rounded bg-gray-50">
+                <p class="text-sm text-gray-500 mb-2">Quét mã để tham gia:</p>
+                <div id="qrcode"></div>
+                <p id="meeting-link" class="text-xs text-blue-500 mt-2 break-all text-center"></p>
+            </div>
+        </div>
+
+        <div id="user-view" class="hidden space-y-4">
+            <h2 class="text-lg font-semibold text-gray-700">Gửi phản hồi</h2>
+            <p id="display-meeting-name" class="text-sm text-gray-500 font-bold"></p>
+            
+            <textarea id="user-answer" rows="4" placeholder="Nhập câu trả lời của bạn..." class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+            <button id="btn-submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 transition">Gửi câu trả lời</button>
+            <div id="success-msg" class="hidden text-center text-green-600 font-bold mt-2">Đã gửi thành công!</div>
+        </div>
+
+        <div id="loading" class="text-center text-gray-500">Đang tải...</div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Cấu hình Firebase của bạn
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
+            authDomain: "tavietnam-78ae8.firebaseapp.com", 
+            projectId: "tavietnam-78ae8", 
+            storageBucket: "tavietnam-78ae8.firebasestorage.app", 
+            messagingSenderId: "670121705534", 
+            appId: "1:670121705534:web:1027ad98550573ad37116f" 
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Logic chính
+        const urlParams = new URLSearchParams(window.location.search);
+        const meetingId = urlParams.get('id');
+
+        const adminView = document.getElementById('admin-view');
+        const userView = document.getElementById('user-view');
+        const loading = document.getElementById('loading');
+
+        // Khởi tạo
+        async function init() {
+            loading.classList.add('hidden');
+            
+            if (meetingId) {
+                // Có ID -> Chế độ User
+                userView.classList.remove('hidden');
+                await loadMeetingInfo(meetingId);
+            } else {
+                // Không có ID -> Chế độ Admin
+                adminView.classList.remove('hidden');
+            }
+        }
+
+        // --- ADMIN FUNCTIONS ---
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            const name = document.getElementById('meeting-name').value;
+            if (!name) return alert("Vui lòng nhập tên cuộc họp");
+
+            try {
+                // 1. Lưu vào Firestore
+                const docRef = await addDoc(collection(db, "meetings"), {
+                    name: name,
+                    createdAt: serverTimestamp()
+                });
+
+                // 2. Tạo Link
+                const link = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
+                
+                // 3. Hiển thị QR
+                document.getElementById('qr-container').classList.remove('hidden');
+                document.getElementById('qrcode').innerHTML = ""; // Xóa QR cũ
+                new QRCode(document.getElementById("qrcode"), {
+                    text: link,
+                    width: 128,
+                    height: 128
+                });
+                document.getElementById('meeting-link').innerText = link;
+
+            } catch (e) {
+                console.error("Lỗi: ", e);
+                alert("Không thể tạo cuộc họp. Kiểm tra Console.");
+            }
+        });
+
+        // --- USER FUNCTIONS ---
+        async function loadMeetingInfo(id) {
+            try {
+                const docRef = doc(db, "meetings", id);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    document.getElementById('display-meeting-name').innerText = "Đang tham gia: " + docSnap.data().name;
+                } else {
+                    document.getElementById('user-view').innerHTML = "<p class='text-red-500 text-center'>Cuộc họp không tồn tại!</p>";
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('btn-submit').addEventListener('click', async () => {
+            const answer = document.getElementById('user-answer').value;
+            if (!answer) return alert("Vui lòng nhập nội dung");
+
+            try {
+                // Lưu câu trả lời vào sub-collection 'answers' của meeting đó
+                await addDoc(collection(db, `meetings/${meetingId}/answers`), {
+                    content: answer,
+                    createdAt: serverTimestamp()
+                });
+                
+                document.getElementById('success-msg').classList.remove('hidden');
+                document.getElementById('user-answer').value = "";
+                setTimeout(() => document.getElementById('success-msg').classList.add('hidden'), 3000);
+            } catch (e) {
+                console.error(e);
+                alert("Gửi thất bại.");
+            }
+        });
+
+        // Chạy app
+        init();
+    </script>
+</body>
+</html>
